@@ -1,0 +1,8 @@
+# ignore pycyche
+__pycache__/
+.vscode/
+.mypy_cache/
+ssh_utilities/ssh_utils/
+build/
+dist/
+pbs_wrapper.egg-info/
