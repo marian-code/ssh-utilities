@@ -18,9 +18,9 @@ import paramiko
 
 from .base import ConnectionABC
 from .constants import LG, RED, C, G, R, Y
-from .exceptions import CalledProcessError, SFTPOpenError
+from .exceptions import CalledProcessError, SFTPOpenError, ConnectionError
 from .path import SSHPath
-from .utils import CompletedProcess, N_lines_up, ProgressBar
+from .utils import CompletedProcess, ProgressBar, file_filter
 from .utils import bytes_2_human_readable as b2h
 from .utils import for_all_methods, lprint
 
@@ -28,9 +28,11 @@ if TYPE_CHECKING:
     SPath = Union[str, Path, SSHPath]
     ExcType = Union[Type[Exception], Tuple[Type[Exception], ...]]
     from paramiko.sftp_file import SFTPFile
-
+    GlobPat = Optional[str]
 
 __all__ = ["Connection"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _check_connections(original_function: Optional[Callable] = None, *,
@@ -88,8 +90,13 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 except Exception as e:
                     self.log.exception(f"Couldn't close connection: {e}")
 
-                self._auth_tries = 0
-                success = self._get_ssh()
+                try:
+                    self._get_ssh()
+                except ConnectionError:
+                    success = False
+                else:
+                    success = True
+
                 self.log.debug(f"success 1: {success}")
                 if not success:
                     return False
@@ -114,8 +121,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                                    f"password:   {self.password}\n"
                                    f"address:    {self.address}\n"
                                    f"username:   {self.username}\n"
-                                   f"ssh class:  {type(self.c)}\n"
-                                   f"auth tries: {self._auth_tries}\n"
+                                   f"ssh class:  {type(self._c)}\n"
                                    f"sftp class: {type(self.sftp)}")
                 if self._sftp_open:
                     self.log.exception(f"remote home: {self.remote_home}")
@@ -240,9 +246,6 @@ class ConnectionHolder:
 
 
 # TODO implement warapper for multiple connections
-@for_all_methods(_check_connections, exclude=["__init__", "_get_ssh", "mkdir",
-                                              "ssh_log", "copy_files", "run",
-                                              "rmtree", "listdir"])
 class Connection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
@@ -276,7 +279,12 @@ class Connection(ConnectionABC):
     At least one of (password, rsa_key_file) must be specified, if both are,
     RSA key will be used
 
-    share_connection is not implemented yet!!!
+    share_connection parameter is not implemented yet!!!
+
+    Raises
+    ------
+    ConnectionError
+        connection to remote could not be established
     """
 
     log: Union[logging.Logger]
@@ -289,71 +297,63 @@ class Connection(ConnectionABC):
                  logger: logging.Logger = None,
                  share_connection: int = 10) -> None:
 
-        lprint(f"{C}Connecting to server:{R} {username}@{address}")
+        print(f"{C}Connecting to server:{R} {username}@{address}"
+              f"{' (' + server_name + ')' if server_name else ''}")
         if warn_on_login:
-            lprint(f"{R}When running an executale on server always make"
-                   "sure that full path is specified!!!\n")
+            print(f"{R}When running an executale on server always make"
+                  f"sure that full path is specified!!!\n")
 
         # set login credentials
         self.password = password
         self.address = address
         self.username = username
         self.rsa_key_file = rsa_key_file
+
+        # paramiko connection
         self.rsa_key = paramiko.RSAKey.from_private_key_file(
             self._path2str(rsa_key_file))
+        self._c = paramiko.client.SSHClient()
+        self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
 
         # negotiate connection
-        self._auth_tries = 0
-        success = self._get_ssh()
-        if not success:
-            sys.exit()
+        self._get_ssh()
 
         # misc
         self._sftp_open = False
-        self.line_rewrite = line_rewrite
-        if not server_name:
-            self.server_name = address
-        else:
-            self.server_name = server_name.upper()
+        lprint.line_rewrite = line_rewrite
+        self.server_name = server_name.upper() if server_name else address
 
-        self.speed = ProgressBar()
-
-        if not logger:
-            self.log = logging.getLogger(__name__)
-        else:
-            self.log = logger
+        self.log = logger if logger else LOGGER
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
                            self.username, self.rsa_key_file)
 
-    def _get_ssh(self) -> bool:
+    def _get_ssh(self, authentication_attempts: int = 0):
 
         try:
-            self.c = paramiko.client.SSHClient()
-            self.c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
-
             if self.rsa_key:
                 # connect with public key
-                self.c.connect(self.address, username=self.username,
-                               pkey=self.rsa_key)
+                self._c.connect(self.address, username=self.username,
+                                pkey=self.rsa_key)
             else:
                 # if password was passed try to connect with it
-                self.c.connect(self.address, username=self.username,
-                               password=self.password, look_for_keys=False)
+                self._c.connect(self.address, username=self.username,
+                                password=self.password, look_for_keys=False)
 
         except (paramiko.ssh_exception.AuthenticationException,
                 paramiko.ssh_exception.NoValidConnectionsError) as e:
             self.log.warning(f"Error in authentication {e}. Trying again ...")
 
-            self._auth_tries += 1
-            if self._auth_tries > 3:
-                return False
+            # max three attempts to connect at once
+            authentication_attempts += 1
+            if authentication_attempts >= 3:
+                raise ConnectionError(f"Connection to {self.address} "
+                                      f"could not be established")
             else:
-                return self._get_ssh()
-        else:
-            return True
+                self._get_ssh(authentication_attempts=authentication_attempts)
 
+    @_check_connections
     def close(self, *, quiet: bool):
         """Close SSH connection.
 
@@ -362,11 +362,12 @@ class Connection(ConnectionABC):
         quiet: bool
             whether to print other function messages
         """
-        lprint(f"{G}Closing ssh connection to:{R} {self.server_name}", quiet)
-        self.c.close()
+        lprint(quiet)(f"{G}Closing ssh connection to:{R} {self.server_name}")
+        self._c.close()
 
     @staticmethod
-    def ssh_log(log_file: str = "paramiko.log", level: str = "WARN"):
+    def ssh_log(log_file: Union[Path, str] = Path("paramiko.log"),
+                level: str = "WARN"):
         """Initialize paramiko logging functionality.
 
         Parameters
@@ -376,7 +377,7 @@ class Connection(ConnectionABC):
         """
         if os.path.isfile(log_file):
             os.remove(log_file)
-        lprint(f"{Y}Logging ssh session to file:{R} {log_file}\n")
+        lprint()(f"{Y}Logging ssh session to file:{R} {log_file}\n")
         paramiko.util.log_to_file(log_file, level=level)
 
     @_check_connections(exclude_exceptions=(TypeError, CalledProcessError))
@@ -422,15 +423,17 @@ class Connection(ConnectionABC):
         if isinstance(args, str):
             raise TypeError("command must be of type list")
 
+        # init limited printing
+        lprnt = lprint(quiet=quiet)
         command: str = " ".join(args)
 
         commands = command.split(" && ")
         if len(commands) == 1:
-            lprint(f"{Y}Executing command on remote:{R} {command}\n", quiet)
+            lprnt(f"{Y}Executing command on remote:{R} {command}\n")
         else:
-            lprint(f"{Y}Executing commands on remote:{R} {commands[0]}", quiet)
+            lprnt(f"{Y}Executing commands on remote:{R} {commands[0]}")
             for c in commands[1:]:
-                lprint(" " * 30 + c, quiet)
+                lprnt(" " * 30 + c)
 
         # change work directory for command execution
         if cwd:
@@ -438,7 +441,7 @@ class Connection(ConnectionABC):
 
         # vykonat prikaz
         # stdin, stdout, stderr
-        stdout, stderr = self.c.exec_command(command)[1:]
+        stdout, stderr = self._c.exec_command(command)[1:]
 
         if capture_output:
             # create output object
@@ -469,9 +472,9 @@ class Connection(ConnectionABC):
 
             # print command stdout
             if not suppress_out:
-                lprint(f"{C}Printing remote output\n{'-' * 111}{R}", quiet)
-                lprint(out.stdout, quiet)
-                lprint(f"{C}{'-' * 111}{R}\n", quiet)
+                lprnt(f"{C}Printing remote output\n{'-' * 111}{R}")
+                lprnt(out.stdout)
+                lprnt(f"{C}{'-' * 111}{R}\n")
 
             return out
         else:
@@ -481,9 +484,13 @@ class Connection(ConnectionABC):
                 if returncode != 0:
                     raise CalledProcessError(returncode, command, "", "")
 
-            return CompletedProcess()
+            cp = CompletedProcess()
+            cp.args = args
+
+            return cp
 
     @property
+    @_check_connections
     def sftp(self) -> paramiko.SFTPClient:
         """Opens and return sftp channel.
 
@@ -498,14 +505,14 @@ class Connection(ConnectionABC):
         """
         if not self._sftp_open:
 
-            self._sftp = self.c.open_sftp()
+            self._sftp = self._c.open_sftp()
             self.local_home = os.path.expanduser("~")
 
             for _ in range(3):  # niekedy zlyha preto sa opakuje viackrat
                 try:
                     self.remote_home = self.run(
                         ["echo $HOME"], suppress_out=True, quiet=True,
-                        check=True).stdout.strip()
+                        check=True, capture_output=True).stdout.strip()
                 except CalledProcessError as e:
                     print(f"{RED}Cannot establish remote home, trying again..")
                     exception = e
@@ -543,30 +550,31 @@ class Connection(ConnectionABC):
                 file_local = jn(self._path2str(local_path), f)
 
                 if direction == "get":
-                    lprint(f"{G}Copying from remote:{R} {self.server_name}@"
-                           f"{file_remote}{LG}\n-->           local:{R} "
-                           f"{file_local}", quiet)
+                    lprint(quiet)(f"{G}Copying from remote:{R} "
+                                  f"{self.server_name}@{file_remote}{LG}\n"
+                                  f"-->           local:{R} {file_local}")
 
                     try:
                         self.sftp.get(file_remote, file_local)
                     except IOError as e:
                         raise FileNotFoundError(f"File you are trying to get "
-                                                f"does not exist")
+                                                f"does not exist: {e}")
 
                 elif direction == "put":
                     if not self.isdir(remote_path):
                         raise FileNotFoundError("Remote directory "
                                                 "does not exist")
 
-                    lprint(f"{G}Copying from local:{R} {file_local}"
-                           f"\n{LG} -->       remote: {self.server_name}@"
-                           f"{file_remote}", quiet)
+                    lprint(quiet)(f"{G}Copying from local:{R} {file_local}\n"
+                                  f"{LG} -->       remote: {self.server_name}@"
+                                  f"{file_remote}")
 
                     self.sftp.put(file_remote, file_local)
                 else:
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
 
+    @_check_connections
     def _sftp_walk(self, remote_path: "SPath"):
         """Recursive directory listing."""
         remote_path = self._path2str(remote_path)
@@ -585,10 +593,13 @@ class Connection(ConnectionABC):
             for x in self._sftp_walk(new_path):
                 yield x
 
+    @_check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include="all", remove_after: bool = True,
-                      quiet: bool = False):
+                      include: "GlobPat" = None, exclude: "GlobPat" = None,
+                      remove_after: bool = True, quiet: bool = False):
         """Download directory tree from remote.
+
+        Remote direcctory must exist otherwise exception is raised.
 
         Parameters
         ----------
@@ -598,6 +609,12 @@ class Connection(ConnectionABC):
             directory to copy to, must be full path!
         remove_after: bool
             remove remote copy after directory is uploaded
+        include: GlobPat
+            glob pattern of files to include in copy, can be used
+            simultaneously with exclude, default is None = no filtering
+        exclude: GlobPat
+            glob pattern of files to exclude in copy, can be used
+            simultaneously with include, default is None = no filtering
         quiet: bool
             if True informative messages are suppresssed
 
@@ -605,87 +622,84 @@ class Connection(ConnectionABC):
         --------
         both paths must be full: <some_remote_path>/my_directory ->
         <some_local_path>/my_directory
+
+        Raises
+        ------
+        FileNotFoundError
+            when remote directory does not exist
         """
-        sn = self.server_name
-        local_path = self._path2str(local_path)
-        remote_path = self._path2str(remote_path)
+        dst = self._path2str(local_path)
+        src = self._path2str(remote_path)
 
-        local_copy = []
-        remote_copy = []
-        local_dirs = []
-        size = []  # velkost suboru v byte-och
+        if not self.isdir(remote_path):
+            raise FileNotFoundError(f"{remote_path} you are trying to download"
+                                    f"from does not exist")
 
-        # vytvorit zoznam priecinkov do ktorych sa bude kopitovat
-        lprint(f"{C}Building directory structure "
-               f"for download from remote... {R}\n\n", quiet)
+        lprnt = lprint(quiet=quiet)
+        allow_file = file_filter(include, exclude)
 
-        self.timeit(True)
+        copy_files = []
+        dst_dirs = []
 
-        # vymedzenie priecinkov ktore sa maju kopirovat
-        for root, _, files in self._sftp_walk(remote_path):
+        lprnt(f"{C}Building directory structure for download from remote...\n")
 
-            if include != "all":
-                outer_continue = True
-                for inc in include:
-                    if inc in root:
-                        outer_continue = False
-                        break
-                if outer_continue:
-                    continue
+        # create a list of directories and files to copy
+        for root, _, files in self._sftp_walk(src):
 
-            if self.line_rewrite:
-                N_lines_up(1, quiet)
-            lprint(f"{G}Searching remote directory:{R} {sn}@{root}", quiet)
+            lprnt(f"{G}Searching remote directory:{R} "
+                  f"{self.server_name}@{root}", up=1)
 
-            # zaznamenat priecinky ktore treba vytvorit na lokalnej strane
-            directory = root.replace(remote_path, "")
-            local_dirs.append(jn(local_path, directory))
+            # record directories that need to be created on local side
+            directory = root.replace(src, "")
+            dst_dirs.append(jn(dst, directory))
 
             for f in files:
-                local_copy.append(jn(local_path, directory, f))
-                remote_copy.append(jn(root, f))
-                size.append(self.sftp.lstat(jn(root, f)).st_size)
+                dst_file = jn(dst, directory, f)
 
-        # statistika kolko suborov sa bude kopirovat a ich objem
-        n_files = len(remote_copy)
-        total = sum(size)
-        self.speed.start(total)
-        lprint(f"\n|--> {C}Total number of files to copy:{R} {n_files}", quiet)
-        lprint(f"|--> {C}Total size of files to copy:{R} {b2h(total)}", quiet)
+                if not allow_file(dst_file):
+                    continue
 
-        self.timeit(False, quiet)
+                copy_files.append({
+                    "dst": dst_file,
+                    "src": jn(root, f),
+                    "size": self.sftp.lstat(jn(root, f)).st_size
+                })
 
-        # vytvorit priecinky na lokalnej strane do ktorych sa bude kopirovat
-        lprint(f"\n{C}Creating directory structure on local side..{R} ", quiet)
-        with self.context_timeit(quiet):
-            for d in local_dirs:
-                if not os.path.exists(d):
-                    os.makedirs(d)
+        # file number and size statistics
+        n_files = len(copy_files)
+        total = sum([f["size"] for f in copy_files])
 
-        # prekopirovat
-        lprint(f"\n{C}Copying...{R}\n", quiet)
+        lprnt(f"\n|--> {C}Total number of files to copy:{R} {n_files}")
+        lprnt(f"|--> {C}Total size of files to copy:{R} {b2h(total)}")
 
-        with self.context_timeit(quiet):
-            for i, (lc, rc, s) in enumerate(zip(local_copy, remote_copy,
-                                                size)):
+        # create directories on local side to copy to
+        lprnt(f"\n{C}Creating directory structure on local side...")
+        for d in dst_dirs:
+            os.makedirs(d, exist_ok=True)
 
-                lprint(f"{G}Copying remote:{R} {sn}@{rc}\n"
-                       f"{G}     --> local:{R} {lc}", quiet)
+        # copy
+        lprnt(f"\n{C}Copying...{R}\n")
 
-                with self.speed.update(s, quiet):
-                    self.sftp.get(rc, lc)
+        with ProgressBar(total=total, quiet=quiet) as t:
+            for f in copy_files:
 
-                if i < len(local_copy) - 1 and self.line_rewrite:
-                    N_lines_up(3, quiet)
+                t.write(f"{G}Copying remote:{R} {self.server_name}@{f['src']}"
+                        f"\n{G}     --> local:{R} {f['dst']}")
 
-        lprint("", quiet)
+                self.sftp.get(f["src"], f["dst"], callback=t.update_bar)
+
+        lprnt("")
 
         if remove_after:
-            self.rmtree(remote_path)
+            self.rmtree(src)
 
+    @_check_connections(exclude_exceptions=FileNotFoundError)
     def upload_tree(self, local_path: "SPath", remote_path: "SPath",
+                    include: "GlobPat" = None, exclude: "GlobPat" = None,
                     remove_after: bool = True, quiet: bool = False):
         """Upload directory tree to remote.
+
+        Local path must exist otherwise, exception is raised.
 
         Parameters
         ----------
@@ -695,6 +709,12 @@ class Connection(ConnectionABC):
             directory to copy to, must be full path!
         remove_after: bool
             remove local copy after directory is uploaded
+        include: GlobPat
+            glob pattern of files to include in copy, can be used
+            simultaneously with exclude, default is None = no filtering
+        exclude: GlobPat
+            glob pattern of files to exclude in copy, can be used
+            simultaneously with include, default is None = no filtering
         quiet: bool
             if True informative messages are suppresssed
 
@@ -702,75 +722,81 @@ class Connection(ConnectionABC):
         --------
         both paths must be full: <some_local_path>/my_directory ->
         <some_remote_path>/my_directory
+
+        Raises
+        ------
+        FileNotFoundError
+            when local directory does not exist
         """
-        sn = self.server_name
-        local_path = self._path2str(local_path)
-        remote_path = self._path2str(remote_path)
+        src = self._path2str(local_path)
+        dst = self._path2str(remote_path)
 
-        local_copy = []
-        remote_copy = []
-        remote_dirs = []
-        size = []
+        if not os.path.isdir(local_path):
+            raise FileNotFoundError(f"{local_path} you are trying to upload "
+                                    f"does not exist")
 
-        # vytvorit zoznam priecinkov na kopirovanie
-        lprint(f"{C}Building directory structure for "
-               f"upload to remote...{R} \n\n", quiet)
+        lprnt = lprint(quiet=quiet)
+        allow_file = file_filter(include, exclude)
 
-        self.timeit(True)
+        copy_files = []
+        dst_dirs = []
 
-        for root, _, files in os.walk(local_path):
-            if self.line_rewrite:
-                N_lines_up(1, quiet)
-            lprint(f"{G}Searching local directory:{R} {root}", quiet)
+        lprnt(f"{C}Building directory structure for upload to remote...\n")
+
+        # create a list of directories and files to copy
+        for root, _, files in os.walk(src):
+
+            lprnt(f"{G}Searching local directory:{R} {root}", up=1)
 
             # skip hidden dirs
             if root[0] == ".":
                 continue
 
-            # zaznamenat priecinky ktore treba vytvorit na vzdialenej strane
-            directory = root.replace(local_path, "")
-            remote_dirs.append(remote_path + directory)
+            # record directories that need to be created on remote side
+            directory = root.replace(src, "")
+            dst_dirs.append(jn(dst, directory))
 
             for f in files:
-                local_copy.append(jn(root, f))
-                remote_copy.append(jn(remote_path, directory, f))
-                size.append(os.path.getsize(jn(root, f)))
+                dst_file = jn(dst, directory, f)
 
-        # statistika kolko suborov sa bude kopirovat a ich objem
-        n_files = len(local_copy)
-        total = sum(size)
-        self.speed.start(total)
+                if not allow_file(dst_file):
+                    continue
 
-        lprint(f"\n|--> {C}Total number of files to copy:{R} {n_files}", quiet)
-        lprint(f"|--> {C}Total size of files to copy: {R} {b2h(total)}", quiet)
+                copy_files.append({
+                    "dst": dst_file,
+                    "src": jn(root, f),
+                    "size": os.path.getsize(jn(root, f))
+                })
 
-        self.timeit(False, quiet)
+        # file number and size statistics
+        n_files = len(copy_files)
+        total = sum([f["size"] for f in copy_files])
 
-        # vytvorit strukturu priecinkov na vzdialenej strane
-        lprint(f"\n{C}Creating directory structure on remote side..{R}", quiet)
-        with self.context_timeit(quiet):
-            for i, rd in enumerate(remote_dirs):
-                self.mkdir(rd)
+        lprnt(f"\n|--> {C}Total number of files to copy:{R} {n_files}")
+        lprnt(f"|--> {C}Total size of files to copy: {R} {b2h(total)}")
 
-        # prekopirovat
-        lprint(f"\n{C}Copying...{R} \n", quiet)
-        with self.context_timeit(quiet):
-            for i, (lc, rc, s) in enumerate(zip(local_copy, remote_copy,
-                                                size)):
-                lprint(f"{G}Copying local:{R} {lc}\n"
-                       f"{G}   --> remote:{R} {sn}@{rc}", quiet)
+        # create directories on remote side to copy to
+        lprnt(f"\n{C}Creating directory structure on remote side...")
+        for d in dst_dirs:
+            self.mkdir(d, exist_ok=True, quiet=quiet)
 
-                with self.speed.update(s, quiet):
-                    self.sftp.put(lc, rc)
+        # copy
+        lprnt(f"\n{C}Copying...{R}\n")
 
-                if i < len(local_copy) - 1 and self.line_rewrite:
-                    N_lines_up(3, quiet)
+        with ProgressBar(total=total, quiet=quiet) as t:
+            for cf in copy_files:
 
-        lprint("", quiet)
+                t.write(f"{G}Copying local:{R} {cf['src']}\n"
+                        f"{G}   --> remote:{R} {self.server_name}@{cf['dst']}")
+
+                self.sftp.put(cf["src"], cf["dst"], callback=t.update_bar)
+
+        lprnt("")
 
         if remove_after:
-            shutil.rmtree(local_path)
+            shutil.rmtree(src)
 
+    @_check_connections
     def isfile(self, path: "SPath") -> bool:
         """Check ifg path points to a file.
 
@@ -789,6 +815,7 @@ class Connection(ConnectionABC):
         except IOError:
             return False
 
+    @_check_connections
     def isdir(self, path: "SPath") -> bool:
         """Check if path points to directory.
 
@@ -807,8 +834,11 @@ class Connection(ConnectionABC):
         except IOError:
             return False
 
+    @_check_connections
     def Path(self, path: "SPath") -> SSHPath:
         """Provides API similar to pathlib.Path only for remote host.
+
+        Only for Unix to Unix connections
 
         Parameters
         ----------
@@ -857,8 +887,8 @@ class Connection(ConnectionABC):
         path = self._path2str(path)
 
         if not self.isdir(path):
-            lprint(f"{G}Creating directory:{R} {self.server_name}@{path}",
-                   quiet)
+            lprint(quiet)(f"{G}Creating directory:{R} "
+                          f"{self.server_name}@{path}")
 
             if not parents:
                 try:
@@ -885,7 +915,12 @@ class Connection(ConnectionABC):
                     raise OSError(f"Couldn't make dir {tm},\n probably "
                                   f"permission error: {e}")
 
-            self.sftp.mkdir(path, mode)
+            try:
+                self.sftp.mkdir(path, mode)
+            except OSError as e:
+                raise OSError(f"Couldn't make dir {path}, probably "
+                              f"permission error: {e}\n"
+                              f"Also check path formating")
         elif not exist_ok:
             raise FileExistsError(f"Directory already exists: "
                                   f"{self.server_name}@{path}")
@@ -913,13 +948,13 @@ class Connection(ConnectionABC):
         path = self._path2str(path)
 
         with self.context_timeit(quiet):
-            lprint(f"{G}Recursively removing dir:{R} {sn}@{path}", quiet)
+            lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
 
             try:
                 for root, _, files in self._sftp_walk(path):
                     for f in files:
                         f = jn(root, f)
-                        lprint(f"{G}removing file:{R} {sn}@{f}", quiet)
+                        lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
                         if self.isfile(f):
                             self.sftp.remove(f)
                     if self.isdir(root):
@@ -957,6 +992,7 @@ class Connection(ConnectionABC):
         except IOError as e:
             raise FileNotFoundError(f"Directory does not exist: {e}")
 
+    @_check_connections
     def change_dir(self, path: "SPath"):
         """Change sftp working directory.
 
@@ -967,6 +1003,7 @@ class Connection(ConnectionABC):
         """
         self.sftp.chdir(self._path2str(path))
 
+    @_check_connections(exclude_exceptions=FileNotFoundError)
     def open(self, filename: "SPath", mode: str = "r",
              encoding: Optional[str] = "utf-8",
              bufsize: int = -1) -> "SFTPFile":
@@ -985,8 +1022,17 @@ class Connection(ConnectionABC):
         bufsize: int
             buffer size, 0 turns off buffering, 1 uses line buffering, and any
             number greater than 1 (>1) uses that specific buffer size
+
+        Raises
+        ------
+        FileNotFoundError
+            when mode is 'r' and file does not exist
         """
-        filename = self._path2str(filename)
+        path = self._path2str(filename)
+
+        if not self.isfile(path) and "r" in mode:
+            raise FileNotFoundError(f"Cannot open {path} for reading, "
+                                    f"it does not exist.")
 
         def read_decode(self, size=None):
             data = self.paramiko_read(size=size)
@@ -997,7 +1043,7 @@ class Connection(ConnectionABC):
             return data
 
         # open file
-        file_obj = self.sftp.open(filename, mode=mode, bufsize=bufsize)
+        file_obj = self.sftp.open(path, mode=mode, bufsize=bufsize)
 
         # rename the read method so i is not overwritten
         setattr(file_obj, "paramiko_read", getattr(file_obj, "read"))
@@ -1008,6 +1054,7 @@ class Connection(ConnectionABC):
         return file_obj
 
     # ! DEPRECATED
+    @_check_connections
     def sendCommand(self, command: str, suppress_out: bool,
                     quiet: bool = True):
         """DEPRECATED METHOD !!!.
@@ -1016,17 +1063,18 @@ class Connection(ConnectionABC):
         --------
         :meth:`run` more recent implementation
         """
+        lprnt = lprint(quiet)
         commands = command.split(" && ")
         if len(commands) == 1:
-            lprint(f"{Y}Executing command on remote:{R} {command}\n", quiet)
+            lprnt(f"{Y}Executing command on remote:{R} {command}\n")
         else:
-            lprint(f"{Y}Executing commands on remote:{R} {commands[0]}", quiet)
+            lprnt(f"{Y}Executing commands on remote:{R} {commands[0]}")
             for c in commands[1:]:
-                lprint(" " * 30 + c, quiet)
+                lprnt(" " * 30 + c)
 
         # vykonat prikaz
         # stdin, stdout, stderr
-        stdout = self.c.exec_command(command, get_pty=True)[1]
+        stdout = self._c.exec_command(command, get_pty=True)[1]
 
         while not stdout.channel.exit_status_ready():
             # print data when available
@@ -1038,9 +1086,9 @@ class Connection(ConnectionABC):
                     alldata += prevdata
 
                 if not suppress_out:
-                    lprint(f"{C}Printing remote output\n{'-' * 111}{R}", quiet)
-                    lprint(str(alldata, "utf8"), quiet)
-                    lprint(f"{C}{'-' * 111}{R}\n", quiet)
+                    lprnt(f"{C}Printing remote output\n{'-' * 111}{R}")
+                    lprnt(str(alldata, "utf8"))
+                    lprnt(f"{C}{'-' * 111}{R}\n")
 
                 return str(alldata, "utf8")
 

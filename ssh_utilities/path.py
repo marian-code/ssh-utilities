@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     SPath = Union[str, Path, "SSHPath"]
     from .remote import Connection
 
+__all__ = ["SSHPath"]
+
 DEC_EXCLUDE = ("_parse_args", "_from_parts", "_from_parsed_parts",
                "_format_parsed_parts", "cwd", "home")
 
@@ -104,7 +106,7 @@ class SSHPath(Path):
     Parameters
     ----------
     connection: Connection
-        instance of connection to server
+        instance of `ssh_utilities.Connection` to server
     path: SPath
         initial path
 
@@ -169,7 +171,10 @@ class SSHPath(Path):
     def exists(self) -> bool:
         return any((self.is_dir(), self.is_file()))
 
-    def glob(self, pattern):
+    def glob(self, pattern: str):
+
+        if not self.is_dir():
+            raise FileNotFoundError(f"Directory {self} does not exist.")
 
         if pattern.startswith("**"):
             recursive = True
@@ -210,6 +215,10 @@ class SSHPath(Path):
         return stat.S_ISCHR(self.stat.st_mode)
 
     def iterdir(self) -> Generator["SSHPath", None, None]:
+
+        if not self.is_dir():
+            raise FileNotFoundError(f"Directory {self} does not exist.")
+
         if self.is_dir():
             for p in self._c.listdir(self):
                 yield self / p

@@ -2,7 +2,8 @@
 Simple paramiko wrapper that aims to facilitate easy remote file operations
 and command execution. They API vaguely follows python os library. Has also
 local variant that mimics the remote API on local machine. The connection is
-resilient to interruptions. 
+resilient to interruptions. Everything is well documented by dostrings and
+typed.
 
 ## Installation
 1. `git clone git@gitlab.dep.fmph.uniba.sk:rynik/ssh-utils.git`
@@ -17,8 +18,54 @@ If you encounter some import errors try installing from requirements.txt file
 API exposes three main classes:
 `from .ssh_utils import SSHConnection, Connection, LocalConnection`
 `Connection` is the main class that initializes other two as needed according
-to input parameters. It supports dict-like indexing by values that are in
+to input parameters. 
+
+Connection supports dict-like indexing by values that are in
 your ~/.ssh/config file
+
+```python
+>>> from ssh_utilities import Connection
+>>> Connection[<server_name>]
+>>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
+```
+
+There is also a specific get method which is safer and with better typing
+support than dict-like indexing
+
+```python
+>>> from ssh_utilities import Connection
+>>> Connection.get(<server_name>)
+>>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
+```
+
+Class can be also used as a context manager.
+
+```python
+>>> from ssh_utilities import Connection
+>>> with Connection(<server_name>) as conn:
+>>>     conn.something(...)
+```
+
+Connection can also be initialized from appropriately formated string.
+Strings are used mainly for underlying connection classes persistance to
+disk
+
+```python
+>>> from ssh_utilities import Connection
+>>> Connection.from_str(<string>)
+```
+
+All these return connection with preset reasonable parameters if more
+customization is required, use open method, this also allows use of passwords
+
+```python
+>>> from ssh_utilities import Connection
+>>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>, <server_name>,
+                         <logger>, <share_connection>):
+```
+
+Module API also exposes powerfull SSHPath object with identical API as
+`pathlib.Path` only this one works for remote files
 
 
 ## Contributing

@@ -89,17 +89,6 @@ class ConnectionABC(ABC):
         pass
 
     # Normal methods
-    def timeit(self, position: bool, quiet: bool = False):
-
-        if position:
-            self.start = time.time()
-        else:
-            self.end = time.time()
-            if not quiet:
-                print(f"CPU time: {(self.end - self.start):.2f}s")
-            else:
-                pass
-
     @contextmanager
     def context_timeit(self, quiet: bool = False):
         start = time.time()
@@ -111,7 +100,9 @@ class ConnectionABC(ABC):
             pass
 
     def _path2str(self, path: Optional["SPath"]) -> str:
-        """Converts pathlib.Path to string.
+        """Converts pathlib.Path, SSHPath or plain str to string.
+
+        Also remove any rtailing backslashes.
 
         Parameters
         ----------
@@ -129,9 +120,10 @@ class ConnectionABC(ABC):
             if path is not instance of str, Path or SSHPath
         """
         if isinstance(path, (Path, SSHPath)):
-            return fspath(path)
+            p = fspath(path)
+            return p if not p.endswith("/") else p[:-1]
         elif isinstance(path, str):
-            return path
+            return path if not path.endswith("/") else path[:-1]
         else:
             raise FileNotFoundError(f"{path} is not a valid path")
 

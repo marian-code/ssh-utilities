@@ -11,4 +11,4 @@ RED = Fore.RED
 C = Fore.LIGHTCYAN_EX
 Y = Fore.YELLOW
 
-CONFIG_PATH = Path("~/.ssh/config").expanduser().open()
+CONFIG_PATH = Path("~/.ssh/config").expanduser()

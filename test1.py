@@ -4,19 +4,30 @@ from time import perf_counter
 import numpy as np
 from threading import Lock
 import shelve
+import matplotlib.pyplot as plt
 
 
-c = Connection.get_connection("fock")
-
-f = c.open("/home/rynik/.bashrc")
-print(f.read())
-f.close()
-
-with c.open("/home/rynik/.bashrc") as f:
-    print(f.read())
+c = Connection.get("daco", local=False)
+c.download_tree()
+c.
 
 
-print(type(open("daco", "w")))
+with Connection("aurel") as c:
+
+    files = c.Path("/gpfs/fastscratch/rynik/recompute_GAP").rglob("*pbs.job")
+    print(files)
+    for f in files:
+        print(f)
+        text = f.read_text()
+        print(text)
+        f.write_text(text.replace("prio", "priority"))
+
+
+
+
+#c.download_tree("/home/rynik/lammps_tests", "/home/rynik/OneDrive/dizertacka/code/ssh_utilities/test", include="*.in", exclude="*data*", remove_after=False)
+#c.upload_tree("/home/rynik/OneDrive/dizertacka/code/ssh_utilities/test", "/home/rynik/lammps_tests", remove_after=False)
+
 
 """
 

@@ -7,7 +7,7 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 if not os.path.isfile(os.path.expanduser("~/.ssh/config")):
     print("No config file was found in ~/.ssh directory, please configure"
           " ssh_config.json or put the config file in ~/.ssh directory if"
-          " you want to use ssh functionallity")
+          " you want to use ssh functionallity to full potential")
 
 setup(
     name="ssh_utilities",

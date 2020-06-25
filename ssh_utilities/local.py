@@ -49,11 +49,11 @@ class Connection(ConnectionABC):
 
     def close(self, *, quiet: bool):
         """Close emulated local connection."""
-        lprint(f"{G}Closing local connection")
+        lprint(quiet)(f"{G}Closing local connection")
 
     @staticmethod
     def ssh_log(log_file="paramiko.log", level="WARN"):
-        lprint(f"{Y}Local sessions are not logged!")
+        lprint()(f"{Y}Local sessions are not logged!")
 
     def run(self, args: List[str], *, suppress_out: bool, quiet: bool = True,
             capture_output: bool = False, check: bool = False,
@@ -63,9 +63,9 @@ class Connection(ConnectionABC):
                              cwd=cwd, encoding=encoding)
 
         if capture_output and not suppress_out:
-            lprint(f"{C}Printing local output\n{'-' * 111}{R}", quiet)
-            lprint(out.stdout, quiet)
-            lprint(f"{C}{'-' * 111}{R}\n", quiet)
+            lprint(quiet)(f"{C}Printing local output\n{'-' * 111}{R}")
+            lprint(quiet)(out.stdout)
+            lprint(quiet)(f"{C}{'-' * 111}{R}\n")
 
         return out
 
@@ -122,7 +122,7 @@ class Connection(ConnectionABC):
 
     def rmtree(self, path: "SPath", ignore_errors: bool = False,
                quiet: bool = True):
-        return shutil.rmtree(path, ignore_errors=ignore_errors)
+        shutil.rmtree(path, ignore_errors=ignore_errors)
 
     def listdir(self, path: "SPath") -> List[str]:
         return os.listdir(path)

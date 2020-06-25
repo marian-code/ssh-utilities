@@ -8,13 +8,13 @@ import getpass
 import re
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, Optional, Union, overload
+from typing_extensions import Literal
 
-import paramiko
 
 from .constants import CONFIG_PATH, RED, R
 from .local import Connection as LocalConnection
 from .remote import Connection as SSHConnection
-from .utils import lprint
+from .utils import lprint, config_parser
 
 if TYPE_CHECKING:
     from .base import ConnectionABC
@@ -33,19 +33,11 @@ class _ConnectionMeta(type):
 
         dictionary["available_hosts"] = dict()
 
-        config = paramiko.config.SSHConfig()
-        config.parse(CONFIG_PATH)
+        config = config_parser(CONFIG_PATH)
 
         # add remote hosts
         for host in config.get_hostnames():
             dictionary["available_hosts"][host] = config.lookup(host)
-
-        # add local PC
-        dictionary["available_hosts"][gethostname()] = {
-            "user": getpass.getuser(),
-            "hostname": None,
-            "identityfile": [None]
-        }
 
         return type.__new__(cls, classname, bases, dictionary)
 
@@ -67,7 +59,7 @@ class _ConnectionMeta(type):
 
 
 class Connection(metaclass=_ConnectionMeta):
-    """Class with self-keeping SSH or local connection.
+    """Factory for class with self-keeping SSH or local connection.
 
     Main purpose is to have SSH connection with convenience methods which can
     be easily used. Connection is resiliet to errors and will reinitialize
@@ -89,6 +81,13 @@ class Connection(metaclass=_ConnectionMeta):
     >>> Connection[<server_name>]
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
+    There is also a specific get method which is safer and with better typing
+    support than dict-like indexing
+
+    >>> from ssh_utilities import Connection
+    >>> Connection.get(<server_name>)
+    >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
+
     Class can be also used as a context manager.
 
     >>> from ssh_utilities import Connection
@@ -103,13 +102,21 @@ class Connection(metaclass=_ConnectionMeta):
     >>> Connection.from_str(<string>)
 
     returns an initialized connection instance.
+
+    All these return connection with preset reasonable parameters if more
+    customization is required, use open method, this also allows use of passwords
+
+    >>> from ssh_utilities import Connection
+    >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>,
+                             <server_name>, <logger>, <share_connection>):
     """
 
     def __init__(self, sshServer: str, local: bool = False) -> None:
         if not local:
             self._connection = self.get_connection(sshServer)
         else:
-            self._connection = self.open("USER", server_name=gethostname())
+            self._connection = self.open(getpass.getuser(),
+                                         server_name=gethostname())
 
     def __enter__(self) -> Union[SSHConnection, LocalConnection]:
         return self._connection
@@ -117,9 +124,26 @@ class Connection(metaclass=_ConnectionMeta):
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self._connection.close(quiet=True)
 
+    @overload
     @classmethod
-    def get_connection(cls, sshServer: str
-                       ) -> Union[SSHConnection, LocalConnection]:
+    def get(cls, sshServer: str, local: Literal[False],
+            ) -> SSHConnection:
+        ...
+
+    @overload
+    @classmethod
+    def get(cls, sshServer: str, local: Literal[True],
+            ) -> LocalConnection:
+        ...
+
+    @overload
+    @classmethod
+    def get(cls, sshServer: str, local: bool,
+            ) -> Union[SSHConnection, LocalConnection]:
+        ...
+
+    @classmethod
+    def get(cls, sshServer: str, local: bool = False):
         """Get Connection based on one of names defined in .ssh/config file.
 
         If name of local PC is passed initilize LocalConnection
@@ -128,6 +152,8 @@ class Connection(metaclass=_ConnectionMeta):
         ----------
         sshServer : str
             server name to connect to defined in ~/.ssh/config file
+        local: bool
+            if True return emulated connection to loacl host
 
         Raises
         ------
@@ -139,7 +165,12 @@ class Connection(metaclass=_ConnectionMeta):
         SSHConnection
             Instance of SSHConnection for selected server
         """
-        return cls.__getitem__(sshServer)
+        if local:
+            return cls.open(getpass.getuser(), server_name=gethostname())
+        else:
+            return cls.__getitem__(sshServer)
+
+    get_connection = get
 
     @classmethod
     def from_str(cls, string: str) -> Union[SSHConnection, LocalConnection]:
@@ -149,7 +180,7 @@ class Connection(metaclass=_ConnectionMeta):
 
         Parameters
         ----------
-        string : str
+        string: str
             str to initialize connection from
 
         Returns
@@ -168,7 +199,7 @@ class Connection(metaclass=_ConnectionMeta):
             user_name, ssh_key, address = re.findall(
                 r"\(user_name:(\S*) \| rsa_key:(\S*) \| address:(\S*)\)",
                 string)[0]
-        except IndexError as e:
+        except IndexError:
             raise ValueError("String is not formated correctly")
 
         return cls.open(user_name, address, ssh_key, server_name)
@@ -243,14 +274,15 @@ class Connection(metaclass=_ConnectionMeta):
                                    server_name=server_name, logger=logger)
         else:
             if sshKey:
-                lprint(f"Will login with private RSA key located in {sshKey}")
+                lprint(False)(f"Will login with private RSA key "
+                              f"located in {sshKey}")
 
                 c = SSHConnection(sshServer, sshUsername, rsa_key_file=sshKey,
                                   line_rewrite=True, server_name=server_name,
                                   logger=logger,
                                   share_connection=share_connection)
             else:
-                lprint(f"Will login as {sshUsername} to {sshServer}")
+                lprint(False)(f"Will login as {sshUsername} to {sshServer}")
                 sshPassword = getpass.getpass(prompt="Enter password: ")
 
                 c = SSHConnection(sshServer, sshUsername, password=sshPassword,

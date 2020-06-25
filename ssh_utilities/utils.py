@@ -2,18 +2,19 @@
 
 import re
 import sys
-import time
-from types import MethodType
-from contextlib import contextmanager
-from functools import wraps
-from typing import Any, Callable, List, Optional, Union, Sequence
+from pathlib import Path
+from typing import Any, Callable, List, Optional, Sequence, Union
 
 from colorama import Back
+from paramiko.config import SSHConfig
+from tqdm import tqdm
+from tqdm.utils import _term_move_up
 
 from .exceptions import CalledProcessError
 
 __all__ = ["ProgressBar", "N_lines_up", "bytes_2_human_readable",
-           "CompletedProcess", "lprint", "for_all_methods", "glob2re"]
+           "CompletedProcess", "lprint", "for_all_methods", "glob2re",
+           "ProgBarNew", "file_filter", "config_parser"]
 
 
 class CompletedProcess:
@@ -44,64 +45,94 @@ class CompletedProcess:
                                      self.stderr)
 
 
-class ProgressBar:
-    """Measure file copy speed and disply progressbar."""
+class _DummyTqdmWrapper:
 
-    def __init__(self, total: int = 0) -> None:
-        self._average_speed = 0.0
-        self._total = total
-        self._done = 0
+    def __init__(self, *args, **kwargs) -> None:
+        pass
 
-    def start(self, total_size: int):
-        """Start timer.
+    def __enter__(self):
+        return self
 
-        Parameters
-        ----------
-        total_size : int
-            total size of files to copy in bytes.
-        """
-        self._average_speed = 0.0
-        self.total = total_size
-        self._done = 0
+    def __exit__(self, *args, **kwargs):
+        pass
 
-    @contextmanager
-    def update(self, size: int, quiet: bool):
-        """Update copying progressbar.
+    def update_bar(self, *args, **kwargs):
+        pass
 
-        Parameters
-        ----------
-        size : int
-            actual copied size
-        quiet : bool
-            if true print of message is suppressed
-        """
-        t_start = time.time()
-        yield
-        cp_time = time.time() - t_start
-
-        self._average_speed = (self._average_speed + (size / cp_time)) / 2
-        self._done += size
-
-        percent_done = int(100 * (self._done / self._total))
-
-        if percent_done < 10:
-            progress_bar = f"{' ' * 49}{percent_done}%{' ' * 49}"
-        elif percent_done == 100:
-            progress_bar = f"{' ' * 47}{percent_done}%{' ' * 49}"
-        else:
-            progress_bar = f"{' ' * 48}{percent_done}%{' ' * 49}"
-
-        progress_bar_1 = progress_bar[:percent_done]
-        progress_bar_2 = progress_bar[percent_done:]
-
-        if not quiet:
-            print(f"|{Back.LIGHTGREEN_EX}{progress_bar_1}{Back.RESET}"
-                  f"{progress_bar_2}| "
-                  f"{bytes_2_human_readable(self._average_speed)}/s", quiet)
+    def write(self, *args, **kwargs):
+        pass
 
 
-def lprint(text: Any, quiet: bool = False):
-    """Function that limits print output.
+class _TqdmWrapper(tqdm):
+
+    _prefix = _term_move_up() + '\r'
+
+    def __init__(self, *args, **kwargs) -> None:
+
+        # write_up is not a tqdm natice argument, it determines how many lines
+        # will be written above the progressbar
+        self._prefix = self._prefix * kwargs.pop("write_up")
+
+        super().__init__(*args, **kwargs)
+
+        self._last_transfered = 0
+
+    def update_bar(self, transfered: int, total_file_size: int):
+        part = transfered - self._last_transfered
+        if part < 0:
+            part = transfered
+        self._last_transfered = transfered
+        self.update(part)  # update pbar with increment
+
+    def write(self, s, _file=None, end="\n", nolock=False):
+        super().write(self._prefix + s, file=_file, end=end, nolock=nolock)
+
+
+def ProgressBar(total: Optional[int] = None, unit: str = 'b',
+                unit_scale: bool = True, miniters: int = 1, ncols: int = 100,
+                unit_divisor: int = 1024, write_up=2,
+                quiet: bool = True, *args, **kwargs
+                ) -> Union[_DummyTqdmWrapper, _TqdmWrapper]:
+    """Progress Bar factory return tqdm subclass or dummy replacement.
+
+    Parameters
+    ----------
+    total : Optional[int]
+        total number to transfer, units are set with unit parameter
+    unit : str
+        units in which total is input, by default 'b'
+    unit_scale : bool
+        whether toscale units
+    miniters : int
+        minimum number of iterations after which update takes place
+    ncols : int
+        progressbar length
+    unit_divisor : int
+        scale factor for units
+    write_up : int
+        number of lines that are written above progressbar
+    quiet : bool
+        if True progressbar is not shown
+
+    Returns
+    -------
+    Union[_DummyTqdmWrapper, _TqdmWrapper]
+        which is returned is decided based on value of quiet argument
+    """
+    if quiet:
+        return _DummyTqdmWrapper(total=total, unit=unit, unit_scale=unit_scale,
+                                 miniters=miniters, ncols=ncols,
+                                 unit_divisor=unit_divisor, write_up=write_up,
+                                 *args, **kwargs)
+    else:
+        return _TqdmWrapper(total=total, unit=unit, unit_scale=unit_scale,
+                            miniters=miniters, ncols=ncols,
+                            unit_divisor=unit_divisor, write_up=write_up,
+                            *args, **kwargs)
+
+
+class lprint:
+    """Callable class that limits print output.
 
     Paremeters
     ----------
@@ -110,10 +141,22 @@ def lprint(text: Any, quiet: bool = False):
     quiet: bool
         if true, do not print and return imediatelly
     """
-    if quiet:
-        pass
-    else:
-        print(text)
+
+    line_rewrite = True
+
+    def __init__(self, quiet: bool = False):
+        self._quiet = quiet
+        self._first_print = True
+
+    def __call__(self, text: Any, *, up=None):
+
+        if self._first_print or not self.line_rewrite:
+            prefix = ""
+        else:
+            prefix = (_term_move_up() + "\r") * up
+
+        if not self._quiet:
+            print(f"{prefix}{text}")
 
 
 def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
@@ -157,7 +200,8 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
     return decorate
 
 
-def N_lines_up(N, quiet: bool):
+# ! DEPRECATED
+class N_lines_up:
     """Move cursor N lines up.
 
     Parameters
@@ -165,10 +209,56 @@ def N_lines_up(N, quiet: bool):
     quiet: bool
         if true print of message is suppressed
     """
-    if not quiet:
-        sys.stdout.write(f"\033[{N}A")
-        sys.stdout.write("\033[K ")
-        print("\r", end="")
+
+    line_rewrite = True
+
+    def __init__(self, *, quiet: bool) -> None:
+        self._print = all([not quiet, self.line_rewrite])
+
+    def __call__(self, N: int):
+        if self._print:
+            sys.stdout.write(f"\033[{N}A")
+            sys.stdout.write("\033[K ")
+            print("\r", end="")
+
+
+class file_filter:
+
+    def __init__(self, include: Optional[str], exclude: Optional[str]) -> None:
+
+        if include and exclude:
+            self._inc = re.compile(glob2re(include))
+            self._exc = re.compile(glob2re(exclude))
+            self.match = self._match_both
+        elif include and not exclude:
+            self._inc = re.compile(glob2re(include))
+            self.match = self._match_inc
+        elif not include and exclude:
+            self._exc = re.compile(glob2re(exclude))
+            self.match = self._match_exc
+        elif not include and not exclude:
+            self.match = self._match_none
+
+    def _match_none(self, filename: str) -> bool:
+        return True
+
+    def _match_inc(self, filename: str) -> bool:
+        if not self._inc.search(filename):
+            return False
+        else:
+            return True
+
+    def _match_exc(self, filename: str) -> bool:
+        if self._exc.search(filename):
+            return False
+        else:
+            return True
+
+    def _match_both(self, filename: str) -> bool:
+        return self._match_exc(filename) and self._match_inc(filename)
+
+    def __call__(self, filename: str) -> bool:
+        return self.match(filename)
 
 
 def glob2re(patern):
@@ -216,7 +306,29 @@ def glob2re(patern):
                 res = '%s[%s]' % (res, stuff)
         else:
             res = res + re.escape(c)
-    return res + '\Z(?ms)'
+    return '(?ms)' + res + '\Z'
+
+
+def config_parser(config_path: Union["Path", str]) -> SSHConfig:
+    """Parses ssh config file.
+
+    Parameters
+    ----------
+    config_path : Path
+        path to config file
+
+    Returns
+    -------
+    SSHConfig
+        paramiko SSHConfig object that parses config file
+    """
+    if isinstance(config_path, str):
+        config_path = Path(config_path).expanduser()
+
+    config = SSHConfig()
+    config.parse(config_path.open())
+
+    return config
 
 
 def bytes_2_human_readable(number_of_bytes: Union[int, float],
