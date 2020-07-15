@@ -6,7 +6,6 @@ Has the same API as remote version.
 from .base import ConnectionABC
 from .utils import lprint
 import shutil
-from contextlib import contextmanager
 from .constants import Y, G, C, R
 import os
 from typing import TYPE_CHECKING, Union, List, Optional, IO
@@ -18,10 +17,10 @@ if TYPE_CHECKING:
     from .path import SSHPath
     SPath = Union[str, Path, SSHPath]
 
-__all__ = ["Connection"]
+__all__ = ["LocalConnection"]
 
 
-class Connection(ConnectionABC):
+class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
 
     def __init__(self, address, username, password=None, sshKey=None,

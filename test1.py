@@ -1,4 +1,4 @@
-from ssh_utilities import Connection
+from ssh_utilities import Connection, SSHConnection
 from queue import Queue
 from time import perf_counter
 import numpy as np
@@ -6,14 +6,10 @@ from threading import Lock
 import shelve
 import matplotlib.pyplot as plt
 
-
-c = Connection.get("daco", local=False)
-c.download_tree()
-c.
-
+c = Connection.get("daco", local=True)
 
 with Connection("aurel") as c:
-
+    c.Path("daco")
     files = c.Path("/gpfs/fastscratch/rynik/recompute_GAP").rglob("*pbs.job")
     print(files)
     for f in files:

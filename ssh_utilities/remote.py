@@ -3,9 +3,7 @@
 import logging
 import os
 import shutil
-import sys
 import time
-from contextlib import contextmanager
 from functools import wraps
 from os.path import join as jn
 from pathlib import Path
@@ -30,7 +28,7 @@ if TYPE_CHECKING:
     from paramiko.sftp_file import SFTPFile
     GlobPat = Optional[str]
 
-__all__ = ["Connection"]
+__all__ = ["SSHConnection"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -246,7 +244,7 @@ class ConnectionHolder:
 
 
 # TODO implement warapper for multiple connections
-class Connection(ConnectionABC):
+class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
     Paremeters
@@ -288,6 +286,7 @@ class Connection(ConnectionABC):
     """
 
     log: Union[logging.Logger]
+    _remote_home: Optional[str] = None
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -490,6 +489,12 @@ class Connection(ConnectionABC):
             return cp
 
     @property
+    def remote_home(self) -> str:
+        if not self._remote_home:
+            self.sftp
+            return self._remote_home
+
+    @property
     @_check_connections
     def sftp(self) -> paramiko.SFTPClient:
         """Opens and return sftp channel.
@@ -510,7 +515,7 @@ class Connection(ConnectionABC):
 
             for _ in range(3):  # niekedy zlyha preto sa opakuje viackrat
                 try:
-                    self.remote_home = self.run(
+                    self._remote_home = self.run(
                         ["echo $HOME"], suppress_out=True, quiet=True,
                         check=True, capture_output=True).stdout.strip()
                 except CalledProcessError as e:
@@ -586,8 +591,9 @@ class Connection(ConnectionABC):
                 folders.append(f.filename)
             else:
                 files.append(f.filename)
-        if files:
-            yield path, folders, files
+
+        yield path, folders, files
+
         for folder in folders:
             new_path = jn(remote_path, folder)
             for x in self._sftp_walk(new_path):

@@ -3,7 +3,7 @@
 import re
 from os import fspath
 from os.path import join
-from pathlib import PurePath, Path, _posix_flavour
+from pathlib import Path, _posix_flavour
 from typing import TYPE_CHECKING, Generator, Union, Callable, Optional
 from functools import wraps
 import stat
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
     SPath = Union[str, Path, "SSHPath"]
-    from .remote import Connection
+    from .remote import SSHConnection
 
 __all__ = ["SSHPath"]
 
@@ -124,10 +124,13 @@ class SSHPath(Path):
     """
 
     _flavour = _posix_flavour
-    _c: "Connection"
+    _c: "SSHConnection"
 
-    def __new__(cls, connection: "Connection", *args, **kwargs):
+    def __new__(cls, connection: "SSHConnection", *args, **kwargs):
         """Copied from pathlib."""
+
+        # TODO check if server is posix
+
         self = cls._from_parts(args, init=False)
         self._c = connection
         if not self._flavour.is_supported:
@@ -227,7 +230,6 @@ class SSHPath(Path):
               exist_ok: bool = False):
         self._c.mkdir(self, mode=mode, exist_ok=exist_ok, parents=parents)
 
-    # TODO returns bytes
     def open(self, mode: str = "r", buffering: int = -1,
              encoding: Optional[str] = "utf-8") -> "SFTPFile":
         self._c.open(self, mode=mode, bufsize=buffering, encoding=encoding)

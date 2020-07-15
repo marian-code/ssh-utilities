@@ -7,17 +7,16 @@ or remote connection classes as needed based on input arguments.
 import getpass
 import re
 from socket import gethostname
-from typing import TYPE_CHECKING, Dict, Optional, Union, overload
+from typing import TYPE_CHECKING, Dict, Optional, Union, overload, List
 from typing_extensions import Literal
 
 
 from .constants import CONFIG_PATH, RED, R
-from .local import Connection as LocalConnection
-from .remote import Connection as SSHConnection
+from .local import LocalConnection
+from .remote import SSHConnection
 from .utils import lprint, config_parser
 
 if TYPE_CHECKING:
-    from .base import ConnectionABC
     from logging import Logger
     from pathlib import Path
 
@@ -26,7 +25,7 @@ __all__ = ["Connection"]
 
 class _ConnectionMeta(type):
 
-    SHARE_CONNECTION = 10
+    SHARE_CONNECTION: int = 10
     available_hosts: Dict
 
     def __new__(cls, classname, bases, dictionary: dict):
@@ -123,6 +122,21 @@ class Connection(metaclass=_ConnectionMeta):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self._connection.close(quiet=True)
+
+    @classmethod
+    def get_available_hosts(cls) -> List[str]:
+
+        available = []
+        for host, credentials in cls.available_hosts.items():
+            if host == "*":
+                continue
+            elif not (credentials.get("user", None) and
+                      credentials.get("hostname", None)):
+                continue
+            else:
+                available.append(host)
+
+        return available
 
     @overload
     @classmethod

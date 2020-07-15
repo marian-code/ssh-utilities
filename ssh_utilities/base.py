@@ -134,7 +134,7 @@ class ConnectionABC(ABC):
 
         With this method all data needed to initialize class are saved to sting
         and connection can be reinitialized with from_str method of
-        `conncection.Connection` class.
+        `conection.Connection` class.
 
         Parameters
         ----------
