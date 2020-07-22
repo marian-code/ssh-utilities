@@ -9,7 +9,7 @@ from os.path import join as jn
 from pathlib import Path
 from stat import S_ISDIR, S_ISREG
 from types import MethodType
-from typing import (TYPE_CHECKING, Callable, Generator, List, Optional, Tuple,
+from typing import (TYPE_CHECKING, Callable, List, Optional, Tuple,
                     Type, Union)
 
 import paramiko
@@ -20,7 +20,7 @@ from .exceptions import CalledProcessError, SFTPOpenError, ConnectionError
 from .path import SSHPath
 from .utils import CompletedProcess, ProgressBar, file_filter
 from .utils import bytes_2_human_readable as b2h
-from .utils import for_all_methods, lprint
+from .utils import lprint
 
 if TYPE_CHECKING:
     SPath = Union[str, Path, SSHPath]
