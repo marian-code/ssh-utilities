@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/ssh-utilities/badge/?version=latest)](https://ssh-utilities.readthedocs.io/en/latest/?badge=latest)
+
 # Paramiko wrapper
 
 Simple paramiko wrapper that aims to facilitate easy remote file operations
@@ -67,6 +69,10 @@ customization is required, use open method, this also allows use of passwords
 
 Module API also exposes powerfull SSHPath object with identical API as
 `pathlib.Path` only this one works for remote files
+
+## API documentation
+
+Can be found at readthedocs: https://ssh-utilities.readthedocs.io/en/latest/
 
 ## Contributing
 
