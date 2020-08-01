@@ -60,7 +60,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
     Warnings
     --------
     Beware, this function can hide certain errors or cause the code to become
-    stuct in an infinite loop!
+    stuck in an infinite loop!
 
     References
     ----------
@@ -87,7 +87,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 try:
                     self.close(quiet=True)
                 except Exception as e:
-                    self.log.exception(f"Couldn't close connection: {e}")
+                    LOGGER.exception(f"Couldn't close connection: {e}")
 
                 try:
                     self._get_ssh()
@@ -96,26 +96,26 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 else:
                     success = True
 
-                self.log.debug(f"success 1: {success}")
+                LOGGER.debug(f"success 1: {success}")
                 if not success:
                     return False
 
                 if self._sftp_open:
-                    self.log.debug(f"success 2: {success}")
+                    LOGGER.debug(f"success 2: {success}")
                     try:
                         self.sftp
                     except SFTPOpenError:
                         success = False
-                        self.log.debug(f"success 3: {success}")
+                        LOGGER.debug(f"success 3: {success}")
 
                     else:
-                        self.log.debug(f"success 4: {success}")
+                        LOGGER.debug(f"success 4: {success}")
 
                         success = True
                 else:
                     success = False
 
-                self.log.exception(f"Relevant variables:\n"
+                LOGGER.exception(f"Relevant variables:\n"
                                    f"success:    {success}\n"
                                    f"password:   {self.password}\n"
                                    f"address:    {self.address}\n"
@@ -123,7 +123,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                                    f"ssh class:  {type(self._c)}\n"
                                    f"sftp class: {type(self.sftp)}")
                 if self._sftp_open:
-                    self.log.exception(f"remote home: {self.remote_home}")
+                    LOGGER.exception(f"remote home: {self.remote_home}")
 
                 return success
 
@@ -136,31 +136,31 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 raise e from None
             except paramiko.ssh_exception.NoValidConnectionsError as e:
                 error = e
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             except paramiko.ssh_exception.SSHException as e:
                 error = e
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             except AttributeError as e:
                 error = e
-                self.log.exception(f"Caught attribute error in {n}: {e}")
+                LOGGER.exception(f"Caught attribute error in {n}: {e}")
             except OSError as e:
                 error = e
-                self.log.exception(f"Caught OS error in {n}: {e}")
+                LOGGER.exception(f"Caught OS error in {n}: {e}")
             except paramiko.SFTPError as e:
                 # garbage packets,
                 # see: https://github.com/paramiko/paramiko/issues/395
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             finally:
                 while error:
 
-                    self.log.warning("Connection is down, trying to reconnect")
+                    LOGGER.warning("Connection is down, trying to reconnect")
                     if negotiate():
-                        self.log.info("Connection restablished, continuing ..")
+                        LOGGER.info("Connection restablished, continuing ..")
                         connect_wrapper(self, *args, **kwargs)
                         break
                     else:
-                        self.log.warning("Unsuccessful, wait 60 seconds "
-                                         "before next try")
+                        LOGGER.warning("Unsuccessful, wait 60 seconds "
+                                       "before next try")
                         time.sleep(60)
 
         return connect_wrapper
@@ -177,6 +177,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
 # - must be indexable, need to remember which class uses which connection
 # - must store both sftp and connection
 # - must remove the element from the dataframe so no one can access it
+"""
 from threading import Condition, Lock
 
 
@@ -242,13 +243,13 @@ class ConnectionHolder:
     @classmethod
     def _get_unique_instance_id(cls):
         raise NotImplementedError
-
+"""
 
 # TODO implement warapper for multiple connections
 class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
-    Paremeters
+    Parameters
     ----------
     address: str
         server IP address
@@ -335,7 +336,7 @@ class SSHConnection(ConnectionABC):
     def close(self, *, quiet: bool):
         """Close SSH connection.
 
-        Parametars
+        Parameters
         ----------
         quiet: bool
             whether to print other function messages

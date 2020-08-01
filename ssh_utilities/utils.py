@@ -15,7 +15,7 @@ from .exceptions import CalledProcessError
 
 __all__ = ["ProgressBar", "N_lines_up", "bytes_2_human_readable",
            "CompletedProcess", "lprint", "for_all_methods", "glob2re",
-           "ProgBarNew", "file_filter", "config_parser", "context_timeit"]
+           "file_filter", "config_parser", "context_timeit"]
 
 
 class CompletedProcess:
@@ -135,7 +135,7 @@ def ProgressBar(total: Optional[int] = None, unit: str = 'b',
 class lprint:
     """Callable class that limits print output.
 
-    Paremeters
+    Parameters
     ----------
     text: Any
         content to print
