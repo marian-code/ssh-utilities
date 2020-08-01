@@ -1,3 +1,5 @@
+"""SSH ulitities setup script."""
+
 from setuptools import setup, find_packages
 import os
 
@@ -15,16 +17,26 @@ setup(
     description="paramiko convenience wrapper",
     long_description="paramiko convenience wrapper",
     long_description_content_type="text/markdown",
-    url="https://gitlab.dep.fmph.uniba.sk/rynik/ssh_utilities",
+    url="https://github.com/marian-code/ssh-utilities",
     author="Marián Rynik",
     author_email="rynik1@uniba.sk",
     license="MIT",
     classifiers=[
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Intended Audience :: Developers",
+        "Intended Audience :: End Users/Desktop",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
+        "Natural Language :: English",
+        "Operating System :: OS Independent",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: Implementation :: CPython",
+        "Topic :: Utilities",
+        "Topic :: Internet",
+        "Typing :: Typed",
     ],
     packages=find_packages(exclude=("tests",)),
     include_package_data=True,

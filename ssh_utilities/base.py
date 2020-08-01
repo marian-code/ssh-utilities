@@ -3,8 +3,9 @@ import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from os import fspath
-from typing import TYPE_CHECKING, Optional, Union, List, IO
 from pathlib import Path
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
 from .path import SSHPath
 
 if TYPE_CHECKING:

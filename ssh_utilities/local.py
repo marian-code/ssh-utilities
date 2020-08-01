@@ -46,7 +46,8 @@ class LocalConnection(ConnectionABC):
         return self.to_str("LocalConnection", self.server_name, None,
                            self.username, None)
 
-    def close(self, *, quiet: bool):
+    @staticmethod
+    def close(*, quiet: bool):
         """Close emulated local connection."""
         lprint(quiet)(f"{G}Closing local connection")
 
@@ -54,7 +55,8 @@ class LocalConnection(ConnectionABC):
     def ssh_log(log_file="paramiko.log", level="WARN"):
         lprint()(f"{Y}Local sessions are not logged!")
 
-    def run(self, args: List[str], *, suppress_out: bool, quiet: bool = True,
+    @staticmethod
+    def run(args: List[str], *, suppress_out: bool, quiet: bool = True,
             capture_output: bool = False, check: bool = False,
             cwd: Optional[Union[str, Path]] = None, encoding: str = "utf-8"
             ) -> subprocess.CompletedProcess:
@@ -106,33 +108,39 @@ class LocalConnection(ConnectionABC):
         else:
             shutil.copytree(local_path, remote_path)
 
-    def isfile(self, path: "SPath") -> bool:
+    @staticmethod
+    def isfile(path: "SPath") -> bool:
         return os.path.isfile(path)
 
-    def isdir(self, path: "SPath") -> bool:
+    @staticmethod
+    def isdir(path: "SPath") -> bool:
         return os.path.isdir(path)
 
     def Path(self, path: "SPath") -> Path:
         return Path(self._path2str(path))
 
-    def mkdir(self, path: "SPath", mode: int = 511, exist_ok: bool = True,
+    @staticmethod
+    def mkdir(path: "SPath", mode: int = 511, exist_ok: bool = True,
               parents: bool = True, quiet: bool = True):
         Path(path).mkdir(mode=mode, parents=parents, exist_ok=exist_ok)
 
-    def rmtree(self, path: "SPath", ignore_errors: bool = False,
+    @staticmethod
+    def rmtree(path: "SPath", ignore_errors: bool = False,
                quiet: bool = True):
         shutil.rmtree(path, ignore_errors=ignore_errors)
 
-    def listdir(self, path: "SPath") -> List[str]:
+    @staticmethod
+    def listdir(path: "SPath") -> List[str]:
         return os.listdir(path)
 
-    def open(self, filename: "SPath", mode: str = "r",
+    @staticmethod
+    def open(filename: "SPath", mode: str = "r",
              encoding: Optional[str] = "utf-8", bufsize: int = -1) -> IO:
         return open(filename, mode, encoding=encoding)
 
     # ! DEPRECATED
-    def sendCommand(self, command: str, suppress_out: bool,
-                    quiet: bool = True):
+    @staticmethod
+    def sendCommand(command: str, suppress_out: bool, quiet: bool = True):
         return subprocess.run([command], capture_output=True).stdout
 
     sendFiles = copy_files

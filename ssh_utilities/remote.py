@@ -373,6 +373,8 @@ class SSHConnection(ConnectionABC):
         ----------
         log_file: str
             location of the log file (default: paramiko.log)
+        level: str
+            logging level represented by string
         """
         if os.path.isfile(log_file):
             os.remove(log_file)
@@ -513,7 +515,7 @@ class SSHConnection(ConnectionABC):
             self._sftp = self._c.open_sftp()
             self.local_home = os.path.expanduser("~")
 
-            for _ in range(3):  # niekedy zlyha preto sa opakuje viackrat
+            for _ in range(3):  # sometimes failes, give it three tries
                 try:
                     self._remote_home = self.run(
                         ["echo $HOME"], suppress_out=True, quiet=True,

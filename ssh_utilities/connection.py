@@ -7,14 +7,14 @@ or remote connection classes as needed based on input arguments.
 import getpass
 import re
 from socket import gethostname
-from typing import TYPE_CHECKING, Dict, Optional, Union, overload, List
-from typing_extensions import Literal
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 
+from typing_extensions import Literal
 
 from .constants import CONFIG_PATH, RED, R
 from .local import LocalConnection
 from .remote import SSHConnection
-from .utils import lprint, config_parser
+from .utils import config_parser, lprint
 
 if TYPE_CHECKING:
     from logging import Logger

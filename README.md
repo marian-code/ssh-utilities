@@ -1,12 +1,13 @@
 # Paramiko wrapper
+
 Simple paramiko wrapper that aims to facilitate easy remote file operations
-and command execution. They API vaguely follows python os library. Has also
-local variant that mimics the remote API on local machine. The connection is
-resilient to interruptions. Everything is well documented by dostrings and
+and command execution. The API vaguely follows python os library. Has also
+local variant that mimics the remote API on local machine. The connection is resilient to interruptions. Everything is well documented by dostrings and
 typed.
 
 ## Installation
-1. `git clone git@gitlab.dep.fmph.uniba.sk:rynik/ssh-utils.git`
+
+1. `git clone https://github.com/marian-code/ssh-utilities.git`
 2. `cd ssh_utilities`
 3. `pip install -e .`
 Use -e only to install in editable mode
@@ -15,10 +16,10 @@ If you encounter some import errors try installing from requirements.txt file
 `pip install requirements.txt`
 
 ## Usage
+
 API exposes three main classes:
 `from .ssh_utils import SSHConnection, Connection, LocalConnection`
-`Connection` is the main class that initializes other two as needed according
-to input parameters. 
+`Connection` is the main class that initializes other two as needed according to input parameters.
 
 Connection supports dict-like indexing by values that are in
 your ~/.ssh/config file
@@ -67,8 +68,8 @@ customization is required, use open method, this also allows use of passwords
 Module API also exposes powerfull SSHPath object with identical API as
 `pathlib.Path` only this one works for remote files
 
-
 ## Contributing
+
 1. Fork it
 2. Create your feature branch: `git checkout -b my-new-feature`
 3. Commit your changes: `git commit -am 'Add some feature'`
@@ -76,4 +77,5 @@ Module API also exposes powerfull SSHPath object with identical API as
 5. Submit a pull request
 
 ## License
+
 MIT
