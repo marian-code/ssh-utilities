@@ -1,7 +1,6 @@
 """Template module for all connections classes."""
-import time
+import logging
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from os import fspath
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, List, Optional, Union
@@ -14,9 +13,12 @@ if TYPE_CHECKING:
     from subprocess import CompletedProcess as sCP
     CompletedProcess = Union[CP, sCP]
     from paramiko.sftp_file import SFTPFile
+    GlobPat = Optional[str]
 
 
 __all__ = ["ConnectionABC"]
+
+logging.getLogger(__name__)
 
 
 class ConnectionABC(ABC):
@@ -31,12 +33,8 @@ class ConnectionABC(ABC):
         pass
 
     @abstractmethod
-    def ssh_log(self, log_file=""):
-        pass
-
-    @abstractmethod
-    def copy_files(self, files: List[str], remote_path: "SPath",
-                   local_path: "SPath", direction: str, quiet: bool = False):
+    def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
+                level: str = "WARN"):
         pass
 
     @abstractmethod
@@ -47,13 +45,19 @@ class ConnectionABC(ABC):
         pass
 
     @abstractmethod
+    def copy_files(self, files: List[str], remote_path: "SPath",
+                   local_path: "SPath", direction: str, quiet: bool = False):
+        pass
+
+    @abstractmethod
     def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include="all", remove_after: bool = True,
-                      quiet: bool = False):
+                      include: "GlobPat" = None, exclude: "GlobPat" = None,
+                      remove_after: bool = True, quiet: bool = False):
         pass
 
     @abstractmethod
     def upload_tree(self, local_path: "SPath", remote_path: "SPath",
+                    include: "GlobPat" = None, exclude: "GlobPat" = None,
                     remove_after: bool = True, quiet: bool = False):
         pass
 
@@ -90,16 +94,6 @@ class ConnectionABC(ABC):
         pass
 
     # Normal methods
-    @contextmanager
-    def context_timeit(self, quiet: bool = False):
-        start = time.time()
-        yield
-        end = time.time()
-        if not quiet:
-            print(f"CPU time: {(end - start):.2f}s")
-        else:
-            pass
-
     def _path2str(self, path: Optional["SPath"]) -> str:
         """Converts pathlib.Path, SSHPath or plain str to string.
 

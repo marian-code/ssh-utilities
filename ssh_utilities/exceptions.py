@@ -1,12 +1,15 @@
-"""Module defining exceptions for ssh utilities."""
+"""Module defining exceptions for ssh-utilities."""
 
+import logging
 from subprocess import CalledProcessError
 
 __all__ = ["CalledProcessError", "SFTPOpenError", "ConnectionError"]
 
+logging.getLogger(__name__)
+
 
 class SFTPOpenError(Exception):
-    """Raised when sftpf channel could not be opened."""
+    """Raised when sftp channel could not be opened."""
 
     pass
 

@@ -1,0 +1,26 @@
+Metadata-Version: 2.1
+Name: ssh-utilities
+Version: 0.1.0
+Summary: paramiko convenience wrapper
+Home-page: https://github.com/marian-code/ssh-utilities
+Author: Marián Rynik
+Author-email: rynik1@uniba.sk
+License: MIT
+Description: paramiko convenience wrapper
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: End Users/Desktop
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Utilities
+Classifier: Topic :: Internet
+Classifier: Typing :: Typed
+Description-Content-Type: text/markdown

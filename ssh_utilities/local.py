@@ -3,42 +3,48 @@
 Has the same API as remote version.
 """
 
-from .base import ConnectionABC
-from .utils import lprint
-import shutil
-from .constants import Y, G, C, R
-import os
-from typing import TYPE_CHECKING, Union, List, Optional, IO
-from pathlib import Path
 import logging
+import os
+import shutil
 import subprocess
+from pathlib import Path
+from socket import gethostname
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
+from .base import ConnectionABC
+from .constants import C, G, R, Y
+from .utils import context_timeit, lprint, file_filter
 
 if TYPE_CHECKING:
     from .path import SSHPath
     SPath = Union[str, Path, SSHPath]
+    GlobPat = Optional[str]
 
 __all__ = ["LocalConnection"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
 
-    def __init__(self, address, username, password=None, sshKey=None,
-                 line_rewrite=True, warn_on_login=False, server_name=None,
-                 logger=None):
+    def __init__(self, address: str, username: str,
+                 password: Optional[str] = None,
+                 rsa_key_file: Optional[Union[str, Path]] = None,
+                 line_rewrite: bool = True, warn_on_login: bool = False,
+                 server_name: Optional[str] = None,
+                 logger: logging.Logger = None) -> None:
 
+        # set login credentials
+        self.password = password
+        self.address = address
         self.username = username
+        self.rsa_key_file = rsa_key_file
 
-        if server_name is None:
-            from socket import gethostname
-            self.server_name = gethostname().upper()
-        else:
-            self.server_name = server_name.upper()
+        self.server_name = server_name if server_name else gethostname()
+        self.server_name = self.server_name.upper()
 
-        if logger is None:
-            self.log = logging.getLogger()
-        else:
-            self.log = logger
+        self.log = logger if logger else LOGGER
 
         self.local = True
 
@@ -60,8 +66,8 @@ class LocalConnection(ConnectionABC):
             capture_output: bool = False, check: bool = False,
             cwd: Optional[Union[str, Path]] = None, encoding: str = "utf-8"
             ) -> subprocess.CompletedProcess:
-        out = subprocess.run(args, capture_output=capture_output, check=check,
-                             cwd=cwd, encoding=encoding)
+        out = subprocess.run(args, encoding=encoding, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, check=check, cwd=cwd)
 
         if capture_output and not suppress_out:
             lprint(quiet)(f"{C}Printing local output\n{'-' * 111}{R}")
@@ -70,10 +76,11 @@ class LocalConnection(ConnectionABC):
 
         return out
 
-    def copy_files(self, files: List[str], remote_path: "SPath",
+    @staticmethod
+    def copy_files(files: List[str], remote_path: "SPath",
                    local_path: "SPath", direction: str, quiet: bool = False):
 
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             for f in files:
                 file_remote = Path(remote_path) / f
                 file_local = Path(local_path) / f
@@ -87,26 +94,30 @@ class LocalConnection(ConnectionABC):
                                      f"Choose 'put' or 'get'")
 
     def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include="all", remove_after: bool = True,
-                      quiet: bool = False):
-        # TODO include parameter is not used!!!
+                      include: "GlobPat" = None, exclude: "GlobPat" = None,
+                      remove_after: bool = True, quiet: bool = False):
+
+        def _cpy(src: str, dst: str):
+            if allow_file(src):
+                shutil.copy2(src, dst)
+
+        allow_file = file_filter(include, exclude)
+
         remote_path = self._path2str(remote_path)
         local_path = self._path2str(local_path)
 
         if remove_after:
-            shutil.move(remote_path, local_path)
+            shutil.move(remote_path, local_path, copy_function=_cpy)
         else:
-            shutil.copytree(remote_path, local_path)
+            shutil.copytree(remote_path, local_path, copy_function=_cpy)
 
     def upload_tree(self, local_path: "SPath", remote_path: "SPath",
+                    include: "GlobPat" = None, exclude: "GlobPat" = None,
                     remove_after: bool = True, quiet: bool = False):
-        remote_path = self._path2str(remote_path)
-        local_path = self._path2str(local_path)
 
-        if remove_after:
-            shutil.move(local_path, remote_path)
-        else:
-            shutil.copytree(local_path, remote_path)
+        self.download_tree(local_path, remote_path, include=include,
+                           exclude=exclude, remove_after=remove_after,
+                           quiet=quiet)
 
     @staticmethod
     def isfile(path: "SPath") -> bool:
@@ -141,7 +152,8 @@ class LocalConnection(ConnectionABC):
     # ! DEPRECATED
     @staticmethod
     def sendCommand(command: str, suppress_out: bool, quiet: bool = True):
-        return subprocess.run([command], capture_output=True).stdout
+        return subprocess.run([command], stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).stdout
 
     sendFiles = copy_files
     send_files = copy_files

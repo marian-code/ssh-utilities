@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+from socket import error
 import time
 from functools import wraps
 from os.path import join as jn
@@ -20,7 +21,7 @@ from .exceptions import CalledProcessError, SFTPOpenError, ConnectionError
 from .path import SSHPath
 from .utils import CompletedProcess, ProgressBar, file_filter
 from .utils import bytes_2_human_readable as b2h
-from .utils import lprint
+from .utils import lprint, context_timeit
 
 if TYPE_CHECKING:
     SPath = Union[str, Path, SSHPath]
@@ -324,33 +325,11 @@ class SSHConnection(ConnectionABC):
 
         self.log = logger if logger else LOGGER
 
+        self.local = False
+
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
                            self.username, self.rsa_key_file)
-
-    def _get_ssh(self, authentication_attempts: int = 0):
-
-        try:
-            if self.rsa_key:
-                # connect with public key
-                self._c.connect(self.address, username=self.username,
-                                pkey=self.rsa_key)
-            else:
-                # if password was passed try to connect with it
-                self._c.connect(self.address, username=self.username,
-                                password=self.password, look_for_keys=False)
-
-        except (paramiko.ssh_exception.AuthenticationException,
-                paramiko.ssh_exception.NoValidConnectionsError) as e:
-            self.log.warning(f"Error in authentication {e}. Trying again ...")
-
-            # max three attempts to connect at once
-            authentication_attempts += 1
-            if authentication_attempts >= 3:
-                raise ConnectionError(f"Connection to {self.address} "
-                                      f"could not be established")
-            else:
-                self._get_ssh(authentication_attempts=authentication_attempts)
 
     @_check_connections
     def close(self, *, quiet: bool):
@@ -490,49 +469,6 @@ class SSHConnection(ConnectionABC):
 
             return cp
 
-    @property
-    def remote_home(self) -> str:
-        if not self._remote_home:
-            self.sftp
-            return self._remote_home
-
-    @property
-    @_check_connections
-    def sftp(self) -> paramiko.SFTPClient:
-        """Opens and return sftp channel.
-
-        If SFTP coud be open then return SFTPClient instance else return None.
-
-        Raises
-        ------
-        SFTPOpenError
-            when remote home could not be found
-
-        :type: Optional[paramiko.SFTPClient]
-        """
-        if not self._sftp_open:
-
-            self._sftp = self._c.open_sftp()
-            self.local_home = os.path.expanduser("~")
-
-            for _ in range(3):  # sometimes failes, give it three tries
-                try:
-                    self._remote_home = self.run(
-                        ["echo $HOME"], suppress_out=True, quiet=True,
-                        check=True, capture_output=True).stdout.strip()
-                except CalledProcessError as e:
-                    print(f"{RED}Cannot establish remote home, trying again..")
-                    exception = e
-                else:
-                    self._sftp_open = True
-                    break
-            else:
-                print(f"{RED}Remote home could not be found {exception}")
-                self._sftp_open = False
-                raise SFTPOpenError("Remote home could not be found")
-
-        return self._sftp
-
     @_check_connections(exclude_exceptions=(FileNotFoundError, ValueError))
     def copy_files(self, files: List[str], remote_path: "SPath",
                    local_path: "SPath", direction: str, quiet: bool = False):
@@ -551,7 +487,7 @@ class SSHConnection(ConnectionABC):
         quiet: bool
             if True informative messages are suppresssed
         """
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             for f in files:
                 file_remote = jn(self._path2str(remote_path), f)
                 file_local = jn(self._path2str(local_path), f)
@@ -580,26 +516,6 @@ class SSHConnection(ConnectionABC):
                 else:
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
-
-    @_check_connections
-    def _sftp_walk(self, remote_path: "SPath"):
-        """Recursive directory listing."""
-        remote_path = self._path2str(remote_path)
-        path = remote_path
-        files = []
-        folders = []
-        for f in self.sftp.listdir_attr(remote_path):
-            if S_ISDIR(f.st_mode):
-                folders.append(f.filename)
-            else:
-                files.append(f.filename)
-
-        yield path, folders, files
-
-        for folder in folders:
-            new_path = jn(remote_path, folder)
-            for x in self._sftp_walk(new_path):
-                yield x
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(self, remote_path: "SPath", local_path: "SPath",
@@ -955,7 +871,7 @@ class SSHConnection(ConnectionABC):
         sn = self.server_name
         path = self._path2str(path)
 
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
 
             try:
@@ -1013,8 +929,9 @@ class SSHConnection(ConnectionABC):
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def open(self, filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8",
-             bufsize: int = -1) -> "SFTPFile":
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> "SFTPFile":
         """Opens remote file, works as python open function.
 
         Can be used both as a function or a decorator.
@@ -1025,11 +942,16 @@ class SSHConnection(ConnectionABC):
             path to file to be opened
         mode: str
             select mode to open file. Same as python open modes
-        encoding: str
+        encoding: Optional[str]
             encoding type to decode file bytes stream
         bufsize: int
             buffer size, 0 turns off buffering, 1 uses line buffering, and any
             number greater than 1 (>1) uses that specific buffer size
+        errors: Optional[str]
+            string that specifies how encoding and decoding errors are to be
+            handled, see builtin function
+            `open <https://docs.python.org/3/library/functions.html#open>`_
+            documentation for more details
 
         Raises
         ------
@@ -1037,6 +959,8 @@ class SSHConnection(ConnectionABC):
             when mode is 'r' and file does not exist
         """
         path = self._path2str(filename)
+        encoding = encoding if encoding else "utf-8"
+        errors = errors if errors else "strict"
 
         if not self.isfile(path) and "r" in mode:
             raise FileNotFoundError(f"Cannot open {path} for reading, "
@@ -1046,7 +970,7 @@ class SSHConnection(ConnectionABC):
             data = self.paramiko_read(size=size)
 
             if isinstance(data, bytes) and "b" not in mode and encoding:
-                data = data.decode(encoding)
+                data = data.decode(encoding=encoding, errors=errors)
 
             return data
 
@@ -1061,7 +985,96 @@ class SSHConnection(ConnectionABC):
 
         return file_obj
 
-    # ! DEPRECATED
+    # * additional methods needed by remote ssh class, not in ABC definition
+    def _get_ssh(self, authentication_attempts: int = 0):
+
+        try:
+            if self.rsa_key:
+                # connect with public key
+                self._c.connect(self.address, username=self.username,
+                                pkey=self.rsa_key)
+            else:
+                # if password was passed try to connect with it
+                self._c.connect(self.address, username=self.username,
+                                password=self.password, look_for_keys=False)
+
+        except (paramiko.ssh_exception.AuthenticationException,
+                paramiko.ssh_exception.NoValidConnectionsError) as e:
+            self.log.warning(f"Error in authentication {e}. Trying again ...")
+
+            # max three attempts to connect at once
+            authentication_attempts += 1
+            if authentication_attempts >= 3:
+                raise ConnectionError(f"Connection to {self.address} "
+                                      f"could not be established")
+            else:
+                self._get_ssh(authentication_attempts=authentication_attempts)
+
+    @property
+    def remote_home(self) -> str:
+        if not self._remote_home:
+            self.sftp
+
+        return self._remote_home
+
+    @property
+    @_check_connections
+    def sftp(self) -> paramiko.SFTPClient:
+        """Opens and return sftp channel.
+
+        If SFTP coud be open then return SFTPClient instance else return None.
+
+        Raises
+        ------
+        SFTPOpenError
+            when remote home could not be found
+
+        :type: Optional[paramiko.SFTPClient]
+        """
+        if not self._sftp_open:
+
+            self._sftp = self._c.open_sftp()
+            self.local_home = os.path.expanduser("~")
+
+            for _ in range(3):  # sometimes failes, give it three tries
+                try:
+                    self._remote_home = self.run(
+                        ["echo $HOME"], suppress_out=True, quiet=True,
+                        check=True, capture_output=True).stdout.strip()
+                except CalledProcessError as e:
+                    print(f"{RED}Cannot establish remote home, trying again..")
+                    exception = e
+                else:
+                    self._sftp_open = True
+                    break
+            else:
+                print(f"{RED}Remote home could not be found {exception}")
+                self._sftp_open = False
+                raise SFTPOpenError("Remote home could not be found")
+
+        return self._sftp
+
+    @_check_connections
+    def _sftp_walk(self, remote_path: "SPath"):
+        """Recursive directory listing."""
+        remote_path = self._path2str(remote_path)
+        path = remote_path
+        files = []
+        folders = []
+        for f in self.sftp.listdir_attr(remote_path):
+            if S_ISDIR(f.st_mode):
+                folders.append(f.filename)
+            else:
+                files.append(f.filename)
+
+        yield path, folders, files
+
+        for folder in folders:
+            new_path = jn(remote_path, folder)
+            for x in self._sftp_walk(new_path):
+                yield x
+
+    # ! DEPRECATED methods, kept for backwards compatibility reasons
     @_check_connections
     def sendCommand(self, command: str, suppress_out: bool,
                     quiet: bool = True):

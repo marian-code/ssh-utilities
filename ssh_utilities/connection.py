@@ -4,6 +4,7 @@ The connection class is the main public class that initializes local
 or remote connection classes as needed based on input arguments.
 """
 
+import logging
 import getpass
 import re
 from socket import gethostname
@@ -22,8 +23,14 @@ if TYPE_CHECKING:
 
 __all__ = ["Connection"]
 
+logging.getLogger(__name__)
+
 
 class _ConnectionMeta(type):
+    """MetaClass for connection factory, adds indexing support.
+
+    The inheriting classes can be indexed by keys in ~/.ssh/config file
+    """
 
     SHARE_CONNECTION: int = 10
     available_hosts: Dict
@@ -125,7 +132,13 @@ class Connection(metaclass=_ConnectionMeta):
 
     @classmethod
     def get_available_hosts(cls) -> List[str]:
+        """List all elegible hosts for connection from ~/.ssh/config.
 
+        Returns
+        -------
+        List[str]
+            list of available hosts
+        """
         available = []
         for host, credentials in cls.available_hosts.items():
             if host == "*":

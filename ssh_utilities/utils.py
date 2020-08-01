@@ -2,6 +2,7 @@
 
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Union
 
@@ -14,7 +15,7 @@ from .exceptions import CalledProcessError
 
 __all__ = ["ProgressBar", "N_lines_up", "bytes_2_human_readable",
            "CompletedProcess", "lprint", "for_all_methods", "glob2re",
-           "ProgBarNew", "file_filter", "config_parser"]
+           "ProgBarNew", "file_filter", "config_parser", "context_timeit"]
 
 
 class CompletedProcess:
@@ -223,6 +224,18 @@ class N_lines_up:
 
 
 class file_filter:
+    """Discriminate files to copy by passed in glob patterns.
+
+    This is a callable class and works much in a same way as
+    operator.itemgetter
+
+    Parameters
+    ----------
+    include: Optional[str]
+        pattern of files to include
+    exclude: Optional[str]
+        patttern if files to exclude
+    """
 
     def __init__(self, include: Optional[str], exclude: Optional[str]) -> None:
 
@@ -268,7 +281,7 @@ def glob2re(patern):
 
     Parameters
     ----------
-    pattern: str
+    patern: str
         shell glob pattern
 
     References
@@ -383,6 +396,16 @@ def bytes_2_human_readable(number_of_bytes: Union[int, float],
     number_of_bytes = round(number_of_bytes, precision)
 
     return f"{number_of_bytes} {unit}"
+
+
+def context_timeit(self, quiet: bool = False):
+    start = time.time()
+    yield
+    end = time.time()
+    if not quiet:
+        print(f"CPU time: {(end - start):.2f}s")
+    else:
+        pass
 
 
 # \033[<L>;<C>H # Move the cursor to line L, column C

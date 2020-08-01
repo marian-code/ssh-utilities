@@ -1,7 +1,13 @@
-from colorama import Back, Fore, init
+"""Module housing ssh-utilities constants."""
+
+import logging
+from logging import log
+from colorama import Fore, init
 from pathlib import Path
 
 __all__ = ["G", "LG", "R", "RED", "C", "Y", "CONFIG_PATH"]
+
+logging.getLogger(__name__)
 
 init(autoreset=True)
 G = Fore.GREEN
