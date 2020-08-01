@@ -4,5 +4,5 @@
 **/.mypy_cache/
 build/
 dist/
-pbs_wrapper.egg-info/
 tests/
+ssh_utilities.egg-info/
