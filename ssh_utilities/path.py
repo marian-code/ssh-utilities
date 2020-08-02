@@ -1,15 +1,13 @@
 """Implements Path-like object for remote hosts."""
 
 import logging
-from logging import error
 import re
+import stat
+from functools import wraps
 from os import fspath
 from os.path import join
-from pathlib import Path, _posix_flavour
-from typing import Any, TYPE_CHECKING, Generator, Union, Callable, Optional
-from functools import wraps
-import stat
-from paramiko.file import BufferedFile
+from pathlib import Path, _posix_flavour  # type: ignore
+from typing import TYPE_CHECKING, Callable, Generator, Optional, Union
 
 from .utils import for_all_methods, glob2re
 
@@ -67,35 +65,6 @@ def to_ssh_path(function: Callable):
         else:
             return output
 
-        """
-        # If it was not SSHPath instance before don't cast to SSHPath
-        # wrapper is not needed, return imediatelly
-        if not isinstance(self, SSHPath):
-            return function(self, *args, **kwargs)
-
-        # get function name
-        name = function.__name__
-
-        # get connection attribute before it is destroyed by running the method
-        # methods __new__  and _init must be excluded because the connection
-        # is not yet initialized when they are called
-        if name not in ("__new__", "_init"):
-            connection = self._c
-
-        # run the method and capture output
-        output = function(self, *args, **kwargs)
-
-        # if result is path instance, which is wrong, cast to SSHPath
-        # we do not care for other return types and leave those unchanged
-        if isinstance(output, Path):
-            if name not in ("__new__", "_init"):
-                return SSHPath(connection, output)
-            else:
-                return output
-        else:
-            return output
-        """
-
     return wrapper
 
 
@@ -141,7 +110,7 @@ class SSHPath(Path):
         """
         # TODO check if server is posix
 
-        self = cls._from_parts(args, init=False)
+        self = cls._from_parts(args, init=False)  # type: ignore
         self._c = connection
         if not self._flavour.is_supported:
             raise NotImplementedError("cannot instantiate %r on your system"

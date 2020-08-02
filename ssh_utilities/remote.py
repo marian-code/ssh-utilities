@@ -116,12 +116,12 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                     success = False
 
                 LOGGER.exception(f"Relevant variables:\n"
-                                   f"success:    {success}\n"
-                                   f"password:   {self.password}\n"
-                                   f"address:    {self.address}\n"
-                                   f"username:   {self.username}\n"
-                                   f"ssh class:  {type(self._c)}\n"
-                                   f"sftp class: {type(self.sftp)}")
+                                 f"success:    {success}\n"
+                                 f"password:   {self.password}\n"
+                                 f"address:    {self.address}\n"
+                                 f"username:   {self.username}\n"
+                                 f"ssh class:  {type(self._c)}\n"
+                                 f"sftp class: {type(self.sftp)}")
                 if self._sftp_open:
                     LOGGER.exception(f"remote home: {self.remote_home}")
 
@@ -245,6 +245,7 @@ class ConnectionHolder:
         raise NotImplementedError
 """
 
+
 # TODO implement warapper for multiple connections
 class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
@@ -287,8 +288,8 @@ class SSHConnection(ConnectionABC):
         connection to remote could not be established
     """
 
-    log: Union[logging.Logger]
-    _remote_home: Optional[str] = None
+    log: logging.Logger
+    _remote_home: str
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -695,7 +696,7 @@ class SSHConnection(ConnectionABC):
 
         # file number and size statistics
         n_files = len(copy_files)
-        total = sum([f["size"] for f in copy_files])
+        total = float(sum([f["size"] for f in copy_files]))
 
         lprnt(f"\n|--> {C}Total number of files to copy:{R} {n_files}")
         lprnt(f"|--> {C}Total size of files to copy: {R} {b2h(total)}")
@@ -1018,7 +1019,7 @@ class SSHConnection(ConnectionABC):
 
         return self._remote_home
 
-    @property
+    @property  # type: ignore
     @_check_connections
     def sftp(self) -> paramiko.SFTPClient:
         """Opens and return sftp channel.

@@ -46,7 +46,7 @@ customization is required, use open method, this also allows use of passwords
                              <logger>, <share_connection>):
 
 Module API also exposes powerfull SSHPath object with identical API as
-`pathlib.Path` only this one works for remote files. It must be always tied to
+``pathlib.Path`` only this one works for remote files. It must be always tied to
 some connection object which will provide interaction with remote host. The
 easyiest way to initialize it is as a method of Connection object.
 

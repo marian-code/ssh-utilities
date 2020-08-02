@@ -3,13 +3,13 @@
 import re
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Union
 
 from paramiko.config import SSHConfig
 from tqdm import tqdm
 from tqdm.utils import _term_move_up
-from contextlib import contextmanager
 
 from .exceptions import CalledProcessError
 
@@ -89,7 +89,7 @@ class _TqdmWrapper(tqdm):
         super().write(self._prefix + s, file=_file, end=end, nolock=nolock)
 
 
-def ProgressBar(total: Optional[int] = None, unit: str = 'b',
+def ProgressBar(total: Optional[float] = None, unit: str = 'b',
                 unit_scale: bool = True, miniters: int = 1, ncols: int = 100,
                 unit_divisor: int = 1024, write_up=2,
                 quiet: bool = True, *args, **kwargs

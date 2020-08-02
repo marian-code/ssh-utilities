@@ -6,10 +6,10 @@ Paramiko wrapper
 ================
 
 Simple paramiko wrapper that aims to facilitate easy remote file operations
-and command execution. The API vaguely follows python
-`os.path library <https://docs.python.org/3/library/os.path.html>`_,
-`subprocess library <https://docs.python.org/3/library/subprocess.html>`_ and
-`pathlib library <https://docs.python.org/3/library/pathlib.html>`_. Has also
+and command execution. The API vaguely follows python libraries:
+`os.path <https://docs.python.org/3/library/os.path.html>`_,
+`subprocess <https://docs.python.org/3/library/subprocess.html>`_ and
+`pathlib <https://docs.python.org/3/library/pathlib.html>`_. Has also
 local variant that mimics the remote API on local machine. The connection is
 resilient to interruptions. Everything is well documented by dostrings and
 typed.
@@ -32,7 +32,7 @@ API and documentation
 -----------------------
 
 It is recommended tat you have configured **rsa** keys with config file according
-to `openssh standard <https://www.ssh.com/ssh/config/>`_ for easy quickstart guide
+to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
 you can look to: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
 
 API exposes three main connection classes, and one path manipulation class:
@@ -107,7 +107,7 @@ customization is required, use open method, this also allows use of passwords
                              <logger>, <share_connection>):
 
 Module API also exposes powerfull SSHPath object with identical API as
-`pathlib.Path` only this one works for remote files. It must be always tied to
+``pathlib.Path`` only this one works for remote files. It must be always tied to
 some connection object which will provide interaction with remote host. The
 easyiest way to initialize it is as a method of Connection object.
 

@@ -22,7 +22,7 @@ logging.getLogger(__name__)
 
 
 class ConnectionABC(ABC):
-    """Class defining connection classes API."""
+    """Class defining API for connection classes."""
 
     @abstractmethod
     def __str__(self):
@@ -89,8 +89,9 @@ class ConnectionABC(ABC):
 
     @abstractmethod
     def open(self, filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8",
-             bufsize: int = -1) -> Union[IO, "SFTPFile"]:
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> Union[IO, "SFTPFile"]:
         pass
 
     # Normal methods

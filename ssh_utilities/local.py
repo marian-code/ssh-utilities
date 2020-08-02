@@ -28,7 +28,7 @@ LOGGER = logging.getLogger(__name__)
 class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
 
-    def __init__(self, address: str, username: str,
+    def __init__(self, address: Optional[str], username: str,
                  password: Optional[str] = None,
                  rsa_key_file: Optional[Union[str, Path]] = None,
                  line_rewrite: bool = True, warn_on_login: bool = False,
@@ -146,8 +146,13 @@ class LocalConnection(ConnectionABC):
 
     @staticmethod
     def open(filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8", bufsize: int = -1) -> IO:
-        return open(filename, mode, encoding=encoding)
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> IO:
+        encoding = encoding if encoding else "utf-8"
+        errors = errors if errors else "strict"
+
+        return open(filename, mode, encoding=encoding, errors=errors)
 
     # ! DEPRECATED
     @staticmethod
@@ -155,7 +160,7 @@ class LocalConnection(ConnectionABC):
         return subprocess.run([command], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).stdout
 
-    sendFiles = copy_files
-    send_files = copy_files
+    sendFiles = copy_files  # type: ignore
+    send_files = copy_files  # type: ignore
     downloadTree = download_tree
     uploadTree = upload_tree

@@ -4,8 +4,8 @@ The connection class is the main public class that initializes local
 or remote connection classes as needed based on input arguments.
 """
 
-import logging
 import getpass
+import logging
 import re
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
@@ -110,7 +110,8 @@ class Connection(metaclass=_ConnectionMeta):
     returns an initialized connection instance.
 
     All these return connection with preset reasonable parameters if more
-    customization is required, use open method, this also allows use of passwords
+    customization is required, use open method, this also allows use of
+    passwords
 
     >>> from ssh_utilities import Connection
     >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>,
@@ -118,11 +119,7 @@ class Connection(metaclass=_ConnectionMeta):
     """
 
     def __init__(self, sshServer: str, local: bool = False) -> None:
-        if not local:
-            self._connection = self.get_connection(sshServer)
-        else:
-            self._connection = self.open(getpass.getuser(),
-                                         server_name=gethostname())
+        self._connection = self.get(sshServer, local=local)
 
     def __enter__(self) -> Union[SSHConnection, LocalConnection]:
         return self._connection
@@ -203,7 +200,8 @@ class Connection(metaclass=_ConnectionMeta):
     def from_str(cls, string: str) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.Connection.to_str` method
+        String must be formated as defined by `base.ConnectionABC.to_str`
+        method.
 
         Parameters
         ----------
@@ -297,7 +295,7 @@ class Connection(metaclass=_ConnectionMeta):
             how many instances can share the same connection
         """
         if not sshServer:
-            return LocalConnection(sshServer, sshUsername, sshKey=sshKey,
+            return LocalConnection(sshServer, sshUsername, rsa_key_file=sshKey,
                                    server_name=server_name, logger=logger)
         else:
             if sshKey:
