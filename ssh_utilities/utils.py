@@ -6,10 +6,10 @@ import time
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Union
 
-from colorama import Back
 from paramiko.config import SSHConfig
 from tqdm import tqdm
 from tqdm.utils import _term_move_up
+from contextlib import contextmanager
 
 from .exceptions import CalledProcessError
 
@@ -179,7 +179,7 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
 
     Static and class methods must be excluded or they will not work
 
-    Use subclasses=True with great care! it will decorate methods for all
+    Use `subclasses=True` with great care! it will decorate methods for all
     instances of class in your module
     """
     def decorate(cls):
@@ -204,6 +204,10 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
 # ! DEPRECATED
 class N_lines_up:
     """Move cursor N lines up.
+
+    Warnings
+    --------
+    function is deprecated !
 
     Parameters
     ----------
@@ -398,7 +402,17 @@ def bytes_2_human_readable(number_of_bytes: Union[int, float],
     return f"{number_of_bytes} {unit}"
 
 
-def context_timeit(self, quiet: bool = False):
+@contextmanager
+def context_timeit(quiet: bool = False):
+    """Context manager which timme the code executed in its scope.
+
+    Simple stats about CPU time are printed on context exit.
+
+    Parameters
+    ----------
+    quiet : bool, optional
+        If true no statistics are printed on context exit, by default False
+    """
     start = time.time()
     yield
     end = time.time()

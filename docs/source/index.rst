@@ -10,14 +10,15 @@ Welcome to ssh-utilities's documentation!
     Documentation is stil under construction some things might not be up to
     date.
 
-Projects home directory is:
-`wikipedia-music-tags <https://github.com/marian-code/ssh-utilities>`_. 
+Projects home directory is on github:
+`ssh-utilities <https://github.com/marian-code/ssh-utilities>`_. 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    api
+   usage
 
 Indices and tables
 ==================

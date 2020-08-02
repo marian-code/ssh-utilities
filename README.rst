@@ -1,0 +1,141 @@
+.. image:: https://readthedocs.org/projects/ssh-utilities/badge/?version=latest
+    :target: https://ssh-utilities.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+      
+Paramiko wrapper
+================
+
+Simple paramiko wrapper that aims to facilitate easy remote file operations
+and command execution. The API vaguely follows python
+`os.path library <https://docs.python.org/3/library/os.path.html>`_,
+`subprocess library <https://docs.python.org/3/library/subprocess.html>`_ and
+`pathlib library <https://docs.python.org/3/library/pathlib.html>`_. Has also
+local variant that mimics the remote API on local machine. The connection is
+resilient to interruptions. Everything is well documented by dostrings and
+typed.
+
+Installation
+------------
+
+.. code-block:: bash
+
+    git clone https://github.com/marian-code/ssh-utilities.git
+    cd ssh_utilities
+    pip install -e .
+
+Use -e only to install in editable mode
+
+If you encounter some import errors try installing from requirements.txt file:
+``pip install requirements.txt``
+
+API and documentation
+-----------------------
+
+It is recommended tat you have configured **rsa** keys with config file according
+to `openssh standard <https://www.ssh.com/ssh/config/>`_ for easy quickstart guide
+you can look to: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
+
+API exposes three main connection classes, and one path manipulation class:
+
+.. code-block:: python
+
+    from ssh_utilities import SSHConnection, Connection, LocalConnection
+    from ssh_utilities import SSHPath
+
+``Connection`` is the a factory class that initializes other two classes based
+on input parameters.
+
+``SSHConnection`` is the remote connection class with API partly following that
+of python `os.path library <https://docs.python.org/3/library/os.path.html>`_ and
+`subprocess library <https://docs.python.org/3/library/subprocess.html>`_
+
+``LocalConnection`` is included only for convenience purposes so same API as for
+``SSHConnection`` can be used for interacting with local machine
+
+``SSHPath`` is an object for remote path manipulation with same API as python: 
+`pathlib library <https://docs.python.org/3/library/pathlib.html>`_ 
+
+All API documentation can be found at readthedocs:
+https://ssh-utilities.readthedocs.io/en/latest/
+
+
+Usage
+-----
+
+``Connection`` factory supports dict-like indexing by values that are in
+your **~/.ssh/config** file
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> Connection[<server_name>]
+    >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
+
+There is also a specific get method which is safer and with better typing
+support than dict-like indexing
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> Connection.get(<server_name>)
+    >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
+
+Class can be also used as a context manager.
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> with Connection(<server_name>) as conn:
+    >>>     conn.something(...)
+
+Connection can also be initialized from appropriately formated string.
+Strings are used mainly for underlying connection classes persistance to
+disk
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> Connection.from_str(<string>)
+
+All these return connection with preset reasonable parameters if more
+customization is required, use open method, this also allows use of passwords
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>, <server_name>,
+                             <logger>, <share_connection>):
+
+Module API also exposes powerfull SSHPath object with identical API as
+`pathlib.Path` only this one works for remote files. It must be always tied to
+some connection object which will provide interaction with remote host. The
+easyiest way to initialize it is as a method of Connection object.
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> with Connection(<server_name>) as conn:
+    >>>     sshpath = conn.Path(<some_path>)
+
+Or the seccond option is to pass the SSHPath constructor an instace of created
+connection
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> conn = Connection.get(<server_name>)
+    >>> sshpath = SSHPath(conn, <some_path>)
+
+Contributing
+------------
+
+1. Fork it
+2. Create your feature branch: ``git checkout -b my-new-feature``
+3. Commit your changes: ``git commit -am 'Add some feature'``
+4. Push to the branch: ``git push origin my-new-feature``
+5. Submit a pull request
+
+License
+-------
+
+LGPL-2.1

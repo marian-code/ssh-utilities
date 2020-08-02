@@ -6,3 +6,5 @@ build/
 dist/
 tests/
 ssh_utilities.egg-info/
+docs/build/
+docs/source/_*
