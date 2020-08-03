@@ -39,7 +39,7 @@ Installation
 
     pip install ssh_utilities
 
-Or if you waant to install directly from source:
+Or if you want to install directly from source:
 
 .. code-block:: bash
 
@@ -55,7 +55,7 @@ If you encounter some import errors try installing from requirements.txt file:
 API and documentation
 -----------------------
 
-It is recommended tat you have configured **rsa** keys with config file according
+It is recommended that you have configured **rsa** keys with config file according
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
 you can look at: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
 
@@ -89,7 +89,7 @@ Simple Usage
 
 .. note::
 
-    for more usage exmples please refer to
+    for more detailed usage examples please refer to
     `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in

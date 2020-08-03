@@ -31,7 +31,7 @@ Almost excacly the same as ``pathlib.Path``. There are some minor difereneces,
 like change of ``home`` and ``cwd`` methods from classmethods to
 instance methods for obvious reasons. Also some methods will raise
 ``NotImplementedError`` as their implementation through ssh is problematic or
-unfeasiblle so they were left out. But most of hte API should work just as
+unfeasiblle so they were left out. But most of the API should work just as
 expected
 
 .. warning::

@@ -3,7 +3,9 @@ import logging
 from abc import ABC, abstractmethod
 from os import fspath
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, List, Literal, Optional, Union
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
+from typing_extensions import Literal
 
 from .path import SSHPath
 

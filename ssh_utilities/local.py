@@ -9,7 +9,9 @@ import shutil
 import subprocess
 from pathlib import Path
 from socket import gethostname
-from typing import IO, TYPE_CHECKING, List, Literal, Optional, Union
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
+from typing_extensions import Literal
 
 from .base import ConnectionABC
 from .constants import C, G, R, Y

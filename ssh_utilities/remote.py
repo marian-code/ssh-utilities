@@ -9,10 +9,10 @@ from os.path import join as jn
 from pathlib import Path
 from stat import S_ISDIR, S_ISREG
 from types import MethodType
-from typing import (TYPE_CHECKING, Callable, List, Literal, Optional, Tuple,
-                    Type, Union)
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type, Union
 
 import paramiko
+from typing_extensions import Literal
 
 from .base import ConnectionABC
 from .constants import LG, RED, C, G, R, Y
