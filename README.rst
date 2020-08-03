@@ -1,6 +1,19 @@
 .. image:: https://readthedocs.org/projects/ssh-utilities/badge/?version=latest
     :target: https://ssh-utilities.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+
+.. image:: https://img.shields.io/pypi/implementation/ssh-utilities
+   :alt: PyPI - Implementation
+
+.. image:: https://img.shields.io/pypi/v/ssh-utilities
+   :alt: PyPI
+
+.. image:: https://img.shields.io/pypi/l/ssh-utilities
+   :alt: PyPI - License
+
+.. image:: https://img.shields.io/static/v1?label=MyPy&message=checked&color=blue
+    :alt: Checked with mypy
+    :target: http://mypy-lang.org
       
 Paramiko wrapper
 ================
@@ -8,7 +21,8 @@ Paramiko wrapper
 Simple paramiko wrapper that aims to facilitate easy remote file operations
 and command execution. The API vaguely follows python libraries:
 `os.path <https://docs.python.org/3/library/os.path.html>`_,
-`subprocess <https://docs.python.org/3/library/subprocess.html>`_ and
+`subprocess <https://docs.python.org/3/library/subprocess.html>`_,
+`shutil <https://docs.python.org/3/library/shutil.html>`_,
 `pathlib <https://docs.python.org/3/library/pathlib.html>`_. Has also
 local variant that mimics the remote API on local machine. The connection is
 resilient to interruptions. Everything is well documented by dostrings and
@@ -19,11 +33,17 @@ Installation
 
 .. code-block:: bash
 
+    pip install ssh_utilities
+
+Or if you waant to install directly from source:
+
+.. code-block:: bash
+
     git clone https://github.com/marian-code/ssh-utilities.git
     cd ssh_utilities
     pip install -e .
 
-Use -e only to install in editable mode
+Use ``-e`` only to install in editable mode
 
 If you encounter some import errors try installing from requirements.txt file:
 ``pip install requirements.txt``
@@ -33,7 +53,7 @@ API and documentation
 
 It is recommended tat you have configured **rsa** keys with config file according
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
-you can look to: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
+you can look at: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
 
 API exposes three main connection classes, and one path manipulation class:
 
@@ -42,11 +62,12 @@ API exposes three main connection classes, and one path manipulation class:
     from ssh_utilities import SSHConnection, Connection, LocalConnection
     from ssh_utilities import SSHPath
 
-``Connection`` is the a factory class that initializes other two classes based
-on input parameters.
+``Connection`` is the a factory class that initializes ``SSHConnection`` or
+``LocalConnection`` classes based on input parameters.
 
 ``SSHConnection`` is the remote connection class with API partly following that
-of python `os.path library <https://docs.python.org/3/library/os.path.html>`_ and
+of python `os.path library <https://docs.python.org/3/library/os.path.html>`_,
+`shutil library <https://docs.python.org/3/library/shutil.html>`_ and
 `subprocess library <https://docs.python.org/3/library/subprocess.html>`_
 
 ``LocalConnection`` is included only for convenience purposes so same API as for
@@ -59,8 +80,13 @@ All API documentation can be found at readthedocs:
 https://ssh-utilities.readthedocs.io/en/latest/
 
 
-Usage
------
+Simple Usage
+------------
+
+.. note::
+
+    for more usage exmples please refer to
+    `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in
 your **~/.ssh/config** file
