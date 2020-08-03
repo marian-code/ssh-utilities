@@ -1,8 +1,20 @@
 from ssh_utilities import Connection
-
-#c = Connection.get("daco", local=True)
+from ssh_utilities.exceptions import CalledProcessError
+from pathlib import Path
 
 with Connection("dusanko") as c:
+
+    try:
+        ls = c.run(["ls", "-l"], suppress_out=False, quiet=False,
+                   capture_output=True, check=True, cwd=Path("/home/rynik"))
+    except CalledProcessError as e:
+        print(e)
+    else:
+        print(ls)
+
+    c.download_tree(Path("/home/rynik/test"), "/home/rynik", include="*.txt",
+                    remove_after=False)
+
     print(c.Path("/tmp"))
     files = c.Path("/tmp").glob("*")
     print(files)

@@ -28,6 +28,10 @@ local variant that mimics the remote API on local machine. The connection is
 resilient to interruptions. Everything is well documented by dostrings and
 typed.
 
+This module should be ideally platform agnostic, but only connections from
+Windows and Linux(Debian, Ubuntu) to Linux(Debian, Ubuntu) have been tested
+so any other combinations are officially unsupported but should work.
+
 Installation
 ------------
 

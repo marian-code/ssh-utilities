@@ -10,11 +10,18 @@ up to date and all is subject to change since we are still in early
 development phase.
 
 .. note::
+
     We often use throughout the documentation notation same as python 
     `typing <https://docs.python.org/3/library/typing.html>`_. 
     module to mark variable types as it is richer and preserves more
     information. e.g. List[str] obviously means list of strings. More on the
     matter can be read in the typing module documentation.
+
+.. note::
+
+   This module should be ideally platform agnostic, but only connections from
+   Windows and Linux(Debian, Ubuntu) to Linux(Debian, Ubuntu) have been tested
+   so any other combinations are officially unsupported but should work.
 
 ssh_utilities.connection
 ------------------------------

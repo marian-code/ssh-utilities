@@ -18,7 +18,8 @@ Projects home directory is on github:
    :caption: Contents:
 
    api
-   usage
+   usage_conn
+   usage_path
 
 Indices and tables
 ==================

@@ -423,7 +423,7 @@ class SSHConnection(ConnectionABC):
         if cwd:
             command = f"cd {self._path2str(cwd)} && {command}"
 
-        # vykonat prikaz
+        # carry out command
         # stdin, stdout, stderr
         stdout, stderr = self._c.exec_command(command)[1:]
 
