@@ -6,6 +6,7 @@ or remote connection classes as needed based on input arguments.
 
 import getpass
 import logging
+import os
 import re
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
@@ -39,11 +40,13 @@ class _ConnectionMeta(type):
 
         dictionary["available_hosts"] = dict()
 
-        config = config_parser(CONFIG_PATH)
+        # guard for when readthedocs is building documentation
+        if not os.environ.get("READTHEDOCS", False):
+            config = config_parser(CONFIG_PATH)
 
-        # add remote hosts
-        for host in config.get_hostnames():
-            dictionary["available_hosts"][host] = config.lookup(host)
+            # add remote hosts
+            for host in config.get_hostnames():
+                dictionary["available_hosts"][host] = config.lookup(host)
 
         return type.__new__(cls, classname, bases, dictionary)
 
