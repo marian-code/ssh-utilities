@@ -6,8 +6,8 @@ import stat
 from functools import wraps
 from os import fspath
 from os.path import join
-from pathlib import Path, _posix_flavour  # type: ignore
-from typing import TYPE_CHECKING, Callable, Generator, Optional, Union
+from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
+from typing import TYPE_CHECKING, Any, Callable, Generator, Optional, Union
 
 from .utils import for_all_methods, glob2re
 
@@ -92,29 +92,26 @@ class SSHPath(Path):
     since old approach was not vaiable in this application. Most notably:
     home() and cwd().
 
-    Only works with posix servers
-
     Raises
     ------
     NotImplementedError when on some methods that have not been implemented.
     """
 
-    _flavour = _posix_flavour
+    _flavour = Any
     _c: "SSHConnection"
 
     def __new__(cls, connection: "SSHConnection", *args, **kwargs):
         """Remote Path class construtor.
 
-        Copied from pathlib.
-        For now only connections to posix are supported !!!
+        Copied and adddapted from pathlib.
         """
-        # TODO check if server is posix
+        if connection.osname == 'nt':
+            cls._flavour = PureWindowsPath._flavour  # type: ignore
+        else:
+            cls._flavour = PurePosixPath._flavour  # type: ignore
 
         self = cls._from_parts(args, init=False)  # type: ignore
         self._c = connection
-        if not self._flavour.is_supported:
-            raise NotImplementedError("cannot instantiate %r on your system"
-                                      % (cls.__name__,))
         self._init()
         return self
 
@@ -135,7 +132,11 @@ class SSHPath(Path):
         SSHPath
             path to current directory
         """
-        return SSHPath(self._c, self._c.sftp.normalize("."))
+        d = self._c.sftp.getcwd()
+        if d:
+            return SSHPath(self._c, d)
+        else:
+            return SSHPath(self._c, self._c.sftp.normalize("."))
 
     def home(self) -> "SSHPath":  # type: ignore
         """Get home dir on remote server for logged in user.
@@ -432,6 +433,9 @@ class SSHPath(Path):
         --------
         Works only in posix
         """
+        if self._c.osname == "nt":
+            raise NotImplementedError("Does not work on windows servers")
+
         self._c.sftp.posix_rename(self._2str, fspath(target))
         return self.replace(target)
 
@@ -448,7 +452,8 @@ class SSHPath(Path):
         SSHPath
             New Path instance pointing to the given path.
         """
-        self = SSHPath(self._c, target)
+        self = SSHPath(self._c, fspath(target))
+        self._c.change_dir(target)
         return self
 
     def resolve(self) -> "SSHPath":  # type: ignore[override]

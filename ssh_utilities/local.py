@@ -9,11 +9,11 @@ import shutil
 import subprocess
 from pathlib import Path
 from socket import gethostname
-from typing import IO, TYPE_CHECKING, List, Optional, Union
+from typing import IO, TYPE_CHECKING, List, Literal, Optional, Union
 
 from .base import ConnectionABC
 from .constants import C, G, R, Y
-from .utils import context_timeit, lprint, file_filter
+from .utils import context_timeit, file_filter, lprint
 
 if TYPE_CHECKING:
     from .path import SSHPath
@@ -27,6 +27,8 @@ LOGGER = logging.getLogger(__name__)
 
 class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
+
+    _osname: Literal["nt", "posix", "java", ""] = ""
 
     def __init__(self, address: Optional[str], username: str,
                  password: Optional[str] = None,
@@ -153,6 +155,13 @@ class LocalConnection(ConnectionABC):
         errors = errors if errors else "strict"
 
         return open(filename, mode, encoding=encoding, errors=errors)
+
+    @property
+    def osname(self) -> Literal["nt", "posix", "java"]:
+        if not self._osname:
+            self._osname = os.name
+
+        return self._osname
 
     # ! DEPRECATED
     @staticmethod

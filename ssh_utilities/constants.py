@@ -1,9 +1,9 @@
 """Module housing ssh-utilities constants."""
 
 import logging
-from logging import log
-from colorama import Fore, init
 from pathlib import Path
+
+from colorama import Fore, init
 
 __all__ = ["G", "LG", "R", "RED", "C", "Y", "CONFIG_PATH"]
 

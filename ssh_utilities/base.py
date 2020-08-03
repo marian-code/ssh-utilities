@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from os import fspath
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, List, Optional, Union
+from typing import IO, TYPE_CHECKING, List, Literal, Optional, Union
 
 from .path import SSHPath
 
@@ -92,6 +92,11 @@ class ConnectionABC(ABC):
              encoding: Optional[str] = None,
              bufsize: int = -1, errors: Optional[str] = None
              ) -> Union[IO, "SFTPFile"]:
+        pass
+
+    @property
+    @abstractmethod
+    def osname(self) -> Literal["nt", "posix", "java"]:
         pass
 
     # Normal methods

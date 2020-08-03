@@ -3,30 +3,31 @@
 import logging
 import os
 import shutil
-from socket import error
 import time
 from functools import wraps
 from os.path import join as jn
 from pathlib import Path
 from stat import S_ISDIR, S_ISREG
 from types import MethodType
-from typing import (TYPE_CHECKING, Callable, List, Optional, Tuple,
+from typing import (TYPE_CHECKING, Callable, List, Literal, Optional, Tuple,
                     Type, Union)
 
 import paramiko
 
 from .base import ConnectionABC
 from .constants import LG, RED, C, G, R, Y
-from .exceptions import CalledProcessError, SFTPOpenError, ConnectionError
+from .exceptions import (CalledProcessError, ConnectionError, SFTPOpenError,
+                         UnknownOsError)
 from .path import SSHPath
-from .utils import CompletedProcess, ProgressBar, file_filter
+from .utils import CompletedProcess, ProgressBar
 from .utils import bytes_2_human_readable as b2h
-from .utils import lprint, context_timeit
+from .utils import context_timeit, file_filter, lprint
 
 if TYPE_CHECKING:
     SPath = Union[str, Path, SSHPath]
     ExcType = Union[Type[Exception], Tuple[Type[Exception], ...]]
     from paramiko.sftp_file import SFTPFile
+    from paramiko.sftp_client import SFTPClient
     GlobPat = Optional[str]
 
 __all__ = ["SSHConnection"]
@@ -289,7 +290,8 @@ class SSHConnection(ConnectionABC):
     """
 
     log: logging.Logger
-    _remote_home: str
+    _remote_home: str = ""
+    _osname: Literal["nt", "posix", ""] = ""
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -987,6 +989,63 @@ class SSHConnection(ConnectionABC):
 
         return file_obj
 
+    @property
+    def osname(self) -> Literal["nt", "posix"]:
+        """Try to get remote os name same as `os.name` function.
+
+        Warnings
+        --------
+        Due to the complexity of the check, this method only checks is remote
+        server is windows by trying to run `ver` command. If that fails the
+        remote is automatically assumed to be POSIX which should hold true
+        in most cases.
+        If absolute certianty is required you should do your own checks.
+
+        Note
+        ----
+        This methods main purpose is to help choose the right flavour when
+        instantiating `ssh_utilities.path.SSHPath`. For its use the provided
+        accuracy should be sufficient.
+
+        Returns
+        -------
+        Literal["nt", "posix"]
+            remote server os name
+
+        Raises
+        ------
+        UnknownOsError
+            if remote server os name could not be determined
+        """
+        if self._osname:
+            return self._osname
+
+        error_count = 0
+
+        # Try some common cmd strings
+        for cmd in ('ver', 'command /c ver', 'cmd /c ver'):
+            try:
+                info = self.run([cmd], suppress_out=True, quiet=True,
+                                check=True, capture_output=True).stdout
+            except CalledProcessError as e:
+                self.log.debug(f"Couldn't get os name: {e}")
+                error_count += 1
+            else:
+                if "windows" in info.lower():
+                    self._osname = "nt"
+                    break
+                else:
+                    continue
+        else:
+            # no errors were thrown, but os name could not be identified from
+            # the response strings
+            if error_count == 0:
+                raise UnknownOsError("Couldn't get os name")
+            else:
+                self._osname = "posix"
+
+        return self._osname
+
     # * additional methods needed by remote ssh class, not in ABC definition
     def _get_ssh(self, authentication_attempts: int = 0):
 
@@ -1021,7 +1080,7 @@ class SSHConnection(ConnectionABC):
 
     @property  # type: ignore
     @_check_connections
-    def sftp(self) -> paramiko.SFTPClient:
+    def sftp(self) -> "SFTPClient":
         """Opens and return sftp channel.
 
         If SFTP coud be open then return SFTPClient instance else return None.

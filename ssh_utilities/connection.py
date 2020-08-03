@@ -63,6 +63,9 @@ class _ConnectionMeta(type):
                 raise KeyError(f"{RED}Missing key in config dictionary: "
                                f"{R}{e}")
 
+    def open(cls, *args, **kwargs):
+        pass
+
 
 class Connection(metaclass=_ConnectionMeta):
     """Factory for class with self-keeping SSH or local connection.

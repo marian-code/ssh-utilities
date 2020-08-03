@@ -18,3 +18,9 @@ class ConnectionError(Exception):
     """Raised when connection to remote cannot be established."""
 
     pass
+
+
+class UnknownOsError(Exception):
+    """Raised when remote server os could not be determined."""
+
+    pass
