@@ -314,8 +314,14 @@ class SSHConnection(ConnectionABC):
         self.rsa_key_file = rsa_key_file
 
         # paramiko connection
-        self.rsa_key = paramiko.RSAKey.from_private_key_file(
-            self._path2str(rsa_key_file))
+        if rsa_key_file:
+            self.rsa_key = paramiko.RSAKey.from_private_key_file(
+                self._path2str(rsa_key_file))
+        elif password:
+            self.rsa_key = None
+        else:
+            raise RuntimeError("Must input password or path to rsa_key")
+
         self._c = paramiko.client.SSHClient()
         self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
 
