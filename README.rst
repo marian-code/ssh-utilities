@@ -17,7 +17,10 @@
 
 .. image:: https://coveralls.io/repos/github/marian-code/ssh-utilities/badge.svg?branch=master
     :target: https://coveralls.io/github/marian-code/ssh-utilities?branch=master
-      
+
+.. image:: https://travis-ci.com/marian-code/ssh-utilities.svg?branch=master
+    :target: https://travis-ci.com/marian-code/ssh-utilities
+
 Paramiko wrapper
 ================
 
