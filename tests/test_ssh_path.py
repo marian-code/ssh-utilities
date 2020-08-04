@@ -24,7 +24,7 @@ CI = os.environ.get("TRAVIS", False)
 
 
 class TestSSHPath(TestCase):
-    """Test remote version of Path"""
+    """Test remote version of Path."""
 
     def setUp(self):
 
@@ -35,28 +35,13 @@ class TestSSHPath(TestCase):
             self.os = os.environ.get("TRAVIS_OS_NAME", "linux")
 
         # SSH to self, must have and localhost entry in config file and
-        # correcponding keys pressent, also sshd must be installed and running
+        # correcponding keys present, also sshd must be installed and running
         if self.user == "rynik":
             c = Connection.get("localhost", local=False)
+        # travis config file must change user password to desired value
         else:
-            """
-            try:
-                if self.os == "linux":
-                    subprocess.run(["echo", f"'{self.user}:12345678'", "|",
-                                    "sudo", "chpasswd"], check=True)
-                elif self.os == "windows":
-                    raise NotImplementedError
-                elif self.os == "osx":
-                    raise NotImplementedError
-                else:
-                    raise ValueError
-            except subprocess.CalledProcessError as e:
-                log.exception(e)
-                raise e
-            else:
-            """
             c = Connection.open(self.user, "127.0.0.1", sshKey=None,
-                                sshPassword="12345678", server_name="test")
+                                sshPassword="1678", server_name="test")
 
         self.p = c.Path("/tmp")
 

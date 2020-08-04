@@ -36,7 +36,7 @@ class TestSSHPath(TestCase):
 
         log.debug(str(self.p.cwd()))
         log.debug(self.home)
-        self.assertEqual(str(self.p.cwd()), self.home)
+        self.assertEqual(str(self.p.cwd()), str(Path.cwd()))
 
 
 if __name__ == '__main__':
