@@ -1,6 +1,7 @@
 language: python
 jobs:
   include:
+    # TODO add Windows and Os X
     # ===== Linux ======
     - name: "Python 3.6 on Ubuntu 18.04 (Bionic Beaver)"
       dist: bionic
