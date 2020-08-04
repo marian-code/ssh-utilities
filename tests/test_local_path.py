@@ -29,10 +29,13 @@ class TestSSHPath(TestCase):
         self.user = os.environ.get("USER", "rynik")
         self.home = os.environ.get("HOME", Path.home())
 
-        self.p = Connection.get("test", local=False).Path(self.home)
+        c = Connection.open(self.user, None, server_name="test")
+        self.p = c.Path(self.home)
 
     def test_cwd(self):
 
+        self.debug(str(self.p.cwd()))
+        self.debug(self.home)
         self.assertEqual(str(self.p.cwd()), self.home)
 
 

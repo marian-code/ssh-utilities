@@ -59,7 +59,7 @@ class _ConnectionMeta(type):
         try:
             credentials = cls.available_hosts[key]
         except KeyError as e:
-            raise ValueError(f"No such host({key}) available: {e}")
+            raise KeyError(f"No such host  available: {e}")
         else:
             try:
                 return cls.open(credentials["user"], credentials["hostname"],
