@@ -307,6 +307,8 @@ class SSHConnection(ConnectionABC):
             print(f"{R}When running an executale on server always make"
                   f"sure that full path is specified!!!\n")
 
+        self.log = logger if logger else LOGGER
+
         # set login credentials
         self.password = password
         self.address = address
@@ -332,8 +334,6 @@ class SSHConnection(ConnectionABC):
         self._sftp_open = False
         lprint.line_rewrite = line_rewrite
         self.server_name = server_name.upper() if server_name else address
-
-        self.log = logger if logger else LOGGER
 
         self.local = False
 

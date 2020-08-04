@@ -38,10 +38,10 @@ class TestSSHPath(TestCase):
         # correcponding keys present, also sshd must be installed and running
         if self.user == "rynik":
             c = Connection.get("localhost", local=False)
-        # travis config file must change user password to desired value
+        # travis config file must change user password to desired
         else:
             c = Connection.open(self.user, "127.0.0.1", sshKey=None,
-                                sshPassword="1678", server_name="test")
+                                sshPassword="12345678", server_name="test")
 
         self.p = c.Path("/tmp")
 
