@@ -1,28 +1,39 @@
-.. image:: https://readthedocs.org/projects/ssh-utilities/badge/?version=latest
-    :target: https://ssh-utilities.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
-.. image:: https://img.shields.io/pypi/implementation/ssh-utilities
-   :alt: PyPI - Implementation
-
-.. image:: https://img.shields.io/pypi/v/ssh-utilities
-   :alt: PyPI
-
-.. image:: https://img.shields.io/pypi/l/ssh-utilities
-   :alt: PyPI - License
-
-.. image:: https://img.shields.io/static/v1?label=MyPy&message=checked&color=blue
-    :alt: Checked with mypy
-    :target: http://mypy-lang.org
-
-.. image:: https://coveralls.io/repos/github/marian-code/ssh-utilities/badge.svg?branch=master
-    :target: https://coveralls.io/github/marian-code/ssh-utilities?branch=master
-
-.. image:: https://travis-ci.com/marian-code/ssh-utilities.svg?branch=master
-    :target: https://travis-ci.com/marian-code/ssh-utilities
-
 Paramiko wrapper
 ================
+
+:Test Status:
+
+    .. image:: https://readthedocs.org/projects/ssh-utilities/badge/?version=latest
+        :target: https://ssh-utilities.readthedocs.io/en/latest/?badge=latest
+        :alt: Documentation Status
+
+    .. image:: https://travis-ci.com/marian-code/ssh-utilities.svg?branch=master
+        :target: https://travis-ci.com/marian-code/ssh-utilities
+
+    .. image:: https://coveralls.io/repos/github/marian-code/ssh-utilities/badge.svg?branch=master
+        :target: https://coveralls.io/github/marian-code/ssh-utilities?branch=master
+
+    .. image:: https://api.codeclimate.com/v1/badges/978efa969238d28ab1ab/maintainability
+        :target: https://codeclimate.com/github/marian-code/ssh-utilities/maintainability
+        :alt: Maintainability
+
+:Versin Info:
+
+    .. image:: https://img.shields.io/pypi/v/ssh-utilities
+        :alt: PyPI
+
+    .. image:: https://img.shields.io/pypi/implementation/ssh-utilities
+        :alt: PyPI - Implementation
+
+    .. image:: https://img.shields.io/static/v1?label=MyPy&message=checked&color=blue
+        :alt: Checked with mypy
+        :target: http://mypy-lang.org
+
+:License:
+
+    .. image:: https://img.shields.io/pypi/l/ssh-utilities
+        :alt: PyPI - License
+
 
 Simple paramiko wrapper that aims to facilitate easy remote file operations
 and command execution. The API vaguely follows python libraries:
