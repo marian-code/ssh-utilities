@@ -26,6 +26,11 @@ __all__ = ["Connection"]
 
 logging.getLogger(__name__)
 
+# guard for when readthedocs is building documentation or travis
+# is running CI build
+RTD = os.environ.get("READTHEDOCS", False)
+CI = os.environ.get("TRAVIS", False)
+
 
 class _ConnectionMeta(type):
     """MetaClass for connection factory, adds indexing support.
@@ -40,8 +45,7 @@ class _ConnectionMeta(type):
 
         dictionary["available_hosts"] = dict()
 
-        # guard for when readthedocs is building documentation
-        if not os.environ.get("READTHEDOCS", False):
+        if not RTD and CI:
             config = config_parser(CONFIG_PATH)
 
             # add remote hosts
@@ -256,6 +260,7 @@ class Connection(metaclass=_ConnectionMeta):
     @staticmethod
     def open(sshUsername: str, sshServer: None = None,
              sshKey: Optional[Union[str, "Path"]] = None,
+             sshPassword: Optional[str] = None,
              server_name: Optional[str] = None,
              logger: Optional["Logger"] = None,
              share_connection: int = 10) -> LocalConnection:
@@ -265,6 +270,7 @@ class Connection(metaclass=_ConnectionMeta):
     @staticmethod
     def open(sshUsername: str, sshServer: str,
              sshKey: Optional[Union[str, "Path"]] = None,
+             sshPassword: Optional[str] = None,
              server_name: Optional[str] = None,
              logger: Optional["Logger"] = None,
              share_connection: int = 10) -> SSHConnection:
@@ -273,6 +279,7 @@ class Connection(metaclass=_ConnectionMeta):
     @staticmethod
     def open(sshUsername: str, sshServer: Optional[str] = "",
              sshKey: Optional[Union[str, "Path"]] = None,
+             sshPassword: Optional[str] = None,
              server_name: Optional[str] = None,
              logger: Optional["Logger"] = None,
              share_connection: int = 10):
@@ -288,8 +295,11 @@ class Connection(metaclass=_ConnectionMeta):
         sshServer: str
             server address, numeric address or normal address
         sshKey: Optional[Union[str, Path]]
-            path to file with private rsa key. If left empty script will ask
-            for password.
+            path to file with private rsa key. If left empty and password is
+            `None` script will ask for password.
+        sshPassword: Optional[str]
+            password in string form, this is mainly for testing. Using this in
+            production is a great security risk!
         server_name: str
             server name (default:None) only for id purposes, if it is left
             default than it will be replaced with address.
@@ -299,6 +309,11 @@ class Connection(metaclass=_ConnectionMeta):
         share_connection: int
             share connection between different instances of class, number says
             how many instances can share the same connection
+
+        Warnings
+        --------
+        Do not use plain text passwords in production, they are great security
+        risk!
         """
         if not sshServer:
             return LocalConnection(sshServer, sshUsername, rsa_key_file=sshKey,
@@ -314,7 +329,9 @@ class Connection(metaclass=_ConnectionMeta):
                                   share_connection=share_connection)
             else:
                 lprint(False)(f"Will login as {sshUsername} to {sshServer}")
-                sshPassword = getpass.getpass(prompt="Enter password: ")
+
+                if not sshPassword:
+                    sshPassword = getpass.getpass(prompt="Enter password: ")
 
                 c = SSHConnection(sshServer, sshUsername, password=sshPassword,
                                   line_rewrite=True, server_name=server_name,

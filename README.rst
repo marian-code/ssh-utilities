@@ -14,6 +14,9 @@
 .. image:: https://img.shields.io/static/v1?label=MyPy&message=checked&color=blue
     :alt: Checked with mypy
     :target: http://mypy-lang.org
+
+.. image:: https://coveralls.io/repos/github/marian-code/ssh-utilities/badge.svg?branch=master
+    :target: https://coveralls.io/github/marian-code/ssh-utilities?branch=master
       
 Paramiko wrapper
 ================
@@ -87,10 +90,8 @@ https://ssh-utilities.readthedocs.io/en/latest/
 Simple Usage
 ------------
 
-.. note::
-
-    for more detailed usage examples please refer to
-    `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
+for more detailed usage examples please refer to
+`documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in
 your **~/.ssh/config** file

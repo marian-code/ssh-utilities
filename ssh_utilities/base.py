@@ -113,10 +113,6 @@ class ConnectionABC(ABC):
             path to convert to string, if string is passed,
             then just returns it
 
-        Warnings
-        --------
-        Contains user specific rules!
-
         Raises
         ------
         FileNotFoundError
@@ -178,7 +174,7 @@ class ConnectionABC(ABC):
 
         See also
         --------
-        :attr:`sftp` more recent implementation
+        :attr:`ssh_utilities.remote.SSHConnection.sftp` more recent implementation
         """
         pass
 
