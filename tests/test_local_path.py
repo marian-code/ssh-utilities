@@ -34,8 +34,8 @@ class TestSSHPath(TestCase):
 
     def test_cwd(self):
 
-        self.debug(str(self.p.cwd()))
-        self.debug(self.home)
+        log.debug(str(self.p.cwd()))
+        log.debug(self.home)
         self.assertEqual(str(self.p.cwd()), self.home)
 
 
