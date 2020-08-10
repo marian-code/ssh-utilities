@@ -7,3 +7,5 @@ build/
 dist/
 pbs_wrapper.egg-info/
 test/
+docs/build/
+docs/source/_*

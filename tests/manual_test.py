@@ -1,24 +1,26 @@
-from ssh_utilities import Connection, SSHConnection
-from queue import Queue
-from time import perf_counter
-import numpy as np
-from threading import Lock
-import shelve
-import matplotlib.pyplot as plt
+from ssh_utilities import Connection, PIPE, DEVNULL
+from ssh_utilities.exceptions import CalledProcessError
+from pathlib import Path
 
-c = Connection.get("daco", local=True)
+with Connection("hartree") as c:
 
-with Connection("aurel") as c:
-    c.Path("daco")
-    files = c.Path("/gpfs/fastscratch/rynik/recompute_GAP").rglob("*pbs.job")
+    try:
+        ls = c.run(["ls", "-l"], suppress_out=False, quiet=False,
+                   stdout=PIPE, stderr=DEVNULL, check=True, cwd=Path("/home/rynik"),
+                   encoding="utf-8")
+    except CalledProcessError as e:
+        print(e)
+    else:
+        print(ls)
+
+    c.download_tree(Path("/home/rynik/test"), "/home/rynik", include="*.txt",
+                    remove_after=False)
+
+    print(c.Path("/tmp"))
+    files = c.Path("/tmp").glob("*")
     print(files)
     for f in files:
         print(f)
-        text = f.read_text()
-        print(text)
-        f.write_text(text.replace("prio", "priority"))
-
-
 
 
 #c.download_tree("/home/rynik/lammps_tests", "/home/rynik/OneDrive/dizertacka/code/ssh_utilities/test", include="*.in", exclude="*data*", remove_after=False)

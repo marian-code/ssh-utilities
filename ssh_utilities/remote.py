@@ -3,32 +3,37 @@
 import logging
 import os
 import shutil
+import socket
+import sys
 import time
 from functools import wraps
+from io import BytesIO, StringIO, TextIOBase
 from os.path import join as jn
 from pathlib import Path
 from stat import S_ISDIR, S_ISREG
 from types import MethodType
-from typing import (TYPE_CHECKING, Callable, List, Optional, Tuple,
-                    Type, Union)
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type, Union
+from subprocess import PIPE, STDOUT, DEVNULL
 
 import paramiko
+from typing_extensions import Literal
 
 from .base import ConnectionABC
 from .constants import LG, RED, C, G, R, Y
-from .exceptions import CalledProcessError, SFTPOpenError, ConnectionError
+from .exceptions import (CalledProcessError, ConnectionError, SFTPOpenError,
+                         TimeoutExpired, UnknownOsError)
 from .path import SSHPath
-from .utils import CompletedProcess, ProgressBar, file_filter
+from .utils import CompletedProcess, ProgressBar
 from .utils import bytes_2_human_readable as b2h
-from .utils import lprint
+from .utils import context_timeit, file_filter, lprint
 
 if TYPE_CHECKING:
-    SPath = Union[str, Path, SSHPath]
     ExcType = Union[Type[Exception], Tuple[Type[Exception], ...]]
     from paramiko.sftp_file import SFTPFile
-    GlobPat = Optional[str]
+    from paramiko.sftp_client import SFTPClient
+    from .typeshed import _GLOBPAT, _SPATH, _FILE, _CMD, _ENV    
 
-__all__ = ["SSHConnection"]
+__all__ = ["SSHConnection", "PIPE", "STDOUT", "DEVNULL"]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,7 +64,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
     Warnings
     --------
     Beware, this function can hide certain errors or cause the code to become
-    stuct in an infinite loop!
+    stuck in an infinite loop!
 
     References
     ----------
@@ -86,7 +91,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 try:
                     self.close(quiet=True)
                 except Exception as e:
-                    self.log.exception(f"Couldn't close connection: {e}")
+                    LOGGER.exception(f"Couldn't close connection: {e}")
 
                 try:
                     self._get_ssh()
@@ -95,34 +100,34 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 else:
                     success = True
 
-                self.log.debug(f"success 1: {success}")
+                LOGGER.debug(f"success 1: {success}")
                 if not success:
                     return False
 
                 if self._sftp_open:
-                    self.log.debug(f"success 2: {success}")
+                    LOGGER.debug(f"success 2: {success}")
                     try:
                         self.sftp
                     except SFTPOpenError:
                         success = False
-                        self.log.debug(f"success 3: {success}")
+                        LOGGER.debug(f"success 3: {success}")
 
                     else:
-                        self.log.debug(f"success 4: {success}")
+                        LOGGER.debug(f"success 4: {success}")
 
                         success = True
                 else:
                     success = False
 
-                self.log.exception(f"Relevant variables:\n"
-                                   f"success:    {success}\n"
-                                   f"password:   {self.password}\n"
-                                   f"address:    {self.address}\n"
-                                   f"username:   {self.username}\n"
-                                   f"ssh class:  {type(self._c)}\n"
-                                   f"sftp class: {type(self.sftp)}")
+                LOGGER.exception(f"Relevant variables:\n"
+                                 f"success:    {success}\n"
+                                 f"password:   {self.password}\n"
+                                 f"address:    {self.address}\n"
+                                 f"username:   {self.username}\n"
+                                 f"ssh class:  {type(self._c)}\n"
+                                 f"sftp class: {type(self.sftp)}")
                 if self._sftp_open:
-                    self.log.exception(f"remote home: {self.remote_home}")
+                    LOGGER.exception(f"remote home: {self.remote_home}")
 
                 return success
 
@@ -135,31 +140,31 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 raise e from None
             except paramiko.ssh_exception.NoValidConnectionsError as e:
                 error = e
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             except paramiko.ssh_exception.SSHException as e:
                 error = e
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             except AttributeError as e:
                 error = e
-                self.log.exception(f"Caught attribute error in {n}: {e}")
+                LOGGER.exception(f"Caught attribute error in {n}: {e}")
             except OSError as e:
                 error = e
-                self.log.exception(f"Caught OS error in {n}: {e}")
+                LOGGER.exception(f"Caught OS error in {n}: {e}")
             except paramiko.SFTPError as e:
                 # garbage packets,
                 # see: https://github.com/paramiko/paramiko/issues/395
-                self.log.exception(f"Caught paramiko error in {n}: {e}")
+                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
             finally:
                 while error:
 
-                    self.log.warning("Connection is down, trying to reconnect")
+                    LOGGER.warning("Connection is down, trying to reconnect")
                     if negotiate():
-                        self.log.info("Connection restablished, continuing ..")
+                        LOGGER.info("Connection restablished, continuing ..")
                         connect_wrapper(self, *args, **kwargs)
                         break
                     else:
-                        self.log.warning("Unsuccessful, wait 60 seconds "
-                                         "before next try")
+                        LOGGER.warning("Unsuccessful, wait 60 seconds "
+                                       "before next try")
                         time.sleep(60)
 
         return connect_wrapper
@@ -170,12 +175,13 @@ def _check_connections(original_function: Optional[Callable] = None, *,
     return _decorate
 
 
-# ! this is not a viable way too complex logic
+# ! this is not a viable way, too complex logic
 # use locking decorator instead
 # TODO share_connection could be implemented with dict
 # - must be indexable, need to remember which class uses which connection
 # - must store both sftp and connection
 # - must remove the element from the dataframe so no one can access it
+"""
 from threading import Condition, Lock
 
 
@@ -241,13 +247,14 @@ class ConnectionHolder:
     @classmethod
     def _get_unique_instance_id(cls):
         raise NotImplementedError
+"""
 
 
 # TODO implement warapper for multiple connections
 class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
-    Paremeters
+    Parameters
     ----------
     address: str
         server IP address
@@ -285,8 +292,9 @@ class SSHConnection(ConnectionABC):
         connection to remote could not be established
     """
 
-    log: Union[logging.Logger]
-    _remote_home: Optional[str] = None
+    log: logging.Logger
+    _remote_home: str = ""
+    _osname: Literal["nt", "posix", ""] = ""
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -302,6 +310,8 @@ class SSHConnection(ConnectionABC):
             print(f"{R}When running an executale on server always make"
                   f"sure that full path is specified!!!\n")
 
+        self.log = logger if logger else LOGGER
+
         # set login credentials
         self.password = password
         self.address = address
@@ -309,8 +319,14 @@ class SSHConnection(ConnectionABC):
         self.rsa_key_file = rsa_key_file
 
         # paramiko connection
-        self.rsa_key = paramiko.RSAKey.from_private_key_file(
-            self._path2str(rsa_key_file))
+        if rsa_key_file:
+            self.rsa_key = paramiko.RSAKey.from_private_key_file(
+                self._path2str(rsa_key_file))
+        elif password:
+            self.rsa_key = None
+        else:
+            raise RuntimeError("Must input password or path to rsa_key")
+
         self._c = paramiko.client.SSHClient()
         self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
 
@@ -322,41 +338,17 @@ class SSHConnection(ConnectionABC):
         lprint.line_rewrite = line_rewrite
         self.server_name = server_name.upper() if server_name else address
 
-        self.log = logger if logger else LOGGER
+        self.local = False
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
                            self.username, self.rsa_key_file)
 
-    def _get_ssh(self, authentication_attempts: int = 0):
-
-        try:
-            if self.rsa_key:
-                # connect with public key
-                self._c.connect(self.address, username=self.username,
-                                pkey=self.rsa_key)
-            else:
-                # if password was passed try to connect with it
-                self._c.connect(self.address, username=self.username,
-                                password=self.password, look_for_keys=False)
-
-        except (paramiko.ssh_exception.AuthenticationException,
-                paramiko.ssh_exception.NoValidConnectionsError) as e:
-            self.log.warning(f"Error in authentication {e}. Trying again ...")
-
-            # max three attempts to connect at once
-            authentication_attempts += 1
-            if authentication_attempts >= 3:
-                raise ConnectionError(f"Connection to {self.address} "
-                                      f"could not be established")
-            else:
-                self._get_ssh(authentication_attempts=authentication_attempts)
-
     @_check_connections
     def close(self, *, quiet: bool):
         """Close SSH connection.
 
-        Parametars
+        Parameters
         ----------
         quiet: bool
             whether to print other function messages
@@ -373,6 +365,8 @@ class SSHConnection(ConnectionABC):
         ----------
         log_file: str
             location of the log file (default: paramiko.log)
+        level: str
+            logging level represented by string
         """
         if os.path.isfile(log_file):
             os.remove(log_file)
@@ -380,51 +374,205 @@ class SSHConnection(ConnectionABC):
         paramiko.util.log_to_file(log_file, level=level)
 
     @_check_connections(exclude_exceptions=(TypeError, CalledProcessError))
-    def run(self, args: List[str], *, suppress_out: bool, quiet: bool = True,
-            capture_output: bool = False, check: bool = False,
-            cwd: Optional[Union[str, Path]] = None, encoding: str = "utf-8"
+    def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
+            bufsize: int = -1, executable: "_SPATH" = None,
+            input: Optional[str] = None, stdin: "_FILE" = None,
+            stdout: "_FILE" = None, stderr: "_FILE" = None,
+            capture_output: bool = False, shell: bool = False,
+            cwd: "_SPATH" = None, timeout: Optional[float] = None,
+            check: bool = False, encoding: Optional[str] = None,
+            errors: Optional[str] = None, text: Optional[bool] = None,
+            env: Optional["_ENV"] = None, 
+            universal_newlines: Optional[bool] = None
             ) -> CompletedProcess:
         """Excecute command on remote, has simillar API to subprocess run.
 
         Parameters
         ----------
-        args: List[str]
-            command as a list all parts shoul be separate list entries
-        suppress_out: bool
+        args : _CMD
+            string, Path-like object or a list of strings. If it is a list it
+            will be joined to string with whitespace delimiter.
+        suppress_out : bool
             whether to print command output to console, this is required
             keyword argument
-        quiet: bool
-            whether to print other function messages
-        capture_output: bool
-            if true then lightweight result object with
-            same API as subprocess.CompletedProcess is returned
-        cwd: Optional[Union[str, Path]]
-            execute command in this directory
-        check: bool
+        quiet : bool, optional
+            whether to print other function messages, by default True
+        bufsize : int, optional
+            buffer size, 0 turns off buffering, 1 uses line buffering, and any
+            number greater than 1 (>1) uses that specific buffer size. This
+            applies ti underlying paramiko client as well as `stdin`, `stdout`
+            and `stderr` PIPES, by default -1
+        executable : _SPATH, optional
+            [description], by default None
+        input : Optional[str], optional
+            [description], by default None
+        stdin : _FILE, optional
+            [description], by default None
+        stdout : _FILE, optional
+            [description], by default None
+        stderr : _FILE, optional
+            [description], by default None
+        capture_output : bool, optional
+            if true then lightweight result object with same API as
+            subprocess.CompletedProcess is returned. Same as passing PIPE to
+            `stdout` and `stderr`. Both options cannot be used at the same
+            time, by default False
+        shell : bool, optional
+            requests a pseudo terminal from server, by default False
+        cwd : _SPATH, optional
+            execute command in this directory, by default None
+        timeout : Optional[float], optional
+            set, by default None
+        check : bool, optional
             checks for command return code if other than 0 raises
-            CalledProcessError
-        encoding: str
-            encoding to use when decoding remote output, default is utf-8
+            CalledProcessError, by default False
+        encoding : Optional[str], optional
+            encoding to use when decoding remote output, default is utf-8,
+            by default None
+        errors : Optional[str], optional
+            string that specifies how encoding and decoding errors are to be
+            handled, see builtin function
+            `open <https://docs.python.org/3/library/functions.html#open>`_
+            documentation for more details, by default None
+        text : Optional[bool], optional
+            will select default encoding and open `stdin`, `stdout` and
+            `stderr` streams in text mode. The default encoding, contrary to
+            behaviour of `subprocess` module is not selected by
+            `locale.getpreferredencoding(False)` but is always set to `utf-8`.
+            By default None
+        env : Optional[_ENV], optional
+            optinal environment variables that will be merged into the existing
+            environment. This is different to `subprocess` behaviour which
+            creates new environment with only specified variables,
+            by default None
+        universal_newlines : Optional[bool], optional
+            an alias for text keyword argument, by default None
 
-        Raises
-        ------
-        TypeError
-            if command arguments are of wrong type
-        CalledProcessError
-            if check is true and command exited with non-zero status
+        Warnings
+        --------
+        New environment variables defined by `env` might get silently rejected
+        by the server.
+
+        Currentlly it is only possible to use `input` agrgument, not `stdin`
+        and send data to process only once at the begining. It is still under
+        developement
 
         Returns
         -------
-        Optional[CompletedProcess]
+        CompletedProcess
             if capture_output is true, returns lightweight result object with
             same API as subprocess.CompletedProcess
+
+        Raises
+        ------
+        ValueError
+            if `stdin` and `input` are specified at the same time
+        ValueError
+            if `capture_output` and `stdout` and/or `stderr` are specified at
+            the same time
+        ValueError
+            if `text` or `universal_newlines` is used simultaneously with"
+            `encoding` and/or `errors` arguments
+        NotImplementedError
+            if `stdin` or `executable` is used - work in progress
+        TypeError
+            if `stdin`, `stdout` or `stderr` arguments are of wrong type
+        TypeError
+            if `args` argument is of wrong type
+        exception
+            [description]
+        CalledProcessError
+            if check is true and command exited with non-zero status
+        TimeoutExpired
+            if the command exceeded allowed run time
         """
-        if isinstance(args, str):
-            raise TypeError("command must be of type list")
+        command: str
 
         # init limited printing
         lprnt = lprint(quiet=quiet)
-        command: str = " ".join(args)
+
+        if executable:
+            raise NotImplementedError("executable argument is not implemented")
+
+        if input and stdin:
+            raise ValueError("input and stdin arguments may not be used at "
+                             "the same time")
+        if capture_output:
+            if stdout or stderr:
+                raise ValueError("capture_output may not be used with "
+                                 "stdout or/and stderr")
+            else:
+                stdout = PIPE
+                stderr = PIPE
+        if text or universal_newlines:
+            if encoding or errors:
+                raise ValueError("text or universal_newlines may not be used "
+                                 "with encoding and/or errors arguments")
+            else:
+                encoding = "utf-8"
+                errors = "strict"
+        else:
+            if encoding and not errors:
+                errors = "strict"
+
+        if not stdin:
+            stdin_pipe = sys.stdin
+        elif stdin == DEVNULL:
+            stdin_pipe = open(os.devnull, "w")
+        elif stdin == PIPE:
+            raise NotImplementedError
+        elif isinstance(stdin, int):
+            stdin_pipe = os.fdopen(stdin, encoding=encoding, errors=errors)
+        elif isinstance(stdin, TextIOBase):
+            pass
+        else:
+            raise TypeError("stdin argument is of unsupported type")
+
+        if not stdout:
+            stdout_pipe = sys.stdout
+        elif stdout == DEVNULL:
+            stdout_pipe = open(os.devnull, "w")
+        elif stdout == PIPE:
+            if encoding:
+                stdout_pipe = StringIO()
+            else:
+                stdout_pipe = BytesIO()
+        elif isinstance(stdout, int):
+            stdout_pipe = os.fdopen(stdout, encoding=encoding, errors=errors)
+        elif isinstance(stdout, TextIOBase):
+            stdout_pipe = stdout
+        else:
+            raise TypeError("stdout argument is of unsupported type")
+
+        if not stderr:
+            stderr_pipe = sys.stderr
+        elif stderr == DEVNULL:
+            stderr_pipe = open(os.devnull, "w")
+        elif stderr == PIPE:
+            if encoding:
+                stderr_pipe = StringIO()
+            else:
+                stderr_pipe = BytesIO()
+        elif isinstance(stderr, int):
+            stderr_pipe = os.fdopen(stderr, encoding=encoding, errors=errors)
+        elif stderr == STDOUT:
+            stderr_pipe = stdout_pipe
+        elif isinstance(stderr, TextIOBase):
+            stderr_pipe = stderr
+        else:
+            raise TypeError("stderr argument is of unsupported type")
+
+        if isinstance(args, list):
+            if isinstance(args[0], os.PathLike):
+                args[0] = self._path2str(args[0])
+
+            command = " ".join(args)
+        elif isinstance(args, os.PathLike):
+            command = self._path2str(args)
+        elif isinstance(args, str):
+            command = args
+        else:
+            raise TypeError("process arguments are of wrong type")
 
         commands = command.split(" && ")
         if len(commands) == 1:
@@ -438,118 +586,97 @@ class SSHConnection(ConnectionABC):
         if cwd:
             command = f"cd {self._path2str(cwd)} && {command}"
 
-        # vykonat prikaz
-        # stdin, stdout, stderr
-        stdout, stderr = self._c.exec_command(command)[1:]
-
-        if capture_output:
+        try:
             # create output object
-            out = CompletedProcess()
-            out.args = args
-
-            # loop until channels are exhausted
-            while (not stdout.channel.exit_status_ready() and
-                   not stderr.channel.exit_status_ready()):
-
-                # get data when available
-                if stdout.channel.recv_ready():
-                    out.stdout += str(stdout.channel.recv(1024), encoding)
-                if stderr.channel.recv_stderr_ready():
-                    out.stderr += str(stderr.channel.recv_stderr(1024),
-                                      encoding)
-
-            # strip unnecessary newlines
-            out.stdout.rstrip()
-            out.stderr.rstrip()
-
-            # get command return code
-            out.returncode = stdout.channel.recv_exit_status()
-
-            # check if return code is 0
-            if check:
-                out.check_returncode()
-
-            # print command stdout
-            if not suppress_out:
-                lprnt(f"{C}Printing remote output\n{'-' * 111}{R}")
-                lprnt(out.stdout)
-                lprnt(f"{C}{'-' * 111}{R}\n")
-
-            return out
-        else:
-            # check if return code is 0, else raise exception
-            if check:
-                returncode = stdout.channel.recv_exit_status()
-                if returncode != 0:
-                    raise CalledProcessError(returncode, command, "", "")
-
             cp = CompletedProcess()
             cp.args = args
 
-            return cp
+            # carry out command
+            ssh_stdin, ssh_stdout, ssh_stderr = self._c.exec_command(
+                command, bufsize=bufsize, timeout=timeout, get_pty=shell,
+                environment=env)
 
-    @property
-    def remote_home(self) -> str:
-        if not self._remote_home:
-            self.sftp
-            return self._remote_home
+            if input:
+                ssh_stdin.write(input)
+                ssh_stdin.flush()
 
-    @property
-    @_check_connections
-    def sftp(self) -> paramiko.SFTPClient:
-        """Opens and return sftp channel.
+            if stdout_pipe or stderr_pipe:
 
-        If SFTP coud be open then return SFTPClient instance else return None.
+                # loop until channels are exhausted
+                while (not ssh_stdout.channel.exit_status_ready() and
+                    not ssh_stderr.channel.exit_status_ready()):
 
-        Raises
-        ------
-        SFTPOpenError
-            when remote home could not be found
+                    # get data when available
+                    if ssh_stdout.channel.recv_ready():
+                        data = ssh_stdout.channel.recv(1024)
+                        if encoding:
+                            data_dec = str(data, encoding, errors)
+                            stdout_pipe.write(data_dec)
+                            cp.stdout = data_dec
+                        else:
+                            stdout_pipe.write(data)
+                            cp.stdout = data
 
-        :type: Optional[paramiko.SFTPClient]
-        """
-        if not self._sftp_open:
+                    if ssh_stderr.channel.recv_stderr_ready():
+                        data = ssh_stderr.channel.recv_stderr(1024)
+                        if encoding:
+                            data_dec = str(data, encoding, errors)
+                            stderr_pipe.write(data_dec)
+                            cp.stderr = data_dec
+                        else:
+                            stderr_pipe.write(data)
+                            cp.stderr = data
 
-            self._sftp = self._c.open_sftp()
-            self.local_home = os.path.expanduser("~")
+                # strip unnecessary newlines
+                cp.stdout = cp.stdout.rstrip()
+                cp.stderr = cp.stderr.rstrip()
 
-            for _ in range(3):  # niekedy zlyha preto sa opakuje viackrat
-                try:
-                    self._remote_home = self.run(
-                        ["echo $HOME"], suppress_out=True, quiet=True,
-                        check=True, capture_output=True).stdout.strip()
-                except CalledProcessError as e:
-                    print(f"{RED}Cannot establish remote home, trying again..")
-                    exception = e
-                else:
-                    self._sftp_open = True
-                    break
+                # get command return code
+                cp.returncode = ssh_stdout.channel.recv_exit_status()
+
+                # check if return code is 0
+                if check:
+                    cp.check_returncode()
+
+                # print command stdout
+                if not suppress_out:
+                    lprnt(f"{C}Printing remote output\n{'-' * 111}{R}")
+                    lprnt(cp.stdout)
+                    lprnt(f"{C}{'-' * 111}{R}\n")
+
+                return cp
             else:
-                print(f"{RED}Remote home could not be found {exception}")
-                self._sftp_open = False
-                raise SFTPOpenError("Remote home could not be found")
 
-        return self._sftp
+                # check if return code is 0, else raise exception
+                if check:
+                    returncode = ssh_stdout.channel.recv_exit_status()
+                    if returncode != 0:
+                        raise CalledProcessError(returncode, command, "", "")
+
+                return cp
+        except socket.timeout:
+            raise TimeoutExpired(args, timeout, cp.stdout, cp.stderr)
+
 
     @_check_connections(exclude_exceptions=(FileNotFoundError, ValueError))
-    def copy_files(self, files: List[str], remote_path: "SPath",
-                   local_path: "SPath", direction: str, quiet: bool = False):
+    def copy_files(self, files: List[str], remote_path: "_SPATH",
+                   local_path: "_SPATH", direction: str, quiet: bool = False):
         """Send files in the chosen direction local <-> remote.
 
         Parameters
         ----------
         files: List[str]
             list of files to upload/download
-        remote_path: "SPath"
+        remote_path: "_SPATH"
             path to remote directory with files
-        local_path: "SPath"
+        local_path: "_SPATH"
             path to local directory with files
         direction: str
             get for download and put for upload
         quiet: bool
             if True informative messages are suppresssed
         """
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             for f in files:
                 file_remote = jn(self._path2str(remote_path), f)
                 file_local = jn(self._path2str(local_path), f)
@@ -579,29 +706,9 @@ class SSHConnection(ConnectionABC):
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
 
-    @_check_connections
-    def _sftp_walk(self, remote_path: "SPath"):
-        """Recursive directory listing."""
-        remote_path = self._path2str(remote_path)
-        path = remote_path
-        files = []
-        folders = []
-        for f in self.sftp.listdir_attr(remote_path):
-            if S_ISDIR(f.st_mode):
-                folders.append(f.filename)
-            else:
-                files.append(f.filename)
-
-        yield path, folders, files
-
-        for folder in folders:
-            new_path = jn(remote_path, folder)
-            for x in self._sftp_walk(new_path):
-                yield x
-
     @_check_connections(exclude_exceptions=FileNotFoundError)
-    def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include: "GlobPat" = None, exclude: "GlobPat" = None,
+    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
+                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                       remove_after: bool = True, quiet: bool = False):
         """Download directory tree from remote.
 
@@ -609,16 +716,16 @@ class SSHConnection(ConnectionABC):
 
         Parameters
         ----------
-        remote_path: "SPath"
+        remote_path: "_SPATH"
             path to directory which should be downloaded
-        local_path: "SPath"
+        local_path: "_SPATH"
             directory to copy to, must be full path!
         remove_after: bool
             remove remote copy after directory is uploaded
-        include: GlobPat
+        include: _GLOBPAT
             glob pattern of files to include in copy, can be used
             simultaneously with exclude, default is None = no filtering
-        exclude: GlobPat
+        exclude: _GLOBPAT
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
         quiet: bool
@@ -700,8 +807,8 @@ class SSHConnection(ConnectionABC):
             self.rmtree(src)
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
-    def upload_tree(self, local_path: "SPath", remote_path: "SPath",
-                    include: "GlobPat" = None, exclude: "GlobPat" = None,
+    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
+                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                     remove_after: bool = True, quiet: bool = False):
         """Upload directory tree to remote.
 
@@ -709,16 +816,16 @@ class SSHConnection(ConnectionABC):
 
         Parameters
         ----------
-        local_path: "SPath"
+        local_path: "_SPATH"
             path to directory which should be uploaded
-        remote_path: "SPath"
+        remote_path: "_SPATH"
             directory to copy to, must be full path!
         remove_after: bool
             remove local copy after directory is uploaded
-        include: GlobPat
+        include: _GLOBPAT
             glob pattern of files to include in copy, can be used
             simultaneously with exclude, default is None = no filtering
-        exclude: GlobPat
+        exclude: _GLOBPAT
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
         quiet: bool
@@ -776,7 +883,7 @@ class SSHConnection(ConnectionABC):
 
         # file number and size statistics
         n_files = len(copy_files)
-        total = sum([f["size"] for f in copy_files])
+        total = float(sum([f["size"] for f in copy_files]))
 
         lprnt(f"\n|--> {C}Total number of files to copy:{R} {n_files}")
         lprnt(f"|--> {C}Total size of files to copy: {R} {b2h(total)}")
@@ -803,12 +910,12 @@ class SSHConnection(ConnectionABC):
             shutil.rmtree(src)
 
     @_check_connections
-    def isfile(self, path: "SPath") -> bool:
+    def isfile(self, path: "_SPATH") -> bool:
         """Check ifg path points to a file.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             path to check
 
         Raises
@@ -822,12 +929,12 @@ class SSHConnection(ConnectionABC):
             return False
 
     @_check_connections
-    def isdir(self, path: "SPath") -> bool:
+    def isdir(self, path: "_SPATH") -> bool:
         """Check if path points to directory.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             path to check
 
         Raises
@@ -841,14 +948,14 @@ class SSHConnection(ConnectionABC):
             return False
 
     @_check_connections
-    def Path(self, path: "SPath") -> SSHPath:
+    def Path(self, path: "_SPATH") -> SSHPath:
         """Provides API similar to pathlib.Path only for remote host.
 
         Only for Unix to Unix connections
 
         Parameters
         ----------
-        path: SPath
+        path: _SPATH
             provide initial path
 
         Returns
@@ -860,7 +967,7 @@ class SSHConnection(ConnectionABC):
 
     @_check_connections(exclude_exceptions=(FileExistsError, FileNotFoundError,
                                             OSError))
-    def mkdir(self, path: "SPath", mode: int = 511, exist_ok: bool = True,
+    def mkdir(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
               parents: bool = True, quiet: bool = True):
         """Recursively create directory.
 
@@ -868,7 +975,7 @@ class SSHConnection(ConnectionABC):
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             path to directory which should be created
         mode: int
             create directory with mode, default is 511
@@ -932,13 +1039,13 @@ class SSHConnection(ConnectionABC):
                                   f"{self.server_name}@{path}")
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
-    def rmtree(self, path: "SPath", ignore_errors: bool = False,
+    def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
         """Recursively remove directory tree.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             directory to be recursively removed
         ignore_errors: bool
             if True only log warnings do not raise exception
@@ -953,7 +1060,7 @@ class SSHConnection(ConnectionABC):
         sn = self.server_name
         path = self._path2str(path)
 
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
 
             try:
@@ -975,12 +1082,12 @@ class SSHConnection(ConnectionABC):
                     raise FileNotFoundError(e)
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
-    def listdir(self, path: "SPath") -> List[str]:
+    def listdir(self, path: "_SPATH") -> List[str]:
         """Lists contents of specified directory.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             directory path
 
         Returns
@@ -999,35 +1106,41 @@ class SSHConnection(ConnectionABC):
             raise FileNotFoundError(f"Directory does not exist: {e}")
 
     @_check_connections
-    def change_dir(self, path: "SPath"):
+    def change_dir(self, path: "_SPATH"):
         """Change sftp working directory.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             new directory path
         """
         self.sftp.chdir(self._path2str(path))
 
     @_check_connections(exclude_exceptions=FileNotFoundError)
-    def open(self, filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8",
-             bufsize: int = -1) -> "SFTPFile":
+    def open(self, filename: "_SPATH", mode: str = "r",
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> "SFTPFile":
         """Opens remote file, works as python open function.
 
         Can be used both as a function or a decorator.
 
         Parameters
         ----------
-        filename: SPath
+        filename: _SPATH
             path to file to be opened
         mode: str
             select mode to open file. Same as python open modes
-        encoding: str
+        encoding: Optional[str]
             encoding type to decode file bytes stream
         bufsize: int
             buffer size, 0 turns off buffering, 1 uses line buffering, and any
             number greater than 1 (>1) uses that specific buffer size
+        errors: Optional[str]
+            string that specifies how encoding and decoding errors are to be
+            handled, see builtin function
+            `open <https://docs.python.org/3/library/functions.html#open>`_
+            documentation for more details
 
         Raises
         ------
@@ -1035,6 +1148,8 @@ class SSHConnection(ConnectionABC):
             when mode is 'r' and file does not exist
         """
         path = self._path2str(filename)
+        encoding = encoding if encoding else "utf-8"
+        errors = errors if errors else "strict"
 
         if not self.isfile(path) and "r" in mode:
             raise FileNotFoundError(f"Cannot open {path} for reading, "
@@ -1044,22 +1159,172 @@ class SSHConnection(ConnectionABC):
             data = self.paramiko_read(size=size)
 
             if isinstance(data, bytes) and "b" not in mode and encoding:
-                data = data.decode(encoding)
+                data = data.decode(encoding=encoding, errors=errors)
 
             return data
 
         # open file
-        file_obj = self.sftp.open(path, mode=mode, bufsize=bufsize)
+        try:
+            file_obj = self.sftp.open(path, mode=mode, bufsize=bufsize)
+        except IOError as e:
+            self.log.exception(f"Error while opening file {filename}: {e}")
+            raise e
+        else:
+            # rename the read method so i is not overwritten
+            setattr(file_obj, "paramiko_read", getattr(file_obj, "read"))
 
-        # rename the read method so i is not overwritten
-        setattr(file_obj, "paramiko_read", getattr(file_obj, "read"))
-
-        # repalce read with new method that automatically decodes
-        file_obj.read = MethodType(read_decode, file_obj)
+            # repalce read with new method that automatically decodes
+            file_obj.read = MethodType(read_decode, file_obj)
 
         return file_obj
 
-    # ! DEPRECATED
+    @property
+    def osname(self) -> Literal["nt", "posix"]:
+        """Try to get remote os name same as `os.name` function.
+
+        Warnings
+        --------
+        Due to the complexity of the check, this method only checks is remote
+        server is windows by trying to run `ver` command. If that fails the
+        remote is automatically assumed to be POSIX which should hold true
+        in most cases.
+        If absolute certianty is required you should do your own checks.
+
+        Note
+        ----
+        This methods main purpose is to help choose the right flavour when
+        instantiating `ssh_utilities.path.SSHPath`. For its use the provided
+        accuracy should be sufficient.
+
+        Returns
+        -------
+        Literal["nt", "posix"]
+            remote server os name
+
+        Raises
+        ------
+        UnknownOsError
+            if remote server os name could not be determined
+        """
+        if self._osname:
+            return self._osname
+
+        error_count = 0
+
+        # Try some common cmd strings
+        for cmd in ('ver', 'command /c ver', 'cmd /c ver'):
+            try:
+                info = self.run([cmd], suppress_out=True, quiet=True,
+                                check=True, capture_output=True).stdout
+            except CalledProcessError as e:
+                self.log.debug(f"Couldn't get os name: {e}")
+                error_count += 1
+            else:
+                if "windows" in info.lower():
+                    self._osname = "nt"
+                    break
+                else:
+                    continue
+        else:
+            # no errors were thrown, but os name could not be identified from
+            # the response strings
+            if error_count == 0:
+                raise UnknownOsError("Couldn't get os name")
+            else:
+                self._osname = "posix"
+
+        return self._osname
+
+    # * additional methods needed by remote ssh class, not in ABC definition
+    def _get_ssh(self, authentication_attempts: int = 0):
+
+        try:
+            if self.rsa_key:
+                # connect with public key
+                self._c.connect(self.address, username=self.username,
+                                pkey=self.rsa_key)
+            else:
+                # if password was passed try to connect with it
+                self._c.connect(self.address, username=self.username,
+                                password=self.password, look_for_keys=False)
+
+        except (paramiko.ssh_exception.AuthenticationException,
+                paramiko.ssh_exception.NoValidConnectionsError) as e:
+            self.log.warning(f"Error in authentication {e}. Trying again ...")
+
+            # max three attempts to connect at once
+            authentication_attempts += 1
+            if authentication_attempts >= 3:
+                raise ConnectionError(f"Connection to {self.address} "
+                                      f"could not be established")
+            else:
+                self._get_ssh(authentication_attempts=authentication_attempts)
+
+    @property
+    def remote_home(self) -> str:
+        if not self._remote_home:
+            self.sftp
+
+        return self._remote_home
+
+    @property  # type: ignore
+    @_check_connections
+    def sftp(self) -> "SFTPClient":
+        """Opens and return sftp channel.
+
+        If SFTP coud be open then return SFTPClient instance else return None.
+
+        Raises
+        ------
+        SFTPOpenError
+            when remote home could not be found
+
+        :type: Optional[paramiko.SFTPClient]
+        """
+        if not self._sftp_open:
+
+            self._sftp = self._c.open_sftp()
+            self.local_home = os.path.expanduser("~")
+
+            for _ in range(3):  # sometimes failes, give it three tries
+                try:
+                    self._remote_home = self.run(
+                        ["echo $HOME"], suppress_out=True, quiet=True,
+                        check=True, capture_output=True).stdout.strip()
+                except CalledProcessError as e:
+                    print(f"{RED}Cannot establish remote home, trying again..")
+                    exception = e
+                else:
+                    self._sftp_open = True
+                    break
+            else:
+                print(f"{RED}Remote home could not be found {exception}")
+                self._sftp_open = False
+                raise SFTPOpenError("Remote home could not be found")
+
+        return self._sftp
+
+    @_check_connections
+    def _sftp_walk(self, remote_path: "_SPATH"):
+        """Recursive directory listing."""
+        remote_path = self._path2str(remote_path)
+        path = remote_path
+        files = []
+        folders = []
+        for f in self.sftp.listdir_attr(remote_path):
+            if S_ISDIR(f.st_mode):
+                folders.append(f.filename)
+            else:
+                files.append(f.filename)
+
+        yield path, folders, files
+
+        for folder in folders:
+            new_path = jn(remote_path, folder)
+            for x in self._sftp_walk(new_path):
+                yield x
+
+    # ! DEPRECATED methods, kept for backwards compatibility reasons
     @_check_connections
     def sendCommand(self, command: str, suppress_out: bool,
                     quiet: bool = True):

@@ -2,10 +2,11 @@
 
 import re
 import sys
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Sequence, Union
 
-from colorama import Back
 from paramiko.config import SSHConfig
 from tqdm import tqdm
 from tqdm.utils import _term_move_up
@@ -14,7 +15,7 @@ from .exceptions import CalledProcessError
 
 __all__ = ["ProgressBar", "N_lines_up", "bytes_2_human_readable",
            "CompletedProcess", "lprint", "for_all_methods", "glob2re",
-           "ProgBarNew", "file_filter", "config_parser"]
+           "file_filter", "config_parser", "context_timeit"]
 
 
 class CompletedProcess:
@@ -31,6 +32,14 @@ class CompletedProcess:
         return (f"<CompletedProcess>(\n"
                 f"stdout: {self.stdout}\nstderr: {self.stderr}\n"
                 f"returncode: {self.returncode}\nargs: {self.args})")
+
+    @property
+    def cmd(self):
+        return self.args
+
+    @property
+    def output(self):
+        return self.stdout
 
     def check_returncode(self):
         """Check if remote process return code was 0, if not raise exception.
@@ -88,7 +97,7 @@ class _TqdmWrapper(tqdm):
         super().write(self._prefix + s, file=_file, end=end, nolock=nolock)
 
 
-def ProgressBar(total: Optional[int] = None, unit: str = 'b',
+def ProgressBar(total: Optional[float] = None, unit: str = 'b',
                 unit_scale: bool = True, miniters: int = 1, ncols: int = 100,
                 unit_divisor: int = 1024, write_up=2,
                 quiet: bool = True, *args, **kwargs
@@ -134,7 +143,7 @@ def ProgressBar(total: Optional[int] = None, unit: str = 'b',
 class lprint:
     """Callable class that limits print output.
 
-    Paremeters
+    Parameters
     ----------
     text: Any
         content to print
@@ -178,7 +187,7 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
 
     Static and class methods must be excluded or they will not work
 
-    Use subclasses=True with great care! it will decorate methods for all
+    Use `subclasses=True` with great care! it will decorate methods for all
     instances of class in your module
     """
     def decorate(cls):
@@ -204,6 +213,10 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
 class N_lines_up:
     """Move cursor N lines up.
 
+    Warnings
+    --------
+    function is deprecated !
+
     Parameters
     ----------
     quiet: bool
@@ -223,6 +236,18 @@ class N_lines_up:
 
 
 class file_filter:
+    """Discriminate files to copy by passed in glob patterns.
+
+    This is a callable class and works much in a same way as
+    operator.itemgetter
+
+    Parameters
+    ----------
+    include: Optional[str]
+        pattern of files to include
+    exclude: Optional[str]
+        patttern if files to exclude
+    """
 
     def __init__(self, include: Optional[str], exclude: Optional[str]) -> None:
 
@@ -268,7 +293,7 @@ def glob2re(patern):
 
     Parameters
     ----------
-    pattern: str
+    patern: str
         shell glob pattern
 
     References
@@ -383,6 +408,26 @@ def bytes_2_human_readable(number_of_bytes: Union[int, float],
     number_of_bytes = round(number_of_bytes, precision)
 
     return f"{number_of_bytes} {unit}"
+
+
+@contextmanager
+def context_timeit(quiet: bool = False):
+    """Context manager which timme the code executed in its scope.
+
+    Simple stats about CPU time are printed on context exit.
+
+    Parameters
+    ----------
+    quiet : bool, optional
+        If true no statistics are printed on context exit, by default False
+    """
+    start = time.time()
+    yield
+    end = time.time()
+    if not quiet:
+        print(f"CPU time: {(end - start):.2f}s")
+    else:
+        pass
 
 
 # \033[<L>;<C>H # Move the cursor to line L, column C

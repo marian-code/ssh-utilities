@@ -3,42 +3,50 @@
 Has the same API as remote version.
 """
 
-from .base import ConnectionABC
-from .utils import lprint
-import shutil
-from .constants import Y, G, C, R
-import os
-from typing import TYPE_CHECKING, Union, List, Optional, IO
-from pathlib import Path
 import logging
+import os
+import shutil
 import subprocess
+from pathlib import Path
+from socket import gethostname
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
+from typing_extensions import Literal
+
+from .base import ConnectionABC
+from .constants import C, G, R, Y
+from .utils import context_timeit, file_filter, lprint
 
 if TYPE_CHECKING:
-    from .path import SSHPath
-    SPath = Union[str, Path, SSHPath]
+    from .typeshed import _GLOBPAT, _SPATH, _CMD, _FILE, _ENV
 
 __all__ = ["LocalConnection"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
 
-    def __init__(self, address, username, password=None, sshKey=None,
-                 line_rewrite=True, warn_on_login=False, server_name=None,
-                 logger=None):
+    _osname: Literal["nt", "posix", "java", ""] = ""
 
+    def __init__(self, address: Optional[str], username: str,
+                 password: Optional[str] = None,
+                 rsa_key_file: Optional[Union[str, Path]] = None,
+                 line_rewrite: bool = True, warn_on_login: bool = False,
+                 server_name: Optional[str] = None,
+                 logger: logging.Logger = None) -> None:
+
+        # set login credentials
+        self.password = password
+        self.address = address
         self.username = username
+        self.rsa_key_file = rsa_key_file
 
-        if server_name is None:
-            from socket import gethostname
-            self.server_name = gethostname().upper()
-        else:
-            self.server_name = server_name.upper()
+        self.server_name = server_name if server_name else gethostname()
+        self.server_name = self.server_name.upper()
 
-        if logger is None:
-            self.log = logging.getLogger()
-        else:
-            self.log = logger
+        self.log = logger if logger else LOGGER
 
         self.local = True
 
@@ -46,7 +54,8 @@ class LocalConnection(ConnectionABC):
         return self.to_str("LocalConnection", self.server_name, None,
                            self.username, None)
 
-    def close(self, *, quiet: bool):
+    @staticmethod
+    def close(*, quiet: bool):
         """Close emulated local connection."""
         lprint(quiet)(f"{G}Closing local connection")
 
@@ -54,12 +63,29 @@ class LocalConnection(ConnectionABC):
     def ssh_log(log_file="paramiko.log", level="WARN"):
         lprint()(f"{Y}Local sessions are not logged!")
 
-    def run(self, args: List[str], *, suppress_out: bool, quiet: bool = True,
-            capture_output: bool = False, check: bool = False,
-            cwd: Optional[Union[str, Path]] = None, encoding: str = "utf-8"
+    @staticmethod
+    def run(args: "_CMD", *, suppress_out: bool, quiet: bool = True,
+            bufsize: int = -1, executable: "_SPATH" = None,
+            input: Optional[str] = None, stdin: "_FILE" = None,
+            stdout: "_FILE" = None, stderr: "_FILE" = None,
+            capture_output: bool = False, shell: bool = False,
+            cwd: "_SPATH" = None, timeout: Optional[float] = None,
+            check: bool = False, encoding: Optional[str] = None,
+            errors: Optional[str] = None, text: Optional[bool] = None,
+            env: Optional["_ENV"] = None, 
+            universal_newlines: Optional[bool] = None
             ) -> subprocess.CompletedProcess:
-        out = subprocess.run(args, capture_output=capture_output, check=check,
-                             cwd=cwd, encoding=encoding)
+
+        if capture_output:
+            stdout =subprocess.PIPE
+            stderr = subprocess.PIPE
+
+        out = subprocess.run(args, bufsize=bufsize, executable=executable,
+                             input=input, stdin=stdin, stdout=stdout,
+                             stderr=stderr, shell=shell, cwd=cwd,
+                             timeout=timeout, check=check, encoding=encoding,
+                             errors=errors, text=text,
+                             universal_newlines=universal_newlines)
 
         if capture_output and not suppress_out:
             lprint(quiet)(f"{C}Printing local output\n{'-' * 111}{R}")
@@ -68,10 +94,11 @@ class LocalConnection(ConnectionABC):
 
         return out
 
-    def copy_files(self, files: List[str], remote_path: "SPath",
-                   local_path: "SPath", direction: str, quiet: bool = False):
+    @staticmethod
+    def copy_files(files: List[str], remote_path: "_SPATH",
+                   local_path: "_SPATH", direction: str, quiet: bool = False):
 
-        with self.context_timeit(quiet):
+        with context_timeit(quiet):
             for f in files:
                 file_remote = Path(remote_path) / f
                 file_local = Path(local_path) / f
@@ -84,58 +111,81 @@ class LocalConnection(ConnectionABC):
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
 
-    def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include="all", remove_after: bool = True,
-                      quiet: bool = False):
-        # TODO include parameter is not used!!!
+    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
+                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+                      remove_after: bool = True, quiet: bool = False):
+
+        def _cpy(src: str, dst: str):
+            if allow_file(src):
+                shutil.copy2(src, dst)
+
+        allow_file = file_filter(include, exclude)
+
         remote_path = self._path2str(remote_path)
         local_path = self._path2str(local_path)
 
         if remove_after:
-            shutil.move(remote_path, local_path)
+            shutil.move(remote_path, local_path, copy_function=_cpy)
         else:
-            shutil.copytree(remote_path, local_path)
+            shutil.copytree(remote_path, local_path, copy_function=_cpy)
 
-    def upload_tree(self, local_path: "SPath", remote_path: "SPath",
+    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
+                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                     remove_after: bool = True, quiet: bool = False):
-        remote_path = self._path2str(remote_path)
-        local_path = self._path2str(local_path)
 
-        if remove_after:
-            shutil.move(local_path, remote_path)
-        else:
-            shutil.copytree(local_path, remote_path)
+        self.download_tree(local_path, remote_path, include=include,
+                           exclude=exclude, remove_after=remove_after,
+                           quiet=quiet)
 
-    def isfile(self, path: "SPath") -> bool:
+    @staticmethod
+    def isfile(path: "_SPATH") -> bool:
         return os.path.isfile(path)
 
-    def isdir(self, path: "SPath") -> bool:
+    @staticmethod
+    def isdir(path: "_SPATH") -> bool:
         return os.path.isdir(path)
 
-    def Path(self, path: "SPath") -> Path:
+    def Path(self, path: "_SPATH") -> Path:
         return Path(self._path2str(path))
 
-    def mkdir(self, path: "SPath", mode: int = 511, exist_ok: bool = True,
+    @staticmethod
+    def mkdir(path: "_SPATH", mode: int = 511, exist_ok: bool = True,
               parents: bool = True, quiet: bool = True):
         Path(path).mkdir(mode=mode, parents=parents, exist_ok=exist_ok)
 
-    def rmtree(self, path: "SPath", ignore_errors: bool = False,
+    @staticmethod
+    def rmtree(path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
         shutil.rmtree(path, ignore_errors=ignore_errors)
 
-    def listdir(self, path: "SPath") -> List[str]:
+    @staticmethod
+    def listdir(path: "_SPATH") -> List[str]:
         return os.listdir(path)
 
-    def open(self, filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8", bufsize: int = -1) -> IO:
-        return open(filename, mode, encoding=encoding)
+    @staticmethod
+    def open(filename: "_SPATH", mode: str = "r",
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> IO:
+        encoding = encoding if encoding else "utf-8"
+        errors = errors if errors else "strict"
+
+        return open(filename, mode, encoding=encoding, errors=errors)
+
+    @property
+    def osname(self) -> Literal["nt", "posix", "java"]:
+        if not self._osname:
+            self._osname = os.name
+
+        return self._osname
 
     # ! DEPRECATED
-    def sendCommand(self, command: str, suppress_out: bool,
-                    quiet: bool = True):
-        return subprocess.run([command], capture_output=True).stdout
+    @staticmethod
+    def sendCommand(command: str, suppress_out: bool, quiet: bool = True):
+        return subprocess.run([command], stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).stdout
 
-    sendFiles = copy_files
-    send_files = copy_files
+    sendFiles = copy_files  # type: ignore
+    send_files = copy_files  # type: ignore
     downloadTree = download_tree
     uploadTree = upload_tree

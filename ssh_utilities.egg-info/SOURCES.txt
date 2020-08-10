@@ -1,4 +1,5 @@
-README.md
+MANIFEST.in
+README.rst
 setup.cfg
 setup.py
 ssh_utilities/__init__.py
@@ -6,12 +7,11 @@ ssh_utilities/base.py
 ssh_utilities/connection.py
 ssh_utilities/constants.py
 ssh_utilities/exceptions.py
-ssh_utilities/load_balancer.py
 ssh_utilities/local.py
 ssh_utilities/path.py
 ssh_utilities/remote.py
-ssh_utilities/ssh_utils.py
 ssh_utilities/utils.py
+ssh_utilities/version.py
 ssh_utilities.egg-info/PKG-INFO
 ssh_utilities.egg-info/SOURCES.txt
 ssh_utilities.egg-info/dependency_links.txt

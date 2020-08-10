@@ -1,25 +1,29 @@
 """Template module for all connections classes."""
-import time
+import logging
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from os import fspath
-from typing import TYPE_CHECKING, Optional, Union, List, IO
 from pathlib import Path
+from typing import IO, TYPE_CHECKING, List, Optional, Union
+
+from typing_extensions import Literal
+
 from .path import SSHPath
 
 if TYPE_CHECKING:
-    SPath = Union[str, Path, SSHPath]
     from .utils import CompletedProcess as CP
     from subprocess import CompletedProcess as sCP
     CompletedProcess = Union[CP, sCP]
     from paramiko.sftp_file import SFTPFile
+    from .typeshed import _GLOBPAT, _SPATH, _CMD, _ENV, _FILE
 
 
 __all__ = ["ConnectionABC"]
 
+logging.getLogger(__name__)
+
 
 class ConnectionABC(ABC):
-    """Class defining connection classes API."""
+    """Class defining API for connection classes."""
 
     @abstractmethod
     def __str__(self):
@@ -30,89 +34,91 @@ class ConnectionABC(ABC):
         pass
 
     @abstractmethod
-    def ssh_log(self, log_file=""):
+    def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
+                level: str = "WARN"):
         pass
 
     @abstractmethod
-    def copy_files(self, files: List[str], remote_path: "SPath",
-                   local_path: "SPath", direction: str, quiet: bool = False):
-        pass
-
-    @abstractmethod
-    def run(self, args: List[str], *, suppress_out: bool, quiet: bool = True,
-            capture_output: bool = False, check: bool = False,
-            cwd: Optional[Union[str, Path]] = None, encoding: str = "utf-8"
+    def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
+            bufsize: int = -1, executable: "_SPATH" = None,
+            input: Optional[str] = None, stdin: "_FILE" = None,
+            stdout: "_FILE" = None, stderr: "_FILE" = None,
+            capture_output: bool = False, shell: bool = False,
+            cwd: "_SPATH" = None, timeout: Optional[float] = None,
+            check: bool = False, encoding: Optional[str] = None,
+            errors: Optional[str] = None, text: Optional[bool] = None,
+            env: Optional["_ENV"] = None, 
+            universal_newlines: Optional[bool] = None
             ) -> "CompletedProcess":
         pass
 
     @abstractmethod
-    def download_tree(self, remote_path: "SPath", local_path: "SPath",
-                      include="all", remove_after: bool = True,
-                      quiet: bool = False):
+    def copy_files(self, files: List[str], remote_path: "_SPATH",
+                   local_path: "_SPATH", direction: str, quiet: bool = False):
         pass
 
     @abstractmethod
-    def upload_tree(self, local_path: "SPath", remote_path: "SPath",
+    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
+                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+                      remove_after: bool = True, quiet: bool = False):
+        pass
+
+    @abstractmethod
+    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
+                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                     remove_after: bool = True, quiet: bool = False):
         pass
 
     @abstractmethod
-    def isfile(self, path: "SPath") -> bool:
+    def isfile(self, path: "_SPATH") -> bool:
         pass
 
     @abstractmethod
-    def isdir(self, path: "SPath") -> bool:
+    def isdir(self, path: "_SPATH") -> bool:
         pass
 
     @abstractmethod
-    def Path(self, path: "SPath") -> Union[Path, SSHPath]:
+    def Path(self, path: "_SPATH") -> Union[Path, SSHPath]:
         pass
 
     @abstractmethod
-    def mkdir(self, path: "SPath", mode: int = 511, exist_ok: bool = True,
+    def mkdir(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
               parents: bool = True, quiet: bool = True):
         pass
 
     @abstractmethod
-    def rmtree(self, path: "SPath", ignore_errors: bool = False,
+    def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
         pass
 
     @abstractmethod
-    def listdir(self, path: "SPath") -> List[str]:
+    def listdir(self, path: "_SPATH") -> List[str]:
         pass
 
     @abstractmethod
-    def open(self, filename: "SPath", mode: str = "r",
-             encoding: Optional[str] = "utf-8",
-             bufsize: int = -1) -> Union[IO, "SFTPFile"]:
+    def open(self, filename: "_SPATH", mode: str = "r",
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> Union[IO, "SFTPFile"]:
+        pass
+
+    @property
+    @abstractmethod
+    def osname(self) -> Literal["nt", "posix", "java"]:
         pass
 
     # Normal methods
-    @contextmanager
-    def context_timeit(self, quiet: bool = False):
-        start = time.time()
-        yield
-        end = time.time()
-        if not quiet:
-            print(f"CPU time: {(end - start):.2f}s")
-        else:
-            pass
-
-    def _path2str(self, path: Optional["SPath"]) -> str:
+    @staticmethod
+    def _path2str(path: Optional["_SPATH"]) -> str:
         """Converts pathlib.Path, SSHPath or plain str to string.
 
         Also remove any rtailing backslashes.
 
         Parameters
         ----------
-        path: "SPath"
+        path: "_SPATH"
             path to convert to string, if string is passed,
             then just returns it
-
-        Warnings
-        --------
-        Contains user specific rules!
 
         Raises
         ------
@@ -175,7 +181,7 @@ class ConnectionABC(ABC):
 
         See also
         --------
-        :attr:`sftp` more recent implementation
+        :attr:`ssh_utilities.remote.SSHConnection.sftp` more recent implementation
         """
         pass
 
