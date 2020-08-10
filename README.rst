@@ -107,7 +107,11 @@ https://ssh-utilities.readthedocs.io/en/latest/
 Simple Usage
 ------------
 
+<<<<<<< HEAD
 For more detailed usage examples please refer to
+=======
+for more detailed usage examples please refer to
+>>>>>>> d2d66b6bae3292790f7a91d47c4b6a07f1f05414
 `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in

@@ -8,6 +8,8 @@ __all__ = ["CalledProcessError", "SFTPOpenError", "ConnectionError",
 
 logging.getLogger(__name__)
 
+logging.getLogger(__name__)
+
 
 class SFTPOpenError(Exception):
     """Raised when sftp channel could not be opened."""
