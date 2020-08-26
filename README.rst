@@ -29,7 +29,7 @@ Paramiko wrapper
         :alt: Checked with mypy
         :target: http://mypy-lang.org
 
-    .. image:: https://img.shields.io/pypi/dm/ss-utilities
+    .. image:: https://img.shields.io/pypi/dm/ssh-utilities
         :alt: PyPI - Downloads
 
 :License:
@@ -107,11 +107,7 @@ https://ssh-utilities.readthedocs.io/en/latest/
 Simple Usage
 ------------
 
-<<<<<<< HEAD
-For more detailed usage examples please refer to
-=======
 for more detailed usage examples please refer to
->>>>>>> d2d66b6bae3292790f7a91d47c4b6a07f1f05414
 `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in
