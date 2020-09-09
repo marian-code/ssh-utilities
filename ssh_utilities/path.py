@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 __all__ = ["SSHPath"]
 
-logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 DEC_EXCLUDE = ("_parse_args", "_from_parts", "_from_parsed_parts",
                "_format_parsed_parts", "cwd", "home")
@@ -105,10 +105,14 @@ class SSHPath(Path):
 
         Copied and adddapted from pathlib.
         """
-        if connection.osname == 'nt':
-            cls._flavour = PureWindowsPath._flavour  # type: ignore
-        else:
-            cls._flavour = PurePosixPath._flavour  # type: ignore
+        try:
+            if connection.osname == 'nt':
+                cls._flavour = PureWindowsPath._flavour  # type: ignore
+            else:
+                cls._flavour = PurePosixPath._flavour  # type: ignore
+        except AttributeError as e:
+            print(e)
+            log.exception(e)
 
         self = cls._from_parts(args, init=False)  # type: ignore
         self._c = connection
@@ -466,7 +470,7 @@ class SSHPath(Path):
         "SSHPath"
             [description]
         """
-        return SSHPath(self._c.sftp.normalize(self._2str))
+        return SSHPath(self._c, self._c.sftp.normalize(self._2str))
 
     def rglob(self, pattern: str) -> Generator["SSHPath", None, None]:
         """Glob the given relative pattern in directory given by this path.

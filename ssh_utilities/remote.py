@@ -709,7 +709,7 @@ class SSHConnection(ConnectionABC):
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
                       include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                      remove_after: bool = True, quiet: bool = False):
+                      remove_after: bool = False, quiet: bool = False):
         """Download directory tree from remote.
 
         Remote direcctory must exist otherwise exception is raised.
@@ -809,7 +809,7 @@ class SSHConnection(ConnectionABC):
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
                     include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                    remove_after: bool = True, quiet: bool = False):
+                    remove_after: bool = False, quiet: bool = False):
         """Upload directory tree to remote.
 
         Local path must exist otherwise, exception is raised.
