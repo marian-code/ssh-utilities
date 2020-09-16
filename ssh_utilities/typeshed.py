@@ -1,3 +1,5 @@
+"""MOdule containing typing aliases for ssh-utilities."""
+
 from typing import IO, TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
 
 if TYPE_CHECKING:

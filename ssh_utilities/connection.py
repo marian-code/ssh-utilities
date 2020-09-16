@@ -16,10 +16,9 @@ from typing_extensions import Literal
 from .constants import CONFIG_PATH, RED, R
 from .local import LocalConnection
 from .remote import SSHConnection
-from .utils import config_parser, lprint
+from .utils import config_parser
 
 if TYPE_CHECKING:
-    from logging import Logger
     from pathlib import Path
 
 __all__ = ["Connection"]
@@ -55,23 +54,11 @@ class _ConnectionMeta(type):
         return type.__new__(cls, classname, bases, dictionary)
 
     def __getitem__(cls, key: str) -> Union[SSHConnection, LocalConnection]:
+        return cls.get(key, local=False, quiet=False)
 
-        try:
-            credentials = cls.available_hosts[key]
-        except KeyError as e:
-            raise KeyError(f"No such host  available: {e}")
-        else:
-            try:
-                return cls.open(credentials["user"], credentials["hostname"],
-                                credentials["identityfile"][0],
-                                server_name=key,
-                                share_connection=cls.SHARE_CONNECTION)
-            except KeyError as e:
-                raise KeyError(f"{RED}Missing key in config dictionary: "
-                               f"{R}{e}")
-
-    def open(cls, *args, **kwargs) -> Union[SSHConnection, LocalConnection]:
-        pass
+    def get(cls, *args, **kwargs) -> Union[SSHConnection, LocalConnection]:
+        """Overriden in class that inherits this metaclass."""
+        ...
 
 
 class Connection(metaclass=_ConnectionMeta):
@@ -115,7 +102,7 @@ class Connection(metaclass=_ConnectionMeta):
     disk
 
     >>> from ssh_utilities import Connection
-    >>> Connection.from_str(<string>)
+    >>> conn = Connection.from_str(<string>)
 
     returns an initialized connection instance.
 
@@ -124,12 +111,13 @@ class Connection(metaclass=_ConnectionMeta):
     passwords
 
     >>> from ssh_utilities import Connection
-    >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>,
-                             <server_name>, <logger>, <share_connection>):
+    >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>,
+                               <server_name>, <share_connection>):
     """
 
-    def __init__(self, sshServer: str, local: bool = False) -> None:
-        self._connection = self.get(sshServer, local=local)
+    def __init__(self, ssh_server: str, local: bool = False,
+                 quiet: bool = False) -> None:
+        self._connection = self.get(ssh_server, local=local, quiet=quiet)
 
     def __enter__(self) -> Union[SSHConnection, LocalConnection]:
         return self._connection
@@ -160,34 +148,36 @@ class Connection(metaclass=_ConnectionMeta):
 
     @overload
     @classmethod
-    def get(cls, sshServer: str, local: Literal[False],
+    def get(cls, ssh_server: str, local: Literal[False], quiet: bool
             ) -> SSHConnection:
         ...
 
     @overload
     @classmethod
-    def get(cls, sshServer: str, local: Literal[True],
+    def get(cls, ssh_server: str, local: Literal[True], quiet: bool,
             ) -> LocalConnection:
         ...
 
     @overload
     @classmethod
-    def get(cls, sshServer: str, local: bool,
+    def get(cls, ssh_server: str, local: bool, quiet: bool,
             ) -> Union[SSHConnection, LocalConnection]:
         ...
 
     @classmethod
-    def get(cls, sshServer: str, local: bool = False):
+    def get(cls, ssh_server: str, local: bool = False, quiet: bool = False):
         """Get Connection based on one of names defined in .ssh/config file.
 
         If name of local PC is passed initilize LocalConnection
 
         Parameters
         ----------
-        sshServer : str
+        ssh_server : str
             server name to connect to defined in ~/.ssh/config file
         local: bool
             if True return emulated connection to loacl host
+        quiet: bool
+            If True suppress login messages
 
         Raises
         ------
@@ -200,14 +190,29 @@ class Connection(metaclass=_ConnectionMeta):
             Instance of SSHConnection for selected server
         """
         if local:
-            return cls.open(getpass.getuser(), server_name=gethostname())
+            return cls.open(getpass.getuser(), server_name=gethostname(),
+                            quiet=quiet)
+
+        try:
+            credentials = cls.available_hosts[ssh_server]
+        except KeyError as e:
+            raise KeyError(f"couldn't find login credentials for {ssh_server}:"
+                           f" {e}")
         else:
-            return cls.__getitem__(sshServer)
+            try:
+                return cls.open(credentials["user"], credentials["hostname"],
+                                credentials["identityfile"][0],
+                                server_name=ssh_server, quiet=quiet,
+                                share_connection=cls.SHARE_CONNECTION)
+            except KeyError as e:
+                raise KeyError(f"{RED}missing key in config dictionary for "
+                               f"{ssh_server}: {R}{e}")
 
     get_connection = get
 
     @classmethod
-    def from_str(cls, string: str) -> Union[SSHConnection, LocalConnection]:
+    def from_str(cls, string: str, quiet: bool = False
+                 ) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
         String must be formated as defined by `base.ConnectionABC.to_str`
@@ -217,6 +222,8 @@ class Connection(metaclass=_ConnectionMeta):
         ----------
         string: str
             str to initialize connection from
+        quiet: bool
+            If True suppress login messages
 
         Returns
         -------
@@ -237,7 +244,7 @@ class Connection(metaclass=_ConnectionMeta):
         except IndexError:
             raise ValueError("String is not formated correctly")
 
-        return cls.open(user_name, address, ssh_key, server_name)
+        return cls.open(user_name, address, ssh_key, server_name, quiet=quiet)
 
     @classmethod
     def set_shared(cls, number_of_shared: Union[int, bool]):
@@ -258,30 +265,27 @@ class Connection(metaclass=_ConnectionMeta):
 
     @overload
     @staticmethod
-    def open(sshUsername: str, sshServer: None = None,
-             sshKey: Optional[Union[str, "Path"]] = None,
-             sshPassword: Optional[str] = None,
-             server_name: Optional[str] = None,
-             logger: Optional["Logger"] = None,
+    def open(ssh_username: str, ssh_server: None = None,
+             ssh_key_file: Optional[Union[str, "Path"]] = None,
+             ssh_password: Optional[str] = None,
+             server_name: Optional[str] = None, quiet: bool = False,
              share_connection: int = 10) -> LocalConnection:
         ...
 
     @overload
     @staticmethod
-    def open(sshUsername: str, sshServer: str,
-             sshKey: Optional[Union[str, "Path"]] = None,
-             sshPassword: Optional[str] = None,
-             server_name: Optional[str] = None,
-             logger: Optional["Logger"] = None,
+    def open(ssh_username: str, ssh_server: str,
+             ssh_key_file: Optional[Union[str, "Path"]] = None,
+             ssh_password: Optional[str] = None,
+             server_name: Optional[str] = None, quiet: bool = False,
              share_connection: int = 10) -> SSHConnection:
         ...
 
     @staticmethod
-    def open(sshUsername: str, sshServer: Optional[str] = "",
-             sshKey: Optional[Union[str, "Path"]] = None,
-             sshPassword: Optional[str] = None,
-             server_name: Optional[str] = None,
-             logger: Optional["Logger"] = None,
+    def open(ssh_username: str, ssh_server: Optional[str] = "",
+             ssh_key_file: Optional[Union[str, "Path"]] = None,
+             ssh_password: Optional[str] = None,
+             server_name: Optional[str] = None, quiet: bool = False,
              share_connection: int = 10):
         """Initialize SSH or local connection.
 
@@ -290,22 +294,21 @@ class Connection(metaclass=_ConnectionMeta):
 
         Parameters
         ----------
-        sshUsername: str
+        ssh_username: str
             login name, only used for remote connections
-        sshServer: str
+        ssh_server: str
             server address, numeric address or normal address
-        sshKey: Optional[Union[str, Path]]
+        ssh_key_file: Optional[Union[str, Path]]
             path to file with private rsa key. If left empty and password is
             `None` script will ask for password.
-        sshPassword: Optional[str]
+        ssh_password: Optional[str]
             password in string form, this is mainly for testing. Using this in
             production is a great security risk!
         server_name: str
             server name (default:None) only for id purposes, if it is left
             default than it will be replaced with address.
-        logger: logging.Logger
-            logger instance, If argument is left default than than logging
-            messages will be rerouted to stdout/stderr.
+        quiet: bool
+            If True suppress login messages
         share_connection: int
             share connection between different instances of class, number says
             how many instances can share the same connection
@@ -315,27 +318,23 @@ class Connection(metaclass=_ConnectionMeta):
         Do not use plain text passwords in production, they are great security
         risk!
         """
-        if not sshServer:
-            return LocalConnection(sshServer, sshUsername, rsa_key_file=sshKey,
-                                   server_name=server_name, logger=logger)
+        if not ssh_server:
+            return LocalConnection(ssh_server, ssh_username,
+                                   rsa_key_file=ssh_key_file,
+                                   server_name=server_name, quiet=quiet)
         else:
-            if sshKey:
-                lprint(False)(f"Will login with private RSA key "
-                              f"located in {sshKey}")
-
-                c = SSHConnection(sshServer, sshUsername, rsa_key_file=sshKey,
-                                  line_rewrite=True, server_name=server_name,
-                                  logger=logger,
+            if ssh_key_file:
+                c = SSHConnection(ssh_server, ssh_username,
+                                  rsa_key_file=ssh_key_file, line_rewrite=True,
+                                  server_name=server_name, quiet=quiet,
                                   share_connection=share_connection)
             else:
-                lprint(False)(f"Will login as {sshUsername} to {sshServer}")
+                if not ssh_password:
+                    ssh_password = getpass.getpass(prompt="Enter password: ")
 
-                if not sshPassword:
-                    sshPassword = getpass.getpass(prompt="Enter password: ")
-
-                c = SSHConnection(sshServer, sshUsername, password=sshPassword,
-                                  line_rewrite=True, server_name=server_name,
-                                  logger=logger,
+                c = SSHConnection(ssh_server, ssh_username,
+                                  password=ssh_password, line_rewrite=True,
+                                  server_name=server_name, quiet=quiet,
                                   share_connection=share_connection)
 
             return c

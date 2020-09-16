@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 __all__ = ["LocalConnection"]
 
-LOGGER = logging.getLogger(__name__)
+logging.getLogger(__name__)
 
 
 class LocalConnection(ConnectionABC):
@@ -33,9 +33,8 @@ class LocalConnection(ConnectionABC):
     def __init__(self, address: Optional[str], username: str,
                  password: Optional[str] = None,
                  rsa_key_file: Optional[Union[str, Path]] = None,
-                 line_rewrite: bool = True, warn_on_login: bool = False,
-                 server_name: Optional[str] = None,
-                 logger: logging.Logger = None) -> None:
+                 line_rewrite: bool = True, server_name: Optional[str] = None,
+                 quiet: bool = False, share_connection: int = 10) -> None:
 
         # set login credentials
         self.password = password
@@ -45,8 +44,6 @@ class LocalConnection(ConnectionABC):
 
         self.server_name = server_name if server_name else gethostname()
         self.server_name = self.server_name.upper()
-
-        self.log = logger if logger else LOGGER
 
         self.local = True
 
@@ -72,12 +69,12 @@ class LocalConnection(ConnectionABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None, 
+            env: Optional["_ENV"] = None,
             universal_newlines: Optional[bool] = None
             ) -> subprocess.CompletedProcess:
 
         if capture_output:
-            stdout =subprocess.PIPE
+            stdout = subprocess.PIPE
             stderr = subprocess.PIPE
 
         out = subprocess.run(args, bufsize=bufsize, executable=executable,
@@ -185,6 +182,7 @@ class LocalConnection(ConnectionABC):
         return subprocess.run([command], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).stdout
 
+    # for backawards compatibility
     sendFiles = copy_files  # type: ignore
     send_files = copy_files  # type: ignore
     downloadTree = download_tree

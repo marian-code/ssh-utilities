@@ -1,40 +1,43 @@
 language: python
 jobs:
   include:
-    # TODO add Windows and Os X
-    # ===== Linux ======
-    - name: "Python 3.6 on Ubuntu 18.04 (Bionic Beaver)"
-      dist: bionic
-      python: 3.6
-      before_install:
-      - python --version
-      - pip install -U pip
-      - pip install coverage
-      - pip install coveralls
-      - pip install -r docs/requirements.txt
-      - echo "${USER}:12345678" | sudo chpasswd
-    - name: "Python 3.7 on Ubuntu 18.04 (Bionic Beaver)"
-      dist: bionic
-      python: 3.7
-      before_install:
-      - python --version
-      - pip install -U pip
-      - pip install coverage
-      - pip install coveralls
-      - pip install -r docs/requirements.txt
-      - echo "${USER}:12345678" | sudo chpasswd
-    - name: "Python 3.8 on Ubuntu 18.04 (Bionic Beaver)"
-      dist: bionic
-      python: 3.8
-      before_install:
-      - python --version
-      - pip install -U pip
-      - pip install coverage
-      - pip install coveralls
-      - pip install -r docs/requirements.txt
-      - echo "${USER}:12345678" | sudo chpasswd
+  - name: Python 3.6 on Ubuntu 18.04 (Bionic Beaver)
+    dist: bionic
+    python: 3.6
+    before_install:
+    - python --version
+    - pip install -U pip
+    - pip install coverage
+    - pip install coveralls
+    - pip install -r docs/requirements.txt
+    - echo "${USER}:12345678" | sudo chpasswd
+  - name: Python 3.7 on Ubuntu 18.04 (Bionic Beaver)
+    dist: bionic
+    python: 3.7
+    before_install:
+    - python --version
+    - pip install -U pip
+    - pip install coverage
+    - pip install coveralls
+    - pip install -r docs/requirements.txt
+    - echo "${USER}:12345678" | sudo chpasswd
+  - name: Python 3.8 on Ubuntu 18.04 (Bionic Beaver)
+    dist: bionic
+    python: 3.8
+    before_install:
+    - python --version
+    - pip install -U pip
+    - pip install coverage
+    - pip install coveralls
+    - pip install -r docs/requirements.txt
+    - echo "${USER}:12345678" | sudo chpasswd
 install:
-  - pip3 install .
+- pip3 install .
 script: coverage run -m unittest discover
 after_success:
-  - coveralls # submit coverage
+- coveralls
+deploy:
+  provider: pypi
+  username: marian-code
+  password:
+    secure: oLYu5Lj/slo/ZfUNC/BxUI9zbj9nBhSXa2vY77YA+vlIrss+Mou+W3whEEb1rFChqMXh2TxgI/mt45U7SVBpJ9d9ByDx64DCxoiXasncqHBut0+EPin/dbMYxS7SZzFT+64UTZEsX6LCY0rLD+KN22B6sWnl0TeyDhjqY9ykmgts98ZM6bS7lZ3Qr0GvRWKkh3fd056ax5KdrKHYBENN69SkAnI+qJZ71Nz66uhJKQAq6sV+DQVQXf6hfWQ7GahR53yWk8F/7ck9kpgyyzPPf3ufwZVPXdKM2G7KArtQmDsDMsqRV5zKLXMAfA+yEa+zeCYUCtyfKr3sd1P91fPB+TLidL4udzIkRXlOolTLLaFWEsTbQJGN8ASTwOKAS0iiZnS9t2z7pwcqK+bvw3GdwW2nxJiPNte5G25Lq7Y+0VgJ/MOsJE6f/WYLyNyPRVfKvruvt2oIMwnJeTbI3Rcev0EF+bJHHIp2ztRvpoRgBRk+SO9qcab7F14ucVyBhg9ObRQ7eM2ZFEGoCWd4nxmABMEVufxzEBo+dASNTKzSXWHrWVZHDmL3t6SYnP+N2j5gj+G4jKepoSVaDSLApHs0xd4XWLblD4bqhr80B8c66Z1+epArrT2JTPicBXL0qvBpKvvm4px0wZQOOBMjCz9IHtvrwks6Javtv5vtHnFshRY=

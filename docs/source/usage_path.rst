@@ -41,7 +41,7 @@ expected
 
 .. warning::
     Testing working with windows servers has not been done yet. It should work
-    but we do not have any available suitable environment at had so use at your
+    but we do not have any available suitable environment at hand so use at your
     own risk! 
 
 TODO - provide examples

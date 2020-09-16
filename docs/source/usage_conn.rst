@@ -45,8 +45,8 @@ customization is required, use open method, this also allows use of passwords
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>, <server_name>,
-                             <logger>, <share_connection>) as c:
+    >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
+                               <share_connection>)
     >>>
 
 Using connection - subprocess
@@ -65,7 +65,7 @@ such as:
         IdentityFile ~/.ssh/id_rsa_my_ssh_server
         User ssh_user
 
-and ofcource corresponding identity file has to be present too.
+and ofcourse corresponding identity file has to be present too.
 
 .. code-block:: python
 
@@ -73,7 +73,7 @@ and ofcource corresponding identity file has to be present too.
     >>> from ssh_utilities.exceptions import CalledProcessError
     >>> from pathlib import Path
     >>> 
-    >>> c = Connection("my_ssh_server")
+    >>> c = Connection.get("my_ssh_server")
     >>> Will login with private RSA key located in /home/current_user/.ssh/id_rsa_my_ssh_server
     >>> Connecting to server: ssh_user@xxx.xxx.xxx.xxx (my_ssh_server)
 
@@ -119,7 +119,7 @@ the output is caused by ``suppress_out=False`` and ``quiet=False`` it is mainly
 usefull for debugging. The second part is print out of the ``CompletedProcess``
 object that is the same as subprocess outputs, also the raised exception
 ``CalledProcessError`` is the same as in subprocess. Other arguments have the
-exact same meaning as in ``subprocess.run`` but cuttently only a limited subset
+exact same meaning as in ``subprocess.run`` but currently only a limited subset
 is supported. Nevertheless they should cover most usage scenarios. Notice that
 ``cwd`` argument accepts also ``Path`` objects!
 

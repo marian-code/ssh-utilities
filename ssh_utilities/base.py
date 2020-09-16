@@ -47,7 +47,7 @@ class ConnectionABC(ABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None, 
+            env: Optional["_ENV"] = None,
             universal_newlines: Optional[bool] = None
             ) -> "CompletedProcess":
         pass

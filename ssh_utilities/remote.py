@@ -31,11 +31,11 @@ if TYPE_CHECKING:
     ExcType = Union[Type[Exception], Tuple[Type[Exception], ...]]
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
-    from .typeshed import _GLOBPAT, _SPATH, _FILE, _CMD, _ENV    
+    from .typeshed import _GLOBPAT, _SPATH, _FILE, _CMD, _ENV
 
 __all__ = ["SSHConnection", "PIPE", "STDOUT", "DEVNULL"]
 
-LOGGER = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def _check_connections(original_function: Optional[Callable] = None, *,
@@ -91,7 +91,7 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 try:
                     self.close(quiet=True)
                 except Exception as e:
-                    LOGGER.exception(f"Couldn't close connection: {e}")
+                    log.exception(f"Couldn't close connection: {e}")
 
                 try:
                     self._get_ssh()
@@ -100,34 +100,34 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 else:
                     success = True
 
-                LOGGER.debug(f"success 1: {success}")
+                log.debug(f"success 1: {success}")
                 if not success:
                     return False
 
                 if self._sftp_open:
-                    LOGGER.debug(f"success 2: {success}")
+                    log.debug(f"success 2: {success}")
                     try:
                         self.sftp
                     except SFTPOpenError:
                         success = False
-                        LOGGER.debug(f"success 3: {success}")
+                        log.debug(f"success 3: {success}")
 
                     else:
-                        LOGGER.debug(f"success 4: {success}")
+                        log.debug(f"success 4: {success}")
 
                         success = True
                 else:
                     success = False
 
-                LOGGER.exception(f"Relevant variables:\n"
-                                 f"success:    {success}\n"
-                                 f"password:   {self.password}\n"
-                                 f"address:    {self.address}\n"
-                                 f"username:   {self.username}\n"
-                                 f"ssh class:  {type(self._c)}\n"
-                                 f"sftp class: {type(self.sftp)}")
+                log.exception(f"Relevant variables:\n"
+                              f"success:    {success}\n"
+                              f"password:   {self.password}\n"
+                              f"address:    {self.address}\n"
+                              f"username:   {self.username}\n"
+                              f"ssh class:  {type(self._c)}\n"
+                              f"sftp class: {type(self.sftp)}")
                 if self._sftp_open:
-                    LOGGER.exception(f"remote home: {self.remote_home}")
+                    log.exception(f"remote home: {self.remote_home}")
 
                 return success
 
@@ -140,30 +140,30 @@ def _check_connections(original_function: Optional[Callable] = None, *,
                 raise e from None
             except paramiko.ssh_exception.NoValidConnectionsError as e:
                 error = e
-                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
+                log.exception(f"Caught paramiko error in {n}: {e}")
             except paramiko.ssh_exception.SSHException as e:
                 error = e
-                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
+                log.exception(f"Caught paramiko error in {n}: {e}")
             except AttributeError as e:
                 error = e
-                LOGGER.exception(f"Caught attribute error in {n}: {e}")
+                log.exception(f"Caught attribute error in {n}: {e}")
             except OSError as e:
                 error = e
-                LOGGER.exception(f"Caught OS error in {n}: {e}")
+                log.exception(f"Caught OS error in {n}: {e}")
             except paramiko.SFTPError as e:
                 # garbage packets,
                 # see: https://github.com/paramiko/paramiko/issues/395
-                LOGGER.exception(f"Caught paramiko error in {n}: {e}")
+                log.exception(f"Caught paramiko error in {n}: {e}")
             finally:
                 while error:
 
-                    LOGGER.warning("Connection is down, trying to reconnect")
+                    log.warning("Connection is down, trying to reconnect")
                     if negotiate():
-                        LOGGER.info("Connection restablished, continuing ..")
+                        log.info("Connection restablished, continuing ..")
                         connect_wrapper(self, *args, **kwargs)
                         break
                     else:
-                        LOGGER.warning("Unsuccessful, wait 60 seconds "
+                        log.warning("Unsuccessful, wait 60 seconds "
                                        "before next try")
                         time.sleep(60)
 
@@ -272,9 +272,6 @@ class SSHConnection(ConnectionABC):
     server_name: Optional[str]
         input server name that will be later displayed on file operations,
         if None then IP address will be used
-    logger: Logger
-        python logger instance that will be used for logging else, new Logger
-        instance will be created
     share_connection: int
         share connection between different instances of class, number says
         how many instances can share the same connection
@@ -299,18 +296,37 @@ class SSHConnection(ConnectionABC):
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
                  rsa_key_file: Optional[Union[str, Path]] = None,
-                 line_rewrite: bool = True, warn_on_login: bool = False,
-                 server_name: Optional[str] = None,
-                 logger: logging.Logger = None,
-                 share_connection: int = 10) -> None:
+                 line_rewrite: bool = True, server_name: Optional[str] = None,
+                 quiet: bool = False, share_connection: int = 10) -> None:
 
-        print(f"{C}Connecting to server:{R} {username}@{address}"
-              f"{' (' + server_name + ')' if server_name else ''}")
-        if warn_on_login:
-            print(f"{R}When running an executale on server always make"
-                  f"sure that full path is specified!!!\n")
+        lprint.line_rewrite = line_rewrite
+        lprnt = lprint(quiet)
 
-        self.log = logger if logger else LOGGER
+        if rsa_key_file:
+            msg = f"Will login with private RSA key located in {rsa_key_file}"
+            lprnt(msg)
+            log.info(msg)
+        else:
+            msg = f"Will login as {username} to {address}"
+            lprnt(msg)
+            log.info(msg)
+
+        msg = (f"{C}Connecting to server:{R} {username}@{address}"
+               f"{' (' + server_name + ')' if server_name else ''}")
+        lprnt(msg)
+        log.info(msg.replace(C, "").replace(R, ""))
+
+        msg = (f"{RED}When running an executale on server always make"
+               f"sure that full path is specified!!!\n")
+
+        lprnt(msg)
+        log.info(msg.replace(R, "").replace(RED, ""))
+
+        # misc
+        self._sftp_open = False
+        self.server_name = server_name.upper() if server_name else address
+
+        self.local = False
 
         # set login credentials
         self.password = password
@@ -332,13 +348,6 @@ class SSHConnection(ConnectionABC):
 
         # negotiate connection
         self._get_ssh()
-
-        # misc
-        self._sftp_open = False
-        lprint.line_rewrite = line_rewrite
-        self.server_name = server_name.upper() if server_name else address
-
-        self.local = False
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
@@ -373,6 +382,7 @@ class SSHConnection(ConnectionABC):
         lprint()(f"{Y}Logging ssh session to file:{R} {log_file}\n")
         paramiko.util.log_to_file(log_file, level=level)
 
+    # TODO WORKS weird on AIX only first/last line of output
     @_check_connections(exclude_exceptions=(TypeError, CalledProcessError))
     def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
             bufsize: int = -1, executable: "_SPATH" = None,
@@ -382,7 +392,7 @@ class SSHConnection(ConnectionABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None, 
+            env: Optional["_ENV"] = None,
             universal_newlines: Optional[bool] = None
             ) -> CompletedProcess:
         """Excecute command on remote, has simillar API to subprocess run.
@@ -604,7 +614,7 @@ class SSHConnection(ConnectionABC):
 
                 # loop until channels are exhausted
                 while (not ssh_stdout.channel.exit_status_ready() and
-                    not ssh_stderr.channel.exit_status_ready()):
+                       not ssh_stderr.channel.exit_status_ready()):
 
                     # get data when available
                     if ssh_stdout.channel.recv_ready():
@@ -709,7 +719,8 @@ class SSHConnection(ConnectionABC):
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
                       include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                      remove_after: bool = False, quiet: bool = False):
+                      remove_after: bool = False, quiet: Literal[True, False,
+                      "stats", "progress"] = False):
         """Download directory tree from remote.
 
         Remote direcctory must exist otherwise exception is raised.
@@ -728,8 +739,10 @@ class SSHConnection(ConnectionABC):
         exclude: _GLOBPAT
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
-        quiet: bool
-            if True informative messages are suppresssed
+        quiet:  Literal[True, False, "stats", "progress"]
+            if `True` informative messages are suppresssed if `False` all is
+            printed, if `stats` all statistics except progressbar are
+            suppressed if `progress` only progressbar is suppressed
 
         Warnings
         --------
@@ -748,7 +761,7 @@ class SSHConnection(ConnectionABC):
             raise FileNotFoundError(f"{remote_path} you are trying to download"
                                     f"from does not exist")
 
-        lprnt = lprint(quiet=quiet)
+        lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
         allow_file = file_filter(include, exclude)
 
         copy_files = []
@@ -793,11 +806,18 @@ class SSHConnection(ConnectionABC):
         # copy
         lprnt(f"\n{C}Copying...{R}\n")
 
-        with ProgressBar(total=total, quiet=quiet) as t:
+        # get lenghts of path strings so when overwriting no artifacts are
+        # produced if previous path is longer than new one
+        max_src = max([len(c["src"]) for c in copy_files])
+        max_dst = max([len(c["dst"]) for c in copy_files])
+
+        q = True if quiet or quiet == "progress" else False
+        with ProgressBar(total=total, quiet=q) as t:
             for f in copy_files:
 
-                t.write(f"{G}Copying remote:{R} {self.server_name}@{f['src']}"
-                        f"\n{G}     --> local:{R} {f['dst']}")
+                t.write(f"{G}Copying remote:{R} {self.server_name}@"
+                        f"{f['src']:<{max_src}}"
+                        f"\n{G}     --> local:{R} {f['dst']:<{max_dst}}")
 
                 self.sftp.get(f["src"], f["dst"], callback=t.update_bar)
 
@@ -809,7 +829,8 @@ class SSHConnection(ConnectionABC):
     @_check_connections(exclude_exceptions=FileNotFoundError)
     def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
                     include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                    remove_after: bool = False, quiet: bool = False):
+                    remove_after: bool = False, quiet: Literal[True, False,
+                    "stats", "progress"] = False):
         """Upload directory tree to remote.
 
         Local path must exist otherwise, exception is raised.
@@ -828,8 +849,10 @@ class SSHConnection(ConnectionABC):
         exclude: _GLOBPAT
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
-        quiet: bool
-            if True informative messages are suppresssed
+        quiet:  Literal[True, False, "stats", "progress"]
+            if `True` informative messages are suppresssed if `False` all is
+            printed, if `stats` all statistics except progressbar are
+            suppressed if `progress` only progressbar is suppressed
 
         Warnings
         --------
@@ -848,7 +871,7 @@ class SSHConnection(ConnectionABC):
             raise FileNotFoundError(f"{local_path} you are trying to upload "
                                     f"does not exist")
 
-        lprnt = lprint(quiet=quiet)
+        lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
         allow_file = file_filter(include, exclude)
 
         copy_files = []
@@ -896,11 +919,18 @@ class SSHConnection(ConnectionABC):
         # copy
         lprnt(f"\n{C}Copying...{R}\n")
 
-        with ProgressBar(total=total, quiet=quiet) as t:
+        # get lenghts of path strings so when overwriting no artifacts are
+        # produced if previous path is longer than new one
+        max_src = max([len(c["src"]) for c in copy_files])
+        max_dst = max([len(c["dst"]) for c in copy_files])
+
+        q = True if quiet or quiet == "progress" else False
+        with ProgressBar(total=total, quiet=q) as t:
             for cf in copy_files:
 
-                t.write(f"{G}Copying local:{R} {cf['src']}\n"
-                        f"{G}   --> remote:{R} {self.server_name}@{cf['dst']}")
+                t.write(f"{G}Copying local:{R} {cf['src']:<{max_src}}\n"
+                        f"{G}   --> remote:{R} {self.server_name}@"
+                        f"{cf['dst']:<{max_dst}}")
 
                 self.sftp.put(cf["src"], cf["dst"], callback=t.update_bar)
 
@@ -1077,7 +1107,7 @@ class SSHConnection(ConnectionABC):
                     self.sftp.rmdir(path)
             except FileNotFoundError as e:
                 if ignore_errors:
-                    self.log.warning("Directory does not exist")
+                    log.warning("Directory does not exist")
                 else:
                     raise FileNotFoundError(e)
 
@@ -1167,7 +1197,7 @@ class SSHConnection(ConnectionABC):
         try:
             file_obj = self.sftp.open(path, mode=mode, bufsize=bufsize)
         except IOError as e:
-            self.log.exception(f"Error while opening file {filename}: {e}")
+            log.exception(f"Error while opening file {filename}: {e}")
             raise e
         else:
             # rename the read method so i is not overwritten
@@ -1217,7 +1247,7 @@ class SSHConnection(ConnectionABC):
                 info = self.run([cmd], suppress_out=True, quiet=True,
                                 check=True, capture_output=True).stdout
             except CalledProcessError as e:
-                self.log.debug(f"Couldn't get os name: {e}")
+                log.debug(f"Couldn't get os name: {e}")
                 error_count += 1
             else:
                 if "windows" in info.lower():
@@ -1250,7 +1280,7 @@ class SSHConnection(ConnectionABC):
 
         except (paramiko.ssh_exception.AuthenticationException,
                 paramiko.ssh_exception.NoValidConnectionsError) as e:
-            self.log.warning(f"Error in authentication {e}. Trying again ...")
+            log.warning(f"Error in authentication {e}. Trying again ...")
 
             # max three attempts to connect at once
             authentication_attempts += 1

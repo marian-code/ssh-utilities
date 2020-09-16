@@ -151,8 +151,8 @@ customization is required, use open method, this also allows use of passwords
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection.open(<sshUsername>, <sshServer>, <sshKey>, <server_name>,
-                             <logger>, <share_connection>):
+    >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
+                               <share_connection>):
 
 Module API also exposes powerfull SSHPath object with identical API as
 ``pathlib.Path`` only this one works for remote files. It must be always tied to

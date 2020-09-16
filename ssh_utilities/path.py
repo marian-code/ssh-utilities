@@ -525,7 +525,7 @@ class SSHPath(Path):
         mode : int
             integer number of the desired mode
         exist_ok: bool
-            
+            do not raise an exception when fiel already exists
 
         Raises
         ------
