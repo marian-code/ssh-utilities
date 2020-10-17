@@ -199,12 +199,19 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
         else:
             classes = [cls]
         for c in classes:
-            for attr in c.__dict__:
-                if callable(getattr(c, attr)) and attr not in exclude:
+            for attr_str in c.__dict__:
+
+                attr = getattr(c, attr_str)
+
+                if callable(attr) and attr_str not in exclude:
                     try:
-                        setattr(c, attr, decorator(getattr(c, attr)))
+                        setattr(c, attr_str, decorator(attr))
                     except TypeError:
                         pass
+                elif isinstance(attr, property):
+                    new_property = property(decorator(attr.__get__),
+                                            attr.__set__, attr.__delattr__)
+                    setattr(c, attr_str, new_property)
         return cls
     return decorate
 
