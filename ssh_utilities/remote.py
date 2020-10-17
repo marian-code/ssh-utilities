@@ -10,7 +10,7 @@ from functools import wraps
 from io import BytesIO, StringIO, TextIOBase
 from os.path import join as jn
 from pathlib import Path
-from stat import S_ISDIR, S_ISREG
+from stat import S_ISDIR, S_ISREG, S_ISLNK
 from types import MethodType
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type, Union
 from subprocess import PIPE, STDOUT, DEVNULL
@@ -972,8 +972,14 @@ class SSHConnection(ConnectionABC):
         IOError
             if dir could not be accessed
         """
+        _path = self._path2str(path)
         try:
-            return S_ISDIR(self.sftp.stat(self._path2str(path)).st_mode)
+            s = self.sftp.stat(_path)
+
+            if S_ISLNK(s.st_mode):
+                s = self.sftp.stat(self.sftp.readlink(_path))
+
+            return S_ISDIR(s.st_mode)
         except IOError:
             return False
 
@@ -1342,7 +1348,14 @@ class SSHConnection(ConnectionABC):
         files = []
         folders = []
         for f in self.sftp.listdir_attr(remote_path):
-            if S_ISDIR(f.st_mode):
+            # if is symlink get real files and check its stats
+            if S_ISLNK(f.st_mode):
+                s = self.sftp.stat(self.sftp.readlink(jn(remote_path, f.filename)))
+                if S_ISDIR(s.st_mode):
+                    folders.append(f.filename)
+                else:
+                    files.append(f.filename)
+            elif S_ISDIR(f.st_mode):
                 folders.append(f.filename)
             else:
                 files.append(f.filename)

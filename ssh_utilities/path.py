@@ -177,25 +177,6 @@ class SSHPath(Path):
             raise FileNotFoundError("File doe not exist")
         return self._c.sftp.stat(self._2str)
 
-    """
-    @property
-    def parent(self) -> "SSHPath":
-        print("--------------------------------------")
-        print(self, type(self))
-        print("--------------------------------------")
-        drv = self._drv
-        root = self._root
-        parts = self._parts
-        print(drv)
-        print(root)
-        print(parts)
-        print(type(self._from_parsed_parts(drv, root, parts[:-1])))
-        print(".........................................")
-        if len(parts) == 1 and (drv or root):
-            return self
-        return SSHPath(self._c, self._from_parsed_parts(drv, root, parts[:-1]))
-    """
-
     def chmod(self, mode: int):
         """Change the mode/permissions of a file.
 

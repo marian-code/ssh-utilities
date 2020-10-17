@@ -187,3 +187,8 @@ License
 -------
 
 LGPL-2.1
+
+TODO
+----
+- make connection object thread-safe
+- implement wrapper for pool of connections
