@@ -723,7 +723,7 @@ class SSHConnection(ConnectionABC):
                       "stats", "progress"] = False):
         """Download directory tree from remote.
 
-        Remote direcctory must exist otherwise exception is raised.
+        Remote directory must exist otherwise exception is raised.
 
         Parameters
         ----------

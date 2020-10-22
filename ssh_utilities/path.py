@@ -159,7 +159,6 @@ class SSHPath(Path):
             self._c.sftp
         return SSHPath(self._c, self._c.remote_home)
 
-    @property
     def stat(self) -> "SFTPAttributes":
         """Get file or directory statistics.
 
