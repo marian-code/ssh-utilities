@@ -9,12 +9,15 @@ from os.path import join
 from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
 from typing import TYPE_CHECKING, Any, Callable, Generator, Optional, Union
 
-from .utils import for_all_methods, glob2re
+from ..base import ConnectionABC
+from ..utils import for_all_methods, glob2re
+from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-    from .typeshed import _SPATH
+
+    from ..typeshed import _SPATH
     from .remote import SSHConnection
 
 __all__ = ["SSHPath"]
@@ -24,8 +27,36 @@ log = logging.getLogger(__name__)
 DEC_EXCLUDE = ("_parse_args", "_from_parts", "_from_parsed_parts",
                "_format_parsed_parts", "cwd", "home")
 
+if TYPE_CHECKING:
+    from ..typeshed import _SPATH
 
-def to_ssh_path(function: Callable):
+__all__ = ["Pathlib", "Pathlib"]
+
+log = logging.getLogger(__name__)
+
+
+class Pathlib(ConnectionABC):
+
+    @check_connections
+    def Path(self, path: "_SPATH") -> SSHPath:
+        """Provides API similar to pathlib.Path only for remote host.
+
+        Only for Unix to Unix connections
+
+        Parameters
+        ----------
+        path: _SPATH
+            provide initial path
+
+        Returns
+        -------
+        SSHPath
+            object representing remote path
+        """
+        return SSHPath(self, self._path2str(path))
+
+
+def _to_ssh_path(function: Callable):
     """A to cast all return types to SSHPath where applicable.
 
     Parameters
@@ -69,7 +100,7 @@ def to_ssh_path(function: Callable):
     return wrapper
 
 
-@for_all_methods(to_ssh_path, subclasses=True, exclude=DEC_EXCLUDE)
+@for_all_methods(_to_ssh_path, subclasses=True, exclude=DEC_EXCLUDE)
 class SSHPath(Path):
     """Object porviding similar API to Pathlib.Path but for remote server.
 
@@ -160,7 +191,7 @@ class SSHPath(Path):
         return SSHPath(self._c, self._c.remote_home)
 
     def stat(self) -> "SFTPAttributes":
-        """Get file or directory statistics.
+        """Get file or directory statistics, resolve symlinks alog the way.
 
         Returns
         -------
@@ -174,7 +205,24 @@ class SSHPath(Path):
         """
         if not self.is_file():
             raise FileNotFoundError("File doe not exist")
-        return self._c.sftp.stat(self._2str)
+        return self._c.stat(self._2str)
+
+    def lstat(self):
+        """Get file or directory statistics, do not resolve symlinks.
+
+        Returns
+        -------
+        paramiko.sftp_attr.SFTPAttributes
+            statistics objec similar to os.lstat output
+
+        Raises
+        ------
+        FileNotFoundError
+            if input path does not exist
+        """
+        if not self.is_file():
+            raise FileNotFoundError("File doe not exist")
+        return self._c.lstat(self._2str)
 
     def chmod(self, mode: int):
         """Change the mode/permissions of a file.
@@ -605,9 +653,6 @@ class SSHPath(Path):
         raise NotImplementedError
 
     def link_to(self, target):
-        raise NotImplementedError
-
-    def lstat(self):
         raise NotImplementedError
 
     def owner(self):

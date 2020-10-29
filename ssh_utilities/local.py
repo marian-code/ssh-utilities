@@ -18,7 +18,8 @@ from .constants import C, G, R, Y
 from .utils import context_timeit, file_filter, lprint
 
 if TYPE_CHECKING:
-    from .typeshed import _GLOBPAT, _SPATH, _CMD, _FILE, _ENV
+    from .typeshed import (_CALLBACK, _CMD, _DIRECTION, _ENV, _FILE, _GLOBPAT,
+                           _SPATH)
 
 __all__ = ["LocalConnection"]
 
@@ -52,7 +53,7 @@ class LocalConnection(ConnectionABC):
                            self.username, None)
 
     @staticmethod
-    def close(*, quiet: bool):
+    def close(*, quiet: bool = True):
         """Close emulated local connection."""
         lprint(quiet)(f"{G}Closing local connection")
 
@@ -107,6 +108,25 @@ class LocalConnection(ConnectionABC):
                 else:
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
+
+    def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
+                 direction: "_DIRECTION", follow_symlinks: bool = True,
+                 callback: "_CALLBACK" = None, quiet: bool = True):
+        
+        shutil.copyfile(self._path2str(src), self._path2str(dst),
+                        follow_symlinks=follow_symlinks)
+
+    def copy(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+             follow_symlinks: bool = True, callback: "_CALLBACK" = None,
+             quiet: bool = True):
+        shutil.copy(self._path2str(src), self._path2str(dst),
+                    follow_symlinks=follow_symlinks)
+
+    def copy2(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
+              quiet: bool = True):
+        shutil.copy2(self._path2str(src), self._path2str(dst),
+                     follow_symlinks=follow_symlinks)
 
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
                       include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
@@ -169,21 +189,19 @@ class LocalConnection(ConnectionABC):
 
         return open(filename, mode, encoding=encoding, errors=errors)
 
+    def stat(self, path: "_SPATH", *, dir_fd=None,
+             follow_symlinks: bool = True) -> "_ATTRIBUTES":
+        return os.stat(self._path2str(path), dir_fd=dir_fd,
+                       follow_symlinks=follow_symlinks)
+
+    def lstat(self, path: "_SPATH", *, dir_fd=None) -> "_ATTRIBUTES":
+        return os.lstat(self._path2str(path), dir_fd=dir_fd)
+
     @property
-    def osname(self) -> Literal["nt", "posix", "java"]:
+    def name(self) -> Literal["nt", "posix", "java"]:
         if not self._osname:
             self._osname = os.name
 
         return self._osname
 
-    # ! DEPRECATED
-    @staticmethod
-    def sendCommand(command: str, suppress_out: bool, quiet: bool = True):
-        return subprocess.run([command], stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE).stdout
-
-    # for backawards compatibility
-    sendFiles = copy_files  # type: ignore
-    send_files = copy_files  # type: ignore
-    downloadTree = download_tree
-    uploadTree = upload_tree
+    osname = name

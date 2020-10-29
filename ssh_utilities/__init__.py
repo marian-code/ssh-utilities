@@ -14,10 +14,12 @@ import logging
 
 from .connection import Connection
 from .local import LocalConnection
-from .path import SSHPath
-from .remote import SSHConnection, PIPE, STDOUT, DEVNULL
+from .remote._pathlib import SSHPath
+from .remote._subprocess import PIPE, STDOUT, DEVNULL
+from .remote.remote import SSHConnection
+from .constants import GET, PUT
 
 __all__ = ["SSHConnection", "Connection", "LocalConnection", "SSHPath", "PIPE",
-           "STDOUT", "DEVNULL"]
+           "STDOUT", "DEVNULL", "GET", "PUT"]
 
 logging.getLogger(__name__)

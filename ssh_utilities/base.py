@@ -10,11 +10,18 @@ from typing_extensions import Literal
 from .path import SSHPath
 
 if TYPE_CHECKING:
-    from .utils import CompletedProcess as CP
     from subprocess import CompletedProcess as sCP
+    from paramiko.sftp_attr import SFTPAttributes
+    from os import stat_result
+
+    _ATTRIBUTES = Union[SFTPAttributes, stat_result]
+
+    from .utils import CompletedProcess as CP
     CompletedProcess = Union[CP, sCP]
     from paramiko.sftp_file import SFTPFile
-    from .typeshed import _GLOBPAT, _SPATH, _CMD, _ENV, _FILE
+
+    from .typeshed import (_CALLBACK, _CMD, _DIRECTION, _ENV, _FILE, _GLOBPAT,
+                           _SPATH)
 
 
 __all__ = ["ConnectionABC"]
@@ -27,16 +34,16 @@ class ConnectionABC(ABC):
 
     @abstractmethod
     def __str__(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def close(self, *, quiet: bool):
-        pass
+    def close(self, *, quiet: bool = True):
+        raise NotImplementedError
 
     @abstractmethod
     def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
                 level: str = "WARN"):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
@@ -50,62 +57,83 @@ class ConnectionABC(ABC):
             env: Optional["_ENV"] = None,
             universal_newlines: Optional[bool] = None
             ) -> "CompletedProcess":
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def copy_files(self, files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", direction: str, quiet: bool = False):
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
+                 direction: "_DIRECTION", follow_symlinks: bool = True,
+                 callback: "_CALLBACK" = None,
+                 quiet: bool = True):
+        raise NotImplementedError
+
+    copy = copyfile
+    copy2 = copyfile
 
     @abstractmethod
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
                       include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                       remove_after: bool = True, quiet: bool = False):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
                     include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                     remove_after: bool = True, quiet: bool = False):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def isfile(self, path: "_SPATH") -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def isdir(self, path: "_SPATH") -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def Path(self, path: "_SPATH") -> Union[Path, SSHPath]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def mkdir(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
               parents: bool = True, quiet: bool = True):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def listdir(self, path: "_SPATH") -> List[str]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def open(self, filename: "_SPATH", mode: str = "r",
              encoding: Optional[str] = None,
              bufsize: int = -1, errors: Optional[str] = None
              ) -> Union[IO, "SFTPFile"]:
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def stat(self, path: "_SPATH", *, dir_fd=None,
+             follow_symlinks: bool = True) -> "_ATTRIBUTES":
+        raise NotImplementedError
+
+    @abstractmethod
+    def lstat(self, path: "_SPATH", *, dir_fd=None) -> "_ATTRIBUTES":
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def osname(self) -> Literal["nt", "posix", "java"]:
-        pass
+    def name(self) -> Literal["nt", "posix", "java"]:
+        raise NotImplementedError
+
+    osname = name
 
     # Normal methods
     @staticmethod
@@ -164,28 +192,11 @@ class ConnectionABC(ABC):
         --------
         :class:`ssh_utilities.conncection.Connection`
         """
-        ssh_key = Path(ssh_key)
+        key_path = Path(ssh_key)
         return (f"<{connection_name}:{host_name}>("
                 f"user_name:{user_name} | "
-                f"rsa_key:{str(ssh_key.resolve())} | "
+                f"rsa_key:{str(key_path.resolve())} | "
                 f"address:{address})")
 
     def __del__(self):
         self.close(quiet=True)
-
-    # ! DEPRECATED
-    def openSftp(self, quiet=False):
-        """DEPRECATED METHOD !!!.
-
-        Legacy method sftp is noe opened automatically when needed.
-
-        See also
-        --------
-        :attr:`ssh_utilities.remote.SSHConnection.sftp` more recent implementation
-        """
-        pass
-
-    sendFiles = copy_files
-    send_files = copy_files
-    downloadTree = download_tree
-    uploadTree = upload_tree

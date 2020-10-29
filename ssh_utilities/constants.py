@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from colorama import Fore, init
+from typing_extensions import Literal
 
 __all__ = ["G", "LG", "R", "RED", "C", "Y", "CONFIG_PATH"]
 
@@ -16,5 +17,7 @@ R = Fore.RESET
 RED = Fore.RED
 C = Fore.LIGHTCYAN_EX
 Y = Fore.YELLOW
+GET: Literal["get"] = "get"
+PUT: Literal["put"] = "put"
 
 CONFIG_PATH = Path("~/.ssh/config").expanduser()
