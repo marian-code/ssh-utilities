@@ -25,8 +25,12 @@ class Os(OsABC):
     _osname: Literal["nt", "posix", "java", ""] = ""
 
     def __init__(self, connection: "LocalConnection") -> None:
-        self.path = OsPathLocal(connection)  # type: ignore
         self.c = connection
+        self._path = OsPathLocal(connection)  # type: ignore
+
+    @property
+    def path(self) -> "OsPathLocal":
+        return self._path
 
     @staticmethod
     def isfile(path: "_SPATH") -> bool:

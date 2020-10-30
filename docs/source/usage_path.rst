@@ -13,7 +13,7 @@ easyiest way to initialize it is as a method of Connection object.
 
     >>> from ssh_utilities import Connection
     >>> with Connection(<server_name>) as conn:
-    >>>     sshpath = conn.Path(<some_path>)
+    >>>     sshpath = conn.pathlib.Path(<some_path>)
 
 Or the seccond option is to pass the SSHPath constructor an instace of created
 connection

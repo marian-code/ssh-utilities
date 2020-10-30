@@ -82,8 +82,8 @@ Next lets try to run some command.
 .. code-block:: python
 
     >>> try:
-    >>>     ls = c.run(["ls", "-l"], suppress_out=False, quiet=False,
-    >>>             capture_output=True, check=True, cwd=Path("/home/rynik"))
+    >>>     ls = c.subprocess.run(["ls", "-l"], suppress_out=False, quiet=False,
+    >>>                           capture_output=True, check=True, cwd=Path("/home/rynik"))
     >>> except CalledProcessError as e:
     >>>     print(e)
     >>> else:
@@ -135,8 +135,8 @@ This part describes how to use shutil-like methods in ``ssh-utilities``
 
 .. code-block:: python
 
-    >>> c.download_tree(Path("/home/ssh_user/test"), "/home/current_user", include="*.txt",
-    >>>                     remove_after=False)
+    >>> c.shutil.download_tree(Path("/home/ssh_user/test"), "/home/current_user",
+    >>>                        include="*.txt", remove_after=False)
 
 output:
 
@@ -162,6 +162,11 @@ Other methods are:
     - ``send_files`` - send files specified by list of strings between local and
       remote directory in any direction
     - ``rmtree`` - works exactly same as ``shutil.rmtree``
+    - ``copyfile`` - works exactly same as ``shutil.copyfile``
+    - ``copy`` - works exactly same as ``shutil.copy`` except it cannot preserve
+      file permisions
+    - ``copy2`` - works exactly same as ``shutil.copy2`` except it cannot
+      preserve file metadata
 
 Using connection - os
 ---------------------
@@ -170,20 +175,54 @@ This part describes how to use os-like methods in ``ssh-utilities``
 
 .. code-block:: python
 
-    >>> c.isfile("/home/ssh_user/.bashrc")
+    >>> c.os.isfile("/home/ssh_user/.bashrc")
     >>> True
     >>>
-    >>> c.osname()
+    >>> c.os.name()
     >>> "posix"
     >>>
-    >>> c.listdir(Path("/home/ssh_user"))
+    >>> c.os.listdir(Path("/home/ssh_user"))
     >>> ["file1", "file2", ...]
-    >>> with open(<filename>, "r", encoding="utf-8") as f:
+
+There are a few more methods which should cover basic usage, their names are
+quite self explanatory. For more advances path and files manipulation use
+``SSHPath`` class.
+
+Using connection - builtins
+---------------------------
+
+This part describes how to use methods in ``ssh-utilities`` substituting python
+builtins, namely ``open`` function
+
+.. code-block:: python
+
+    >>> with c.builtins.open(<filename>, "r", encoding="utf-8") as f:
     >>>     data = f.read()
     >>>
     >>> data
     >>> "... file constents ..."
 
-There are a few more methods which should cover basic usage, their names are
-quite self explanatory. For more advances path and files manipulation use
-``SSHPath`` class.
+Alternative initialization
+--------------------------
+
+The new API permits usage of individual sub-modules which can be handy at times
+as a drop-in replacement for python module. We will demonstrate this on ``os``
+submodule:
+
+.. code-block:: python
+
+    >>> # all sub-modules are named same as python modules they replace, except
+    >>> # for the capital startinf letter
+    >>> from ssh_utilities import Os, Connection
+    >>>
+    >>> c = Connection.get("some-host")
+    >>>
+    >>> # now define remote version of os module, it must be tied to a
+    >>> # connection object 
+    >>> os = Os(c)
+    >>>
+    >>> # now use it!
+    >>> os.isfile(<somefile>)
+    >>> os.stat(<somefile>)
+    >>> os.isdir(<somefile>)
+    >>> ...

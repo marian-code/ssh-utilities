@@ -73,7 +73,13 @@ If you encounter some import errors try installing from requirements.txt file:
 ``pip install requirements.txt``
 
 API and documentation
------------------------
+---------------------
+
+.. warning:: 
+    There has been a recent mayor change in modules API betweeen versions 0.4.2
+    and 0.5.0. Most methods of the connection classes have been moved a level
+    deeper. See `migration from 0.4.x to 0.5.x <https://ssh-utilities.readthedocs.io/en/latest/migration.html>`_
+    for details how to port to newer version
 
 It is recommended that you have configured **rsa** keys with config file according
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
@@ -99,6 +105,18 @@ of python `os.path library <https://docs.python.org/3/library/os.path.html>`_,
 
 ``SSHPath`` is an object for remote path manipulation with same API as python: 
 `pathlib library <https://docs.python.org/3/library/pathlib.html>`_ 
+
+The ``SSHConnection`` and ``LocalConnection`` objects are both devided to few
+inner classes which correspond to python modules. For ``SSHConnection``
+these are:
+    
+    * ``SSHConnection.builtins``
+    * ``SSHConnection.os``
+    * ``SSHConnection.pathlib``
+    * ``SSHConnection.subprocess``
+    * ``SSHConnection.shutil``
+
+same applies to ``LocalConnection``
 
 All API documentation can be found at readthedocs:
 https://ssh-utilities.readthedocs.io/en/latest/
@@ -163,7 +181,7 @@ easyiest way to initialize it is as a method of Connection object.
 
     >>> from ssh_utilities import Connection
     >>> with Connection(<server_name>) as conn:
-    >>>     sshpath = conn.Path(<some_path>)
+    >>>     sshpath = conn.pathlib.Path(<some_path>)
 
 Or the seccond option is to pass the SSHPath constructor an instace of created
 connection

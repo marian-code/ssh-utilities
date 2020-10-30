@@ -1,7 +1,7 @@
 """Module containing typing aliases for ssh-utilities."""
 
 from typing import (IO, TYPE_CHECKING, Any, Callable, Generator, List, Mapping,
-                    Optional, Sequence, Tuple, Union)
+                    Optional, Sequence, Tuple, Union, Type)
 
 if TYPE_CHECKING:
     from os import PathLike

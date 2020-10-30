@@ -1,13 +1,12 @@
 API reference
 =============
 
-.. warning:: 
-    Documentation is stil under construction some things might not be up to
-    date.
+This file describes ssh-utilities API reference. 
 
-This file describes ssh-utilities API reference. Beware, some things might not be
-up to date and all is subject to change since we are still in early
-development phase.
+.. warning:: 
+
+   Beware, we are still in developement phase so API can change without warning,
+   although most part are final and there are not expected any major changes.
 
 .. note::
 
@@ -34,31 +33,85 @@ ssh_utilities.base
    :members:
 
 ssh_utilities.remote
--------------------------
+--------------------
 .. automodule:: ssh_utilities.remote
    :members:
 
+ssh_utilities.remote._builtins
+------------------------------
+.. automodule:: ssh_utilities.remote._builtins
+   :members:
+
+ssh_utilities.remote._os
+------------------------
+.. automodule:: ssh_utilities.remote._os
+   :members:
+
+ssh_utilities.remote._pathlib
+-----------------------------
+.. automodule:: ssh_utilities.remote._pathlib
+   :members:
+
+ssh_utilities.remote._shutil
+----------------------------
+.. automodule:: ssh_utilities.remote._shutil
+   :members:
+
+ssh_utilities.remote._subprocess
+--------------------------------
+.. automodule:: ssh_utilities.remote._subprocess
+   :members:
+
+ssh_utilities.remote.path
+-------------------------
+.. automodule:: ssh_utilities.remote.path
+   :members:
+
+ssh_utilities.remote._connection_wrapper
+----------------------------------------
+.. automodule:: ssh_utilities.remote._connection_wrapper
+   :members:
+
 ssh_utilities.local
----------------------
+-------------------
 .. automodule:: ssh_utilities.local
    :members:
 
-ssh_utilities.path
-----------------------
-.. automodule:: ssh_utilities.path
+ssh_utilities.local._builtins
+-----------------------------
+.. automodule:: ssh_utilities.local._builtins
    :members:
 
-ssh_utilities.utils
+ssh_utilities.local._os
+-----------------------
+.. automodule:: ssh_utilities.local._os
+   :members:
+
+ssh_utilities.local._pathlib
+----------------------------
+.. automodule:: ssh_utilities.local._pathlib
+   :members:
+
+ssh_utilities.local._shutil
 ---------------------------
+.. automodule:: ssh_utilities.local._shutil
+   :members:
+
+ssh_utilities.local._subprocess
+-------------------------------
+.. automodule:: ssh_utilities.local._subprocess
+
+ssh_utilities.utils
+-------------------
 .. automodule:: ssh_utilities.utils
    :members:
 
 ssh_utilities.exceptions
----------------------------
+------------------------
 .. automodule:: ssh_utilities.exceptions
    :members:
 
 ssh_utilities.constants
----------------------------
+-----------------------
 .. automodule:: ssh_utilities.constants
    :members:

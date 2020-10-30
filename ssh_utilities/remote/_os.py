@@ -15,7 +15,6 @@ from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
     from paramiko.sftp_attr import SFTPAttributes
-    from paramiko.sftp_client import SFTPClient
 
     from ..typeshed import _SPATH
     from .remote import SSHConnection
@@ -32,7 +31,11 @@ class Os(OsABC):
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
-        self.path = OsPathRemote(connection)  # type: ignore
+        self._path = OsPathRemote(connection)  # type: ignore
+
+    @property
+    def path(self) -> "OsPathRemote":
+        return self._path
 
     @check_connections
     def isfile(self, path: "_SPATH") -> bool:

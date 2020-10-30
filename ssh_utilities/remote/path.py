@@ -55,7 +55,7 @@ def _to_ssh_path(function: Callable):
             return function(self, *args, **kwargs)
 
         # get connection attribute before it is destroyed by running the method
-        connection = self._c
+        connection = self.c
 
         # run the method and capture output
         output = function(self, *args, **kwargs)
@@ -100,7 +100,7 @@ class SSHPath(Path):
     """
 
     _flavour = Any
-    _c: "SSHConnection"
+    c: "SSHConnection"
 
     def __new__(cls, connection: "SSHConnection", *args, **kwargs):
         """Remote Path class construtor.
@@ -108,7 +108,7 @@ class SSHPath(Path):
         Copied and adddapted from pathlib.
         """
         try:
-            if connection.osname == 'nt':
+            if connection.os.osname == 'nt':
                 cls._flavour = PureWindowsPath._flavour  # type: ignore
             else:
                 cls._flavour = PurePosixPath._flavour  # type: ignore
@@ -117,7 +117,7 @@ class SSHPath(Path):
             log.exception(e)
 
         self = cls._from_parts(args, init=False)  # type: ignore
-        self._c = connection
+        self.c = connection
         self._init()
         return self
 
@@ -138,11 +138,11 @@ class SSHPath(Path):
         SSHPath
             path to current directory
         """
-        d = self._c.sftp.getcwd()
+        d = self.c.sftp.getcwd()
         if d:
-            return SSHPath(self._c, d)
+            return SSHPath(self.c, d)
         else:
-            return SSHPath(self._c, self._c.sftp.normalize("."))
+            return SSHPath(self.c, self.c.sftp.normalize("."))
 
     def home(self) -> "SSHPath":  # type: ignore
         """Get home dir on remote server for logged in user.
@@ -156,9 +156,9 @@ class SSHPath(Path):
         Path
             path to remote home
         """
-        if not self._c._sftp_open:
-            self._c.sftp
-        return SSHPath(self._c, self._c.remote_home)
+        if not self.c._sftp_open:
+            self.c.sftp
+        return SSHPath(self.c, self.c.remote_home)
 
     def stat(self) -> "SFTPAttributes":
         """Get file or directory statistics, resolve symlinks alog the way.
@@ -175,7 +175,7 @@ class SSHPath(Path):
         """
         if not self.is_file():
             raise FileNotFoundError("File doe not exist")
-        return self._c.stat(self._2str)
+        return self.c.os.stat(self._2str)
 
     def lstat(self):
         """Get file or directory statistics, do not resolve symlinks.
@@ -192,7 +192,7 @@ class SSHPath(Path):
         """
         if not self.is_file():
             raise FileNotFoundError("File doe not exist")
-        return self._c.lstat(self._2str)
+        return self.c.os.lstat(self._2str)
 
     def chmod(self, mode: int):
         """Change the mode/permissions of a file.
@@ -205,7 +205,7 @@ class SSHPath(Path):
         mode : int
             integer number of the desired mode
         """
-        self._c.sftp.chmod(self._2str, mode)
+        self.c.sftp.chmod(self._2str, mode)
 
     def exists(self) -> bool:
         """Check if path exists.
@@ -245,12 +245,12 @@ class SSHPath(Path):
 
         pattern = glob2re(pattern)
 
-        for root, dirs, files in self._c._sftp_walk(self):
+        for root, dirs, files in self.c.shutil._sftp_walk(self):
 
             for path in dirs + files:
                 path = join(root, path)
                 if re.search(pattern, f"/{path}", re.I):
-                    yield SSHPath(self._c, path)
+                    yield SSHPath(self.c, path)
 
             if not recursive:
                 break
@@ -263,7 +263,7 @@ class SSHPath(Path):
         bool
             True if pointing to a directory
         """
-        return self._c.isdir(self)
+        return self.c.os.isdir(self)
 
     def is_file(self) -> bool:
         """Check if path points to file.
@@ -273,7 +273,7 @@ class SSHPath(Path):
         bool
             True if pointing to a file
         """
-        return self._c.isfile(self)
+        return self.c.os.isfile(self)
 
     def is_symlink(self):
         """Check if path points to symlink.
@@ -341,7 +341,7 @@ class SSHPath(Path):
         if not self.is_dir():
             raise FileNotFoundError(f"Directory {self} does not exist.")
         else:
-            for p in self._c.listdir(self):
+            for p in self.c.os.listdir(self):
                 yield self / p
 
     def mkdir(self, mode: int = 511, parents: bool = False,
@@ -372,7 +372,7 @@ class SSHPath(Path):
         FileExistsError
             when directory already exists and exist_ok=False
         """
-        self._c.mkdir(self, mode=mode, exist_ok=exist_ok, parents=parents)
+        self.c.os.makedirs(self, mode=mode, exist_ok=exist_ok, parents=parents)
 
     def open(self, mode: str = "r", buffering: int = -1,  # type: ignore
              encoding: Optional[str] = "utf-8") -> "SFTPFile":
@@ -397,7 +397,8 @@ class SSHPath(Path):
         FileNotFoundError
             when mode is 'r' and file does not exist
         """
-        self._c.open(self, mode=mode, bufsize=buffering, encoding=encoding)
+        self.c.builtins.open(self, mode=mode, bufsize=buffering,
+                             encoding=encoding)
 
     def read_bytes(self) -> bytes:
         """Read contents of a file as bytes.
@@ -414,7 +415,7 @@ class SSHPath(Path):
         """
         if not self.is_file():
             raise FileNotFoundError("Cannot open file.")
-        with self._c.open(self, "rb") as f:
+        with self.c.builtins.open(self, "rb") as f:
             return f.read()
 
     def read_text(self, encoding: Optional[str] = None,
@@ -440,7 +441,8 @@ class SSHPath(Path):
         """
         if not self.is_file():
             raise FileNotFoundError("Cannot open file.")
-        with self._c.open(self, "r", encoding=encoding, errors=errors) as f:
+        with self.c.builtins.open(self, "r", encoding=encoding,
+                                  errors=errors) as f:
             return f.read()
 
     def rename(self, target: "_SPATH") -> "SSHPath":  # type: ignore[override]
@@ -455,10 +457,10 @@ class SSHPath(Path):
         --------
         Works only in posix
         """
-        if self._c.osname == "nt":
+        if self.c.os.name == "nt":
             raise NotImplementedError("Does not work on windows servers")
 
-        self._c.sftp.posix_rename(self._2str, fspath(target))
+        self.c.sftp.posix_rename(self._2str, fspath(target))
         return self.replace(target)
 
     def replace(self, target: "_SPATH") -> "SSHPath":  # type: ignore[override]
@@ -474,8 +476,8 @@ class SSHPath(Path):
         SSHPath
             New Path instance pointing to the given path.
         """
-        self = SSHPath(self._c, fspath(target))
-        self._c.change_dir(target)
+        self = SSHPath(self.c, fspath(target))
+        self.c.os.chdir(target)
         return self
 
     def resolve(self) -> "SSHPath":  # type: ignore[override]
@@ -488,7 +490,7 @@ class SSHPath(Path):
         "SSHPath"
             [description]
         """
-        return SSHPath(self._c, self._c.sftp.normalize(self._2str))
+        return SSHPath(self.c, self.c.sftp.normalize(self._2str))
 
     def rglob(self, pattern: str) -> Generator["SSHPath", None, None]:
         """Glob the given relative pattern in directory given by this path.
@@ -519,7 +521,7 @@ class SSHPath(Path):
         --------
         This is recursive contrary to pathlib.Path implementation
         """
-        self._c.rmtree(self)
+        self.c.rmtree(self)
         self.replace(self.parent)
 
     def symlink_to(self, target: "_SPATH"):  # type: ignore[override]
@@ -530,7 +532,7 @@ class SSHPath(Path):
         target : _SPATH
             target path to which symlink will point
         """
-        self._c.sftp.symlink(self._2str, fspath(target))
+        self.c.sftp.symlink(self._2str, fspath(target))
 
     def touch(self, mode: int = 0o666, exist_ok: bool = True):
         """Create this file with the given access mode, if it doesn't exist.
@@ -554,7 +556,7 @@ class SSHPath(Path):
             raise FileExistsError(f"{self} is a file or dir, "
                                   f"cannot create new file")
         else:
-            with self._c.open(self, "w") as f:
+            with self.c.builtins.open(self, "w") as f:
                 f.write("")
 
             self.chmod(mode=mode)
@@ -579,7 +581,7 @@ class SSHPath(Path):
         elif self.is_dir():
             raise IsADirectoryError("Path is a directory use rmdir instead")
         elif self.is_file():
-            self._c.sftp.unlink(self._2str)
+            self.c.sftp.unlink(self._2str)
 
     def write_bytes(self, data: Union[bytes, bytearray, memoryview]):
         """Write bytes to file.
@@ -590,7 +592,7 @@ class SSHPath(Path):
             content to write to file
         """
         view = memoryview(data)
-        with self._c.open(self, "wb") as f:
+        with self.c.builtins.open(self, "wb") as f:
             f.write(view)
             # f.write(data.encode())
 
@@ -615,7 +617,8 @@ class SSHPath(Path):
         if not isinstance(data, str):
             raise TypeError(f"data must be str, not {data.__class__.__name__}")
 
-        with self._c.open(self, "w", encoding=encoding, errors=errors) as f:
+        with self.c.builtins.open(self, "w", encoding=encoding,
+                                  errors=errors) as f:
             f.write(data)
 
     # ! NOT IMPLEMENTED

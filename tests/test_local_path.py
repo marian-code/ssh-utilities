@@ -30,7 +30,7 @@ class TestSSHPath(TestCase):
         self.home = os.environ.get("HOME", Path.home())
 
         c = Connection.open(self.user, None, server_name="test")
-        self.p = c.Path(self.home)
+        self.p = c.pathlib.Path(self.home)
 
     def test_cwd(self):
 

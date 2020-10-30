@@ -1,9 +1,14 @@
 """Module implementing SSH connection functionality."""
 
+import builtins
 import logging
 import os
 from pathlib import Path
+import pathlib
+import shutil
+import subprocess
 from typing import TYPE_CHECKING, Optional, Union
+from colorama.initialise import reinit
 
 import paramiko
 
@@ -195,11 +200,31 @@ class SSHConnection(ConnectionABC):
         self._get_ssh()
 
         # init submodules
-        self.subprocess = Subprocess(self)  # type: ignore
-        self.builtins = Builtins(self)  # type: ignore
-        self.shutil = Shutil(self)  # type: ignore
-        self.os = Os(self)  # type: ignore
-        self.pathlib = Pathlib(self)  # type: ignore
+        self._builtins = Builtins(self)  # type: ignore
+        self._os = Os(self)  # type: ignore
+        self._pathlib = Pathlib(self)  # type: ignore
+        self._shutil = Shutil(self)  # type: ignore
+        self._subprocess = Subprocess(self)  # type: ignore
+
+    @property
+    def builtins(self) -> Builtins:
+        return self._builtins
+
+    @property
+    def os(self) -> Os:
+        return self._os
+
+    @property
+    def pathlib(self) -> Pathlib:
+        return self._pathlib
+
+    @property
+    def shutil(self) -> Shutil:
+        return self._shutil
+
+    @property
+    def subprocess(self) -> Subprocess:
+        return self._subprocess
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,

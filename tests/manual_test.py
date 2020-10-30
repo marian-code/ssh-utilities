@@ -2,10 +2,47 @@ from ssh_utilities import Connection, PIPE, DEVNULL
 from ssh_utilities.exceptions import CalledProcessError
 from pathlib import Path
 
+
+# PythonDecorators/decorator_with_arguments.py
+class decorator_with_arguments(object):
+
+    def __new__(cls, decorated_function=None, **kwargs):
+
+        self = super().__new__(cls)
+        self._init(**kwargs)
+
+        if not decorated_function:
+            return self
+        else:
+            return self.__call__(decorated_function)
+
+    def _init(self, arg1="default", arg2="default", arg3="default"):
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.arg3 = arg3
+
+    def __call__(self, decorated_function):
+
+        def wrapped_f(*args):
+            print("Decorator arguments:", self.arg1, self.arg2, self.arg3)
+            print("decorated_function arguments:", *args)
+            decorated_function(*args)
+
+        return wrapped_f
+
+@decorator_with_arguments(arg1=5)
+def sayHello(a1, a2, a3, a4):
+    print('sayHello arguments:', a1, a2, a3, a4)
+
+
+sayHello(1, 2, 3, 4)
+
+
+"""
 with Connection("hartree") as c:
 
     try:
-        ls = c.run(["ls", "-l"], suppress_out=False, quiet=False,
+        ls = c.subprocess.run(["ls", "-l"], suppress_out=False, quiet=False,
                    stdout=PIPE, stderr=DEVNULL, check=True, cwd=Path("/home/rynik"),
                    encoding="utf-8")
     except CalledProcessError as e:
@@ -13,15 +50,15 @@ with Connection("hartree") as c:
     else:
         print(ls)
 
-    c.download_tree(Path("/home/rynik/test"), "/home/rynik", include="*.txt",
-                    remove_after=False)
-
-    print(c.Path("/tmp"))
-    files = c.Path("/tmp").glob("*")
+    print(c.pathlib.Path("/tmp"))
+    files = c.pathlib.Path("/tmp").glob("*")
     print(files)
     for f in files:
         print(f)
 
+    c.shutil.download_tree(Path("/home/rynik/test"), "/home/rynik", include="*.txt",
+                           remove_after=False)
+"""
 
 #c.download_tree("/home/rynik/lammps_tests", "/home/rynik/OneDrive/dizertacka/code/ssh_utilities/test", include="*.in", exclude="*data*", remove_after=False)
 #c.upload_tree("/home/rynik/OneDrive/dizertacka/code/ssh_utilities/test", "/home/rynik/lammps_tests", remove_after=False)
