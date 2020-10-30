@@ -1,22 +1,23 @@
 """Template module for all connections classes."""
 import logging
 from abc import ABC, abstractmethod
-from os import fspath
+from os import fspath, makedirs
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, List, Optional, Union
 
 from typing_extensions import Literal
 
-from .path import SSHPath
-
 if TYPE_CHECKING:
-    from subprocess import CompletedProcess as sCP
-    from paramiko.sftp_attr import SFTPAttributes
     from os import stat_result
+    from subprocess import CompletedProcess as sCP
+
+    from paramiko.sftp_attr import SFTPAttributes
 
     _ATTRIBUTES = Union[SFTPAttributes, stat_result]
 
     from .utils import CompletedProcess as CP
+    from .remote.path import SSHPath
+
     CompletedProcess = Union[CP, sCP]
     from paramiko.sftp_file import SFTPFile
 
@@ -27,6 +28,12 @@ if TYPE_CHECKING:
 __all__ = ["ConnectionABC"]
 
 logging.getLogger(__name__)
+
+
+class OsPathABC(ABC):
+
+    def realpath(self, path: "_SPATH") -> str:
+        raise NotImplementedError
 
 
 class ConnectionABC(ABC):
@@ -61,7 +68,8 @@ class ConnectionABC(ABC):
 
     @abstractmethod
     def copy_files(self, files: List[str], remote_path: "_SPATH",
-                   local_path: "_SPATH", direction: str, quiet: bool = False):
+                   local_path: "_SPATH", *, direction: "_DIRECTION",
+                   follow_symlinks: bool = True, quiet: bool = False):
         raise NotImplementedError
 
     @abstractmethod
@@ -95,12 +103,16 @@ class ConnectionABC(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def Path(self, path: "_SPATH") -> Union[Path, SSHPath]:
+    def Path(self, path: "_SPATH") -> Union[Path, "SSHPath"]:
         raise NotImplementedError
 
     @abstractmethod
-    def mkdir(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
-              parents: bool = True, quiet: bool = True):
+    def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
+                 parents: bool = True, quiet: bool = True):
+        raise NotImplementedError
+
+    @abstractmethod
+    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
         raise NotImplementedError
 
     @abstractmethod
@@ -135,7 +147,17 @@ class ConnectionABC(ABC):
 
     osname = name
 
-    # Normal methods
+    @property
+    @abstractmethod
+    def path(self) -> OsPathABC:
+        raise NotImplementedError
+
+    @path.setter
+    @abstractmethod
+    def path(self, path: OsPathABC):
+        raise NotImplementedError
+
+    # * Normal methods ########################################################
     @staticmethod
     def _path2str(path: Optional["_SPATH"]) -> str:
         """Converts pathlib.Path, SSHPath or plain str to string.
@@ -153,7 +175,7 @@ class ConnectionABC(ABC):
         FileNotFoundError
             if path is not instance of str, Path or SSHPath
         """
-        if isinstance(path, (Path, SSHPath)):
+        if isinstance(path, Path):  # (Path, SSHPath)):
             p = fspath(path)
             return p if not p.endswith("/") else p[:-1]
         elif isinstance(path, str):

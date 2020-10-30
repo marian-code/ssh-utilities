@@ -3,8 +3,8 @@ import time
 from functools import wraps
 from typing import TYPE_CHECKING, Callable, Optional
 
-from paramiko.ssh_exception import (NoValidConnectionsError, SFTPError,
-                                    SSHException)
+from paramiko import SFTPError
+from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
 from ..exceptions import ConnectionError, SFTPOpenError
 

@@ -1,3 +1,5 @@
+"""Remote version of subprocess module"""
+
 import logging
 import os
 import socket
@@ -14,6 +16,7 @@ from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
     from ..typeshed import _CMD, _ENV, _FILE, _SPATH
+    from .remote import SSHConnection
 
 __all__ = ["Subprocess", "PIPE", "STDOUT", "DEVNULL"]
 
@@ -21,6 +24,10 @@ log = logging.getLogger(__name__)
 
 
 class Subprocess(ConnectionABC):
+    """Class with similar API to subprocess module."""
+
+    def __init__(self, connection: "SSHConnection") -> None:
+        pass
 
     # TODO WORKS weird on AIX only first/last line of output
     @check_connections(exclude_exceptions=(TypeError, CalledProcessError))

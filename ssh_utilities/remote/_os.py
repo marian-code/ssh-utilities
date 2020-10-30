@@ -1,20 +1,25 @@
+"""Remote connection os methods."""
+
 import logging
 import os
+from os import makedirs
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 from typing import TYPE_CHECKING, List
 
-from ..base import ConnectionABC
+from typing_extensions import Literal
+
+from ..base import ConnectionABC, OsPathABC
 from ..constants import G, R
+from ..exceptions import CalledProcessError, UnknownOsError
 from ..utils import lprint
 from ._connection_wrapper import check_connections
-from typing_extensions import Literal
-from ..exceptions import CalledProcessError, UnknownOsError
 
 if TYPE_CHECKING:
-    from paramiko.sftp_client import SFTPClient
     from paramiko.sftp_attr import SFTPAttributes
+    from paramiko.sftp_client import SFTPClient
 
     from ..typeshed import _SPATH
+    from .remote import SSHConnection
 
 __all__ = ["Os"]
 
@@ -22,10 +27,14 @@ log = logging.getLogger(__name__)
 
 
 class Os(ConnectionABC):
+    """Class gathering all remote methods similar to python os module."""
 
     sftp: "SFTPClient"
     server_name: str
     _osname: Literal["nt", "posix", ""] = ""
+
+    def __init__(self, connection: "SSHConnection") -> None:
+        self.path = OsPathRemote(connection)
 
     @check_connections
     def isfile(self, path: "_SPATH") -> bool:
@@ -73,8 +82,8 @@ class Os(ConnectionABC):
 
     @check_connections(exclude_exceptions=(FileExistsError, FileNotFoundError,
                                            OSError))
-    def mkdir(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
-              parents: bool = True, quiet: bool = True):
+    def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
+                 parents: bool = True, quiet: bool = True):
         """Recursively create directory.
 
         If it already exists, show warning and return.
@@ -143,6 +152,9 @@ class Os(ConnectionABC):
         elif not exist_ok:
             raise FileExistsError(f"Directory already exists: "
                                   f"{self.server_name}@{path}")
+
+    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
+        self.makedirs(path, mode, exist_ok=False, parents=False, quiet=quiet)
 
     @check_connections(exclude_exceptions=FileNotFoundError)
     def listdir(self, path: "_SPATH") -> List[str]:
@@ -243,13 +255,33 @@ class Os(ConnectionABC):
     @check_connections
     def stat(self, path: "_SPATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> "SFTPAttributes":
+        """Replacement for os.stat function.
 
+        Parameters
+        ----------
+        path: _SPATH
+            path to file whose stats are desired
+        dir_fd: Any
+            not implemented
+        follow_symlinks: bool
+            whether to resolve symbolic links along the way
+
+        Returns
+        -------
+        SFTPAttributes
+            stat object similar to one returned by `os.stat`
+
+        Warnings
+        --------
+        `dir_fd` parameter has no effect, it is present only so the signature
+        is compatible with `os.stat`
+        """
         spath = self._path2str(path)
         stat = self.sftp.stat(spath)
 
         # TODO do we need this? can links be chained?
         while True:
-            if follow_symlinks and S_ISLNK(stat):
+            if follow_symlinks and S_ISLNK(stat.st_mode):
                 spath = self.sftp.readlink(spath)
                 stat = self.sftp.stat(spath)
             else:
@@ -258,4 +290,59 @@ class Os(ConnectionABC):
         return stat
 
     def lstat(self, path: "_SPATH", *, dir_fd=None) -> "SFTPAttributes":
+        """Similar to stat only this does not resolve symlinks.
+
+        Parameters
+        ----------
+        path: _SPATH
+            path to file whose stats are desired
+        dir_fd: Any
+            not implemented
+
+        Returns
+        -------
+        SFTPAttributes
+            stat object similar to one returned by `os.lstat`
+
+        Warnings
+        --------
+        `dir_fd` parameter has no effect, it is present only so the signature
+        is compatible with `os.lstat`
+        """
         return self.stat(path, dir_fd=dir_fd, follow_symlinks=False)
+
+
+# alternative to os.path module
+class OsPathRemote(OsPathABC):
+    """Drop in replacement for `os.path` module."""
+
+    def __init__(self, connection: "SSHConnection") -> None:
+        self.c = connection
+
+    def realpath(self, path: "_SPATH") -> str:
+        """Return the canonical path of the specified filename.
+
+        Eliminates any symbolic links encountered in the path.
+
+        Parameters
+        ----------
+        path : _SPATH
+            path to resolve
+
+        Returns
+        -------
+        str
+            string representation of the resolved path
+        """
+        spath = self.c._path2str(path)
+        stat = self.c.sftp.stat(spath)
+
+        # TODO do we need this? can links be chained?
+        while True:
+            if S_ISLNK(stat.st_mode):
+                spath = self.c.sftp.readlink(spath)
+                stat = self.c.sftp.stat(spath)
+            else:
+                break
+
+        return spath

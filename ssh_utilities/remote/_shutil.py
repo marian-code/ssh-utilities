@@ -1,9 +1,11 @@
+"""Module collecting shutil-like remote methods."""
+
 import logging
 import os
+import shutil
 from os.path import join as jn
 from stat import S_ISDIR, S_ISLNK
 from typing import TYPE_CHECKING, List, Tuple, Type, Union
-import shutil
 
 from typing_extensions import Literal
 
@@ -19,19 +21,26 @@ if TYPE_CHECKING:
     from paramiko.sftp_client import SFTPClient
 
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH, _WALK
+    from .remote import SSHConnection
 
+__all__ = ["Shutil"]
 
 log = logging.getLogger(__name__)
 
+
 class Shutil(ConnectionABC):
+    """Class with remote versions of shutil methods."""
 
     sftp: "SFTPClient"
     server_name: str
 
+    def __init__(self, connection: "SSHConnection") -> None:
+        pass
+
     @check_connections(exclude_exceptions=ValueError)
     def copy_files(self, files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", *, direction: "_DIRECTION",
-                   quiet: bool = False):
+                   follow_symlinks: bool = True, quiet: bool = False):
         """Send files in the chosen direction local <-> remote.
 
         Parameters
@@ -60,15 +69,14 @@ class Shutil(ConnectionABC):
                                      f"Choose 'put' or 'get'")
 
                 self.copyfile(src, dst, direction=direction,
-                              callback=None, quiet=quiet)
-
+                              follow_symlinks=follow_symlinks, callback=None,
+                              quiet=quiet)
 
     @check_connections(exclude_exceptions=(FileNotFoundError, ValueError, 
                                            IsADirectoryError))
     def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
                  direction: "_DIRECTION", follow_symlinks: bool = True,
-                 callback: "_CALLBACK" = None,
-                 quiet: bool = True):
+                 callback: "_CALLBACK" = None, quiet: bool = True):
         """Send files in the chosen direction local <-> remote.
 
         Parameters
@@ -86,11 +94,6 @@ class Shutil(ConnectionABC):
             amount to be copied
         quiet: bool
             if True informative messages are suppresssed
-
-        Warnings
-        --------
-        `follow_symlinks` is not implemented yet, the argument has no effect!
-        Symlings are resolved by default!
 
         Raises
         ------
@@ -116,6 +119,10 @@ class Shutil(ConnectionABC):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
 
+            if follow_symlinks:
+                src = self.path.realpath(src)
+                dst = os.path.realpath(dst)
+
             try:
                 self.sftp.get(src, dst, callback)
             except IOError as e:
@@ -129,6 +136,10 @@ class Shutil(ConnectionABC):
             if self.isdir(dst):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
+
+            if follow_symlinks:
+                src = os.path.realpath(src)
+                dst = self.path.realpath(dst)
 
             self.sftp.put(src, dst, callback)
         else:
@@ -158,8 +169,6 @@ class Shutil(ConnectionABC):
 
         Warnings
         --------
-        `follow_symlinks` is not implemented yet, the argument has no effect!
-        Symlings are resolved by default!
         Unlike shutil this function cannot preserve file permissions (`copy`)
         or file metadata (`copy2`)
 
