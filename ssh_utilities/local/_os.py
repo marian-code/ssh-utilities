@@ -2,13 +2,12 @@
 
 import logging
 import os
-from os import makedirs
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
-from ..base import ConnectionABC, OsPathABC
+from ..base import OsABC, OsPathABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
@@ -19,14 +18,15 @@ __all__ = ["Os"]
 logging.getLogger(__name__)
 
 
-class Os(ConnectionABC):
+class Os(OsABC):
     """Class housing subset os module methods with same API as remote version.
     """
 
     _osname: Literal["nt", "posix", "java", ""] = ""
 
     def __init__(self, connection: "LocalConnection") -> None:
-        self.path = OsPathLocal(connection)
+        self.path = OsPathLocal(connection)  # type: ignore
+        self.c = connection
 
     @staticmethod
     def isfile(path: "_SPATH") -> bool:
@@ -38,8 +38,8 @@ class Os(ConnectionABC):
 
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
                  parents: bool = True, quiet: bool = True):
-        Path(self._path2str(path)).mkdir(mode=mode, parents=parents,
-                                         exist_ok=exist_ok)
+        Path(self.c._path2str(path)).mkdir(mode=mode, parents=parents,
+                                           exist_ok=exist_ok)
 
     def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
         self.makedirs(path, mode, exist_ok=False, parents=False, quiet=quiet)
@@ -50,11 +50,11 @@ class Os(ConnectionABC):
 
     def stat(self, path: "_SPATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> os.stat_result:
-        return os.stat(self._path2str(path), dir_fd=dir_fd,
+        return os.stat(self.c._path2str(path), dir_fd=dir_fd,
                        follow_symlinks=follow_symlinks)
 
     def lstat(self, path: "_SPATH", *, dir_fd=None) -> os.stat_result:
-        return os.lstat(self._path2str(path), dir_fd=dir_fd)
+        return os.lstat(self.c._path2str(path), dir_fd=dir_fd)
 
     @property
     def name(self) -> Literal["nt", "posix", "java"]:

@@ -7,20 +7,15 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import paramiko
 
+from ..base import ConnectionABC
 from ..constants import RED, C, G, R, Y
-from ..exceptions import (CalledProcessError, ConnectionError, SFTPOpenError)
+from ..exceptions import CalledProcessError, ConnectionError, SFTPOpenError
 from ..utils import lprint
+from . import Builtins, Os, Pathlib, Shutil, Subprocess
 from ._connection_wrapper import check_connections
-from ._builtins import Builtins
-from ._os import Os
-from ._pathlib import Pathlib
-from ._shutil import Shutil
-from ._subprocess import Subprocess
 
 if TYPE_CHECKING:
     from paramiko.sftp_client import SFTPClient
-
-    from ..typeshed import _SPATH
 
 __all__ = ["SSHConnection"]
 
@@ -103,7 +98,7 @@ class ConnectionHolder:
 
 
 # TODO implement warapper for multiple connections
-class SSHConnection(Shutil, Os, Pathlib, Subprocess):
+class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
     Parameters
@@ -193,18 +188,18 @@ class SSHConnection(Shutil, Os, Pathlib, Subprocess):
         else:
             raise RuntimeError("Must input password or path to rsa_key")
 
-        self._c = paramiko.client.SSHClient()
-        self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+        self.c = paramiko.client.SSHClient()
+        self.c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
 
         # negotiate connection
         self._get_ssh()
 
-        # init subclasses
-        Builtins.__init__(self, self)
-        Shutil.__init__(self, self)
-        Os.__init__(self, self)
-        Pathlib.__init__(self, self)
-        Subprocess.__init__(self, self)
+        # init submodules
+        self.subprocess = Subprocess(self)  # type: ignore
+        self.builtins = Builtins(self)  # type: ignore
+        self.shutil = Shutil(self)  # type: ignore
+        self.os = Os(self)  # type: ignore
+        self.pathlib = Pathlib(self)  # type: ignore
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
@@ -220,7 +215,7 @@ class SSHConnection(Shutil, Os, Pathlib, Subprocess):
             whether to print other function messages
         """
         lprint(quiet)(f"{G}Closing ssh connection to:{R} {self.server_name}")
-        self._c.close()
+        self.c.close()
 
     @staticmethod
     def ssh_log(log_file: Union[Path, str] = Path("paramiko.log"),
@@ -245,12 +240,12 @@ class SSHConnection(Shutil, Os, Pathlib, Subprocess):
         try:
             if self.rsa_key:
                 # connect with public key
-                self._c.connect(self.address, username=self.username,
-                                pkey=self.rsa_key)
+                self.c.connect(self.address, username=self.username,
+                               pkey=self.rsa_key)
             else:
                 # if password was passed try to connect with it
-                self._c.connect(self.address, username=self.username,
-                                password=self.password, look_for_keys=False)
+                self.c.connect(self.address, username=self.username,
+                               password=self.password, look_for_keys=False)
 
         except (paramiko.ssh_exception.AuthenticationException,
                 paramiko.ssh_exception.NoValidConnectionsError) as e:
@@ -287,12 +282,12 @@ class SSHConnection(Shutil, Os, Pathlib, Subprocess):
         """
         if not self._sftp_open:
 
-            self._sftp = self._c.open_sftp()
+            self._sftp = self.c.open_sftp()
             self.local_home = os.path.expanduser("~")
 
             for _ in range(3):  # sometimes failes, give it three tries
                 try:
-                    self._remote_home = self.run(
+                    self._remote_home = self.subprocess.run(
                         ["echo $HOME"], suppress_out=True, quiet=True,
                         check=True, capture_output=True).stdout.strip()
                 except CalledProcessError as e:

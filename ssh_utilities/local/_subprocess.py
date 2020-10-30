@@ -4,7 +4,7 @@ import logging
 import subprocess
 from typing import TYPE_CHECKING, Optional
 
-from ..base import ConnectionABC
+from ..base import SubprocessABC
 from ..constants import C, R
 from ..utils import lprint
 
@@ -17,14 +17,14 @@ __all__ = ["Subprocess"]
 logging.getLogger(__name__)
 
 
-class Subprocess(ConnectionABC):
+class Subprocess(SubprocessABC):
     """Local proxy for subprocess module.
 
     Supports same subset of API as remote version.
     """
 
     def __init__(self, connection: "LocalConnection") -> None:
-        pass
+        self.c = connection
 
     @staticmethod
     def run(args: "_CMD", *, suppress_out: bool, quiet: bool = True,

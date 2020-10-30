@@ -10,18 +10,15 @@ from typing import Optional, Union
 
 from ..constants import G, Y
 from ..utils import lprint
-from ._builtins import Builtins
-from ._os import Os
-from ._pathlib import Pathlib
-from ._shutil import Shutil
-from ._subprocess import Subprocess
+from ..base import ConnectionABC
+from . import Builtins, Os, Pathlib, Shutil, Subprocess
 
 __all__ = ["LocalConnection"]
 
 logging.getLogger(__name__)
 
 
-class LocalConnection(Builtins, Shutil, Os, Subprocess, Pathlib):
+class LocalConnection(ConnectionABC):
     """Emulates SSHConnection class on local PC."""
 
     def __init__(self, address: Optional[str], username: str,
@@ -41,12 +38,12 @@ class LocalConnection(Builtins, Shutil, Os, Subprocess, Pathlib):
 
         self.local = True
 
-        # init subclasses
-        Builtins.__init__(self, self)
-        Shutil.__init__(self, self)
-        Os.__init__(self, self)
-        Pathlib.__init__(self, self)
-        Subprocess.__init__(self, self)
+        # init submodules
+        self.subprocess = Subprocess(self)  # type: ignore
+        self.builtins = Builtins(self)  # type: ignore
+        self.shutil = Shutil(self)  # type: ignore
+        self.os = Os(self)  # type: ignore
+        self.pathlib = Pathlib(self)  # type: ignore
 
     def __str__(self) -> str:
         return self.to_str("LocalConnection", self.server_name, None,

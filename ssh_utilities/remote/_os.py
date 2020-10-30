@@ -2,13 +2,12 @@
 
 import logging
 import os
-from os import makedirs
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
-from ..base import ConnectionABC, OsPathABC
+from ..base import OsPathABC, OsABC
 from ..constants import G, R
 from ..exceptions import CalledProcessError, UnknownOsError
 from ..utils import lprint
@@ -26,15 +25,14 @@ __all__ = ["Os"]
 log = logging.getLogger(__name__)
 
 
-class Os(ConnectionABC):
+class Os(OsABC):
     """Class gathering all remote methods similar to python os module."""
 
-    sftp: "SFTPClient"
-    server_name: str
     _osname: Literal["nt", "posix", ""] = ""
 
     def __init__(self, connection: "SSHConnection") -> None:
-        self.path = OsPathRemote(connection)
+        self.c = connection
+        self.path = OsPathRemote(connection)  # type: ignore
 
     @check_connections
     def isfile(self, path: "_SPATH") -> bool:
@@ -51,7 +49,7 @@ class Os(ConnectionABC):
             if file could not be accessed
         """
         try:
-            return S_ISREG(self.sftp.stat(self._path2str(path)).st_mode)
+            return S_ISREG(self.c.sftp.stat(self.c._path2str(path)).st_mode)
         except IOError:
             return False
 
@@ -69,12 +67,12 @@ class Os(ConnectionABC):
         IOError
             if dir could not be accessed
         """
-        _path = self._path2str(path)
+        _path = self.c._path2str(path)
         try:
-            s = self.sftp.stat(_path)
+            s = self.c.sftp.stat(_path)
 
             if S_ISLNK(s.st_mode):
-                s = self.sftp.stat(self.sftp.readlink(_path))
+                s = self.c.sftp.stat(self.c.sftp.readlink(_path))
 
             return S_ISDIR(s.st_mode)
         except IOError:
@@ -112,18 +110,18 @@ class Os(ConnectionABC):
         FileExistsError
             when directory already exists and exist_ok=False
         """
-        path = self._path2str(path)
+        path = self.c._path2str(path)
 
         if not self.isdir(path):
             lprint(quiet)(f"{G}Creating directory:{R} "
-                          f"{self.server_name}@{path}")
+                          f"{self.c.server_name}@{path}")
 
             if not parents:
                 try:
-                    self.sftp.mkdir(path, mode)
+                    self.c.sftp.mkdir(path, mode)
                 except Exception as e:
                     raise FileNotFoundError(f"Error in creating directory: "
-                                            f"{self.server_name}@{path}, "
+                                            f"{self.c.server_name}@{path}, "
                                             f"probably parent does not exist.")
 
             to_make = []
@@ -138,20 +136,20 @@ class Os(ConnectionABC):
 
             for tm in reversed(to_make):
                 try:
-                    self.sftp.mkdir(tm, mode)
+                    self.c.sftp.mkdir(tm, mode)
                 except OSError as e:
                     raise OSError(f"Couldn't make dir {tm},\n probably "
                                   f"permission error: {e}")
 
             try:
-                self.sftp.mkdir(path, mode)
+                self.c.sftp.mkdir(path, mode)
             except OSError as e:
                 raise OSError(f"Couldn't make dir {path}, probably "
                               f"permission error: {e}\n"
                               f"Also check path formating")
         elif not exist_ok:
             raise FileExistsError(f"Directory already exists: "
-                                  f"{self.server_name}@{path}")
+                                  f"{self.c.server_name}@{path}")
 
     def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
         self.makedirs(path, mode, exist_ok=False, parents=False, quiet=quiet)
@@ -176,7 +174,7 @@ class Os(ConnectionABC):
             if directory does not exist
         """
         try:
-            return self.sftp.listdir(self._path2str(path))
+            return self.c.sftp.listdir(self.c._path2str(path))
         except IOError as e:
             raise FileNotFoundError(f"Directory does not exist: {e}")
 
@@ -189,7 +187,7 @@ class Os(ConnectionABC):
         path: "_SPATH"
             new directory path
         """
-        self.sftp.chdir(self._path2str(path))
+        self.c.sftp.chdir(self.c._path2str(path))
 
     change_dir = chdir
 
@@ -229,8 +227,10 @@ class Os(ConnectionABC):
         # Try some common cmd strings
         for cmd in ('ver', 'command /c ver', 'cmd /c ver'):
             try:
-                info = self.run([cmd], suppress_out=True, quiet=True,
-                                check=True, capture_output=True).stdout
+                info = self.c.subprocess.run(
+                    [cmd], suppress_out=True, quiet=True,
+                    check=True, capture_output=True
+                ).stdout
             except CalledProcessError as e:
                 log.debug(f"Couldn't get os name: {e}")
                 error_count += 1
@@ -276,14 +276,14 @@ class Os(ConnectionABC):
         `dir_fd` parameter has no effect, it is present only so the signature
         is compatible with `os.stat`
         """
-        spath = self._path2str(path)
-        stat = self.sftp.stat(spath)
+        spath = self.c._path2str(path)
+        stat = self.c.sftp.stat(spath)
 
         # TODO do we need this? can links be chained?
         while True:
             if follow_symlinks and S_ISLNK(stat.st_mode):
-                spath = self.sftp.readlink(spath)
-                stat = self.sftp.stat(spath)
+                spath = self.c.sftp.readlink(spath)
+                stat = self.c.sftp.stat(spath)
             else:
                 break
 

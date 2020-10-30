@@ -4,7 +4,7 @@ import logging
 from types import MethodType
 from typing import TYPE_CHECKING, Optional
 
-from ..base import ConnectionABC
+from ..base import BuiltinsABC
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
@@ -19,13 +19,13 @@ __all__ = ["Builtins"]
 log = logging.getLogger(__name__)
 
 
-class Builtins(ConnectionABC):
+class Builtins(BuiltinsABC):
     """Remote replacement for python builtins, mainly the open function."""
 
     sftp: "SFTPClient"
 
     def __init__(self, connection: "SSHConnection") -> None:
-        pass
+        self.c = connection
 
     @check_connections(exclude_exceptions=FileNotFoundError)
     def open(self, filename: "_SPATH", mode: str = "r",
@@ -58,11 +58,11 @@ class Builtins(ConnectionABC):
         FileNotFoundError
             when mode is 'r' and file does not exist
         """
-        path = self._path2str(filename)
+        path = self.c._path2str(filename)
         encoding = encoding if encoding else "utf-8"
         errors = errors if errors else "strict"
 
-        if not self.isfile(path) and "r" in mode:
+        if not self.c.os.isfile(path) and "r" in mode:
             raise FileNotFoundError(f"Cannot open {path} for reading, "
                                     f"it does not exist.")
 
@@ -76,7 +76,7 @@ class Builtins(ConnectionABC):
 
         # open file
         try:
-            file_obj = self.sftp.open(path, mode=mode, bufsize=bufsize)
+            file_obj = self.c.sftp.open(path, mode=mode, bufsize=bufsize)
         except IOError as e:
             log.exception(f"Error while opening file {filename}: {e}")
             raise e

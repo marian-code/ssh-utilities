@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List, Tuple, Type, Union
 
 from typing_extensions import Literal
 
-from ..base import ConnectionABC
+from ..base import ShutilABC
 from ..constants import LG, C, G, R
 from ..utils import ProgressBar
 from ..utils import bytes_2_human_readable as b2h
@@ -28,14 +28,11 @@ __all__ = ["Shutil"]
 log = logging.getLogger(__name__)
 
 
-class Shutil(ConnectionABC):
+class Shutil(ShutilABC):
     """Class with remote versions of shutil methods."""
 
-    sftp: "SFTPClient"
-    server_name: str
-
     def __init__(self, connection: "SSHConnection") -> None:
-        pass
+        self.c = connection
 
     @check_connections(exclude_exceptions=ValueError)
     def copy_files(self, files: List[str], remote_path: "_SPATH",
@@ -59,11 +56,11 @@ class Shutil(ConnectionABC):
         with context_timeit(quiet):
             for f in files:
                 if direction == "get":
-                    src = jn(self._path2str(remote_path), f)
-                    dst = jn(self._path2str(local_path), f)
+                    src = jn(self.c._path2str(remote_path), f)
+                    dst = jn(self.c._path2str(local_path), f)
                 elif direction == "put":
-                    dst = jn(self._path2str(remote_path), f)
-                    src = jn(self._path2str(local_path), f)
+                    dst = jn(self.c._path2str(remote_path), f)
+                    src = jn(self.c._path2str(local_path), f)
                 else:
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
@@ -72,7 +69,7 @@ class Shutil(ConnectionABC):
                               follow_symlinks=follow_symlinks, callback=None,
                               quiet=quiet)
 
-    @check_connections(exclude_exceptions=(FileNotFoundError, ValueError, 
+    @check_connections(exclude_exceptions=(FileNotFoundError, ValueError,
                                            IsADirectoryError))
     def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
                  direction: "_DIRECTION", follow_symlinks: bool = True,
@@ -112,36 +109,36 @@ class Shutil(ConnectionABC):
         lprnt = lprint(quiet=quiet)
 
         if direction == "get":
-            lprnt(f"{G}Copying from remote:{R} {self.server_name}@{src}{LG}\n"
-                  f"-->           local:{R} {dst}")
+            lprnt(f"{G}Copying from remote:{R} {self.c.server_name}@{src}{LG}"
+                  f"\n-->           local:{R} {dst}")
 
-            if os.path.isdir(self._path2str(dst)):
+            if os.path.isdir(self.c._path2str(dst)):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
 
             if follow_symlinks:
-                src = self.path.realpath(src)
+                src = self.c.os.path.realpath(src)
                 dst = os.path.realpath(dst)
 
             try:
-                self.sftp.get(src, dst, callback)
+                self.c.sftp.get(src, dst, callback)
             except IOError as e:
                 raise FileNotFoundError(f"File you are trying to get "
                                         f"does not exist: {e}")
 
         elif direction == "put":
             lprnt(f"{G}Copying from local:{R} {src}\n"
-                  f"{LG} -->       remote: {self.server_name}@{dst}")
+                  f"{LG} -->       remote: {self.c.server_name}@{dst}")
 
-            if self.isdir(dst):
+            if self.c.os.isdir(dst):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
 
             if follow_symlinks:
                 src = os.path.realpath(src)
-                dst = self.path.realpath(dst)
+                dst = self.c.os.path.realpath(dst)
 
-            self.sftp.put(src, dst, callback)
+            self.c.sftp.put(src, dst, callback)
         else:
             raise ValueError(f"{direction} is not valid direction. "
                              f"Choose 'put' or 'get'")
@@ -180,12 +177,12 @@ class Shutil(ConnectionABC):
             if direction is not `put` or `get`
         """
         if direction == "get":
-            if os.path.isdir(self._path2str(dst)):
-                dst = jn(dst, os.path.basename(self._path2str(src)))
+            if os.path.isdir(self.c._path2str(dst)):
+                dst = jn(dst, os.path.basename(self.c._path2str(src)))
 
         elif direction == "put":
-            if self.isdir(dst):
-                dst = jn(dst, os.path.basename(self._path2str(src)))
+            if self.c.os.isdir(dst):
+                dst = jn(dst, os.path.basename(self.c._path2str(src)))
 
         self.copyfile(src, dst, direction=direction,
                       follow_symlinks=follow_symlinks, callback=callback,
@@ -212,8 +209,8 @@ class Shutil(ConnectionABC):
         FileNotFoundError
             if some part of deleting filed
         """
-        sn = self.server_name
-        path = self._path2str(path)
+        sn = self.c.server_name
+        path = self.c._path2str(path)
 
         with context_timeit(quiet):
             lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
@@ -223,13 +220,13 @@ class Shutil(ConnectionABC):
                     for f in files:
                         f = jn(root, f)
                         lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
-                        if self.isfile(f):
-                            self.sftp.remove(f)
-                    if self.isdir(root):
-                        self.sftp.rmdir(root)
+                        if self.c.os.isfile(f):
+                            self.c.sftp.remove(f)
+                    if self.c.os.isdir(root):
+                        self.c.sftp.rmdir(root)
 
-                if self.isdir(path):
-                    self.sftp.rmdir(path)
+                if self.c.os.isdir(path):
+                    self.c.sftp.rmdir(path)
             except FileNotFoundError as e:
                 if ignore_errors:
                     log.warning("Directory does not exist")
@@ -274,10 +271,10 @@ class Shutil(ConnectionABC):
         FileNotFoundError
             when remote directory does not exist
         """
-        dst = self._path2str(local_path)
-        src = self._path2str(remote_path)
+        dst = self.c._path2str(local_path)
+        src = self.c._path2str(remote_path)
 
-        if not self.isdir(remote_path):
+        if not self.c.os.isdir(remote_path):
             raise FileNotFoundError(f"{remote_path} you are trying to download"
                                     f"from does not exist")
 
@@ -293,7 +290,7 @@ class Shutil(ConnectionABC):
         for root, _, files in self._sftp_walk(src):
 
             lprnt(f"{G}Searching remote directory:{R} "
-                  f"{self.server_name}@{root}", up=1)
+                  f"{self.c.server_name}@{root}", up=1)
 
             # record directories that need to be created on local side
             directory = root.replace(src, "")
@@ -308,7 +305,7 @@ class Shutil(ConnectionABC):
                 copy_files.append({
                     "dst": dst_file,
                     "src": jn(root, f),
-                    "size": self.lstat(jn(root, f)).st_size
+                    "size": self.c.os.lstat(jn(root, f)).st_size
                 })
 
         # file number and size statistics
@@ -335,11 +332,11 @@ class Shutil(ConnectionABC):
         with ProgressBar(total=total, quiet=q) as t:
             for f in copy_files:
 
-                t.write(f"{G}Copying remote:{R} {self.server_name}@"
+                t.write(f"{G}Copying remote:{R} {self.c.server_name}@"
                         f"{f['src']:<{max_src}}"
                         f"\n{G}     --> local:{R} {f['dst']:<{max_dst}}")
 
-                self.sftp.get(f["src"], f["dst"], callback=t.update_bar)
+                self.c.sftp.get(f["src"], f["dst"], callback=t.update_bar)
 
         lprnt("")
 
@@ -384,8 +381,8 @@ class Shutil(ConnectionABC):
         FileNotFoundError
             when local directory does not exist
         """
-        src = self._path2str(local_path)
-        dst = self._path2str(remote_path)
+        src = self.c._path2str(local_path)
+        dst = self.c._path2str(remote_path)
 
         if not os.path.isdir(local_path):
             raise FileNotFoundError(f"{local_path} you are trying to upload "
@@ -434,7 +431,7 @@ class Shutil(ConnectionABC):
         # create directories on remote side to copy to
         lprnt(f"\n{C}Creating directory structure on remote side...")
         for d in dst_dirs:
-            self.mkdir(d, exist_ok=True, quiet=quiet)
+            self.c.os.makedirs(d, exist_ok=True, quiet=quiet)
 
         # copy
         lprnt(f"\n{C}Copying...{R}\n")
@@ -449,10 +446,10 @@ class Shutil(ConnectionABC):
             for cf in copy_files:
 
                 t.write(f"{G}Copying local:{R} {cf['src']:<{max_src}}\n"
-                        f"{G}   --> remote:{R} {self.server_name}@"
+                        f"{G}   --> remote:{R} {self.c.server_name}@"
                         f"{cf['dst']:<{max_dst}}")
 
-                self.sftp.put(cf["src"], cf["dst"], callback=t.update_bar)
+                self.c.sftp.put(cf["src"], cf["dst"], callback=t.update_bar)
 
         lprnt("")
 
@@ -462,14 +459,14 @@ class Shutil(ConnectionABC):
     @check_connections
     def _sftp_walk(self, remote_path: "_SPATH") -> "_WALK":
         """Recursive directory listing."""
-        remote_path = self._path2str(remote_path)
+        remote_path = self.c._path2str(remote_path)
         path = remote_path
         files = []
         folders = []
-        for f in self.sftp.listdir_attr(remote_path):
+        for f in self.c.sftp.listdir_attr(remote_path):
             # if is symlink get real files and check its stats
             if S_ISLNK(f.st_mode):
-                s = self.stat(jn(remote_path, f.filename))
+                s = self.c.os.stat(jn(remote_path, f.filename))
                 if S_ISDIR(s.st_mode):
                     folders.append(f.filename)
                 else:

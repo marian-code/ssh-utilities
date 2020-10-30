@@ -3,7 +3,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from ..base import ConnectionABC
+from ..base import PathlibABC
 from ._connection_wrapper import check_connections
 from .path import SSHPath
 
@@ -16,11 +16,11 @@ __all__ = ["Pathlib"]
 log = logging.getLogger(__name__)
 
 
-class Pathlib(ConnectionABC):
+class Pathlib(PathlibABC):
     """Expose pathlib like API for remote hosts."""
 
     def __init__(self, connection: "SSHConnection") -> None:
-        pass
+        self.c = connection
 
     @check_connections
     def Path(self, path: "_SPATH") -> SSHPath:
@@ -38,4 +38,4 @@ class Pathlib(ConnectionABC):
         SSHPath
             object representing remote path
         """
-        return SSHPath(self, self._path2str(path))
+        return SSHPath(self.c, self.c._path2str(path))

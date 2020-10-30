@@ -1,9 +1,9 @@
 """Python builtins proxy."""
 
 import logging
-from typing import TYPE_CHECKING, Optional, IO
+from typing import IO, TYPE_CHECKING, Optional
 
-from ..base import ConnectionABC
+from ..base import BuiltinsABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
@@ -14,14 +14,14 @@ __all__ = ["Builtins"]
 logging.getLogger(__name__)
 
 
-class Builtins(ConnectionABC):
+class Builtins(BuiltinsABC):
     """Local proxy for python builtins, mainly the open function.
 
     Supports same subset of API as remote version.
     """
 
     def __init__(self, connection: "LocalConnection") -> None:
-        pass
+        self.c = connection
 
     @staticmethod
     def open(filename: "_SPATH", mode: str = "r",

@@ -1,8 +1,10 @@
 """Template module for all connections classes."""
+import builtins
 import logging
 from abc import ABC, abstractmethod
-from os import fspath, makedirs
+from os import fspath
 from pathlib import Path
+import subprocess
 from typing import IO, TYPE_CHECKING, List, Optional, Union
 
 from typing_extensions import Literal
@@ -15,8 +17,8 @@ if TYPE_CHECKING:
 
     _ATTRIBUTES = Union[SFTPAttributes, stat_result]
 
-    from .utils import CompletedProcess as CP
     from .remote.path import SSHPath
+    from .utils import CompletedProcess as CP
 
     CompletedProcess = Union[CP, sCP]
     from paramiko.sftp_file import SFTPFile
@@ -25,14 +27,140 @@ if TYPE_CHECKING:
                            _SPATH)
 
 
-__all__ = ["ConnectionABC"]
+__all__ = ["ConnectionABC", "OsPathABC", "BuiltinsABC", "OsABC", "ShutilABC",
+           "SubprocessABC", "PathlibABC"]
 
 logging.getLogger(__name__)
 
 
 class OsPathABC(ABC):
+    """`os.path` module drop-in replacement base."""
 
     def realpath(self, path: "_SPATH") -> str:
+        raise NotImplementedError
+
+
+class BuiltinsABC(ABC):
+    """Python builtins drop-in replacement base."""
+
+    @abstractmethod
+    def open(self, filename: "_SPATH", mode: str = "r",
+             encoding: Optional[str] = None,
+             bufsize: int = -1, errors: Optional[str] = None
+             ) -> Union[IO, "SFTPFile"]:
+        raise NotImplementedError
+
+
+class OsABC(ABC):
+    """`os` module drop-in replacement base."""
+
+    @abstractmethod
+    def isfile(self, path: "_SPATH") -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def isdir(self, path: "_SPATH") -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
+                 parents: bool = True, quiet: bool = True):
+        raise NotImplementedError
+
+    @abstractmethod
+    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
+        raise NotImplementedError
+
+    @abstractmethod
+    def listdir(self, path: "_SPATH") -> List[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def stat(self, path: "_SPATH", *, dir_fd=None,
+             follow_symlinks: bool = True) -> "_ATTRIBUTES":
+        raise NotImplementedError
+
+    @abstractmethod
+    def lstat(self, path: "_SPATH", *, dir_fd=None) -> "_ATTRIBUTES":
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def name(self) -> Literal["nt", "posix", "java"]:
+        raise NotImplementedError
+
+    osname = name
+
+    @property  # type: ignore
+    @abstractmethod
+    def path(self) -> OsPathABC:
+        raise NotImplementedError
+
+    @path.setter  # type: ignore
+    @abstractmethod
+    def path(self, path: OsPathABC):
+        raise NotImplementedError
+
+
+class ShutilABC(ABC):
+    """`shutil` module drop-in replacement base."""
+
+    @abstractmethod
+    def copy_files(self, files: List[str], remote_path: "_SPATH",
+                   local_path: "_SPATH", *, direction: "_DIRECTION",
+                   follow_symlinks: bool = True, quiet: bool = False):
+        raise NotImplementedError
+
+    @abstractmethod
+    def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
+                 direction: "_DIRECTION", follow_symlinks: bool = True,
+                 callback: "_CALLBACK" = None, quiet: bool = True):
+        raise NotImplementedError
+
+    copy = copyfile
+    copy2 = copyfile
+
+    @abstractmethod
+    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
+                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+                      remove_after: bool = True, quiet: bool = False):
+        raise NotImplementedError
+
+    @abstractmethod
+    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
+                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+                    remove_after: bool = True, quiet: bool = False):
+        raise NotImplementedError
+
+    @abstractmethod
+    def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
+               quiet: bool = True):
+        raise NotImplementedError
+
+
+class SubprocessABC(ABC):
+    """`subprocess` module drop-in replacement base."""
+
+    @abstractmethod
+    def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
+            bufsize: int = -1, executable: "_SPATH" = None,
+            input: Optional[str] = None, stdin: "_FILE" = None,
+            stdout: "_FILE" = None, stderr: "_FILE" = None,
+            capture_output: bool = False, shell: bool = False,
+            cwd: "_SPATH" = None, timeout: Optional[float] = None,
+            check: bool = False, encoding: Optional[str] = None,
+            errors: Optional[str] = None, text: Optional[bool] = None,
+            env: Optional["_ENV"] = None,
+            universal_newlines: Optional[bool] = None
+            ) -> "CompletedProcess":
+        raise NotImplementedError
+
+
+class PathlibABC(ABC):
+    """`pathlib` module drop-in replacement base."""
+
+    @abstractmethod
+    def Path(self, path: "_SPATH") -> Union[Path, "SSHPath"]:
         raise NotImplementedError
 
 
@@ -52,109 +180,54 @@ class ConnectionABC(ABC):
                 level: str = "WARN"):
         raise NotImplementedError
 
+    @property  # type: ignore
     @abstractmethod
-    def run(self, args: "_CMD", *, suppress_out: bool, quiet: bool = True,
-            bufsize: int = -1, executable: "_SPATH" = None,
-            input: Optional[str] = None, stdin: "_FILE" = None,
-            stdout: "_FILE" = None, stderr: "_FILE" = None,
-            capture_output: bool = False, shell: bool = False,
-            cwd: "_SPATH" = None, timeout: Optional[float] = None,
-            check: bool = False, encoding: Optional[str] = None,
-            errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None,
-            universal_newlines: Optional[bool] = None
-            ) -> "CompletedProcess":
+    def builtins(self) -> BuiltinsABC:
         raise NotImplementedError
 
+    @builtins.setter  # type: ignore
     @abstractmethod
-    def copy_files(self, files: List[str], remote_path: "_SPATH",
-                   local_path: "_SPATH", *, direction: "_DIRECTION",
-                   follow_symlinks: bool = True, quiet: bool = False):
+    def builtins(self, builtins: BuiltinsABC):
         raise NotImplementedError
 
+    @property  # type: ignore
     @abstractmethod
-    def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
-                 direction: "_DIRECTION", follow_symlinks: bool = True,
-                 callback: "_CALLBACK" = None,
-                 quiet: bool = True):
+    def os(self) -> OsABC:
         raise NotImplementedError
 
-    copy = copyfile
-    copy2 = copyfile
-
+    @os.setter  # type: ignore
     @abstractmethod
-    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
-                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                      remove_after: bool = True, quiet: bool = False):
+    def os(self, os: OsABC):
         raise NotImplementedError
 
+    @property  # type: ignore
     @abstractmethod
-    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
-                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                    remove_after: bool = True, quiet: bool = False):
+    def shutil(self) -> ShutilABC:
         raise NotImplementedError
 
+    @shutil.setter  # type: ignore
     @abstractmethod
-    def isfile(self, path: "_SPATH") -> bool:
+    def shutil(self, shutil: ShutilABC):
         raise NotImplementedError
 
+    @property  # type: ignore
     @abstractmethod
-    def isdir(self, path: "_SPATH") -> bool:
+    def subprocess(self) -> SubprocessABC:
         raise NotImplementedError
 
+    @subprocess.setter  # type: ignore
     @abstractmethod
-    def Path(self, path: "_SPATH") -> Union[Path, "SSHPath"]:
+    def subprocess(self, subprocess: SubprocessABC):
         raise NotImplementedError
 
+    @property  # type: ignore
     @abstractmethod
-    def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
-                 parents: bool = True, quiet: bool = True):
+    def pathlib(self) -> PathlibABC:
         raise NotImplementedError
 
+    @pathlib.setter  # type: ignore
     @abstractmethod
-    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
-        raise NotImplementedError
-
-    @abstractmethod
-    def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
-               quiet: bool = True):
-        raise NotImplementedError
-
-    @abstractmethod
-    def listdir(self, path: "_SPATH") -> List[str]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def open(self, filename: "_SPATH", mode: str = "r",
-             encoding: Optional[str] = None,
-             bufsize: int = -1, errors: Optional[str] = None
-             ) -> Union[IO, "SFTPFile"]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def stat(self, path: "_SPATH", *, dir_fd=None,
-             follow_symlinks: bool = True) -> "_ATTRIBUTES":
-        raise NotImplementedError
-
-    @abstractmethod
-    def lstat(self, path: "_SPATH", *, dir_fd=None) -> "_ATTRIBUTES":
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def name(self) -> Literal["nt", "posix", "java"]:
-        raise NotImplementedError
-
-    osname = name
-
-    @property
-    @abstractmethod
-    def path(self) -> OsPathABC:
-        raise NotImplementedError
-
-    @path.setter
-    @abstractmethod
-    def path(self, path: OsPathABC):
+    def pathlib(self, pathlib: PathlibABC):
         raise NotImplementedError
 
     # * Normal methods ########################################################

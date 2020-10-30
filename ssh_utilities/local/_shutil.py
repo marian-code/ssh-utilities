@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from ..base import ConnectionABC
+from ..base import ShutilABC
 from ..utils import context_timeit, file_filter
 
 if TYPE_CHECKING:
@@ -17,12 +17,12 @@ __all__ = ["Shutil"]
 logging.getLogger(__name__)
 
 
-class Shutil(ConnectionABC):
+class Shutil(ShutilABC):
     """Local version of shutil supporting same subset of API as remote version.
     """
 
     def __init__(self, connection: "LocalConnection") -> None:
-        pass
+        self.c = connection
 
     @staticmethod
     def copy_files(files: List[str], remote_path: "_SPATH",
@@ -48,19 +48,19 @@ class Shutil(ConnectionABC):
                  direction: "_DIRECTION", follow_symlinks: bool = True,
                  callback: "_CALLBACK" = None, quiet: bool = True):
 
-        shutil.copyfile(self._path2str(src), self._path2str(dst),
+        shutil.copyfile(self.c._path2str(src), self.c._path2str(dst),
                         follow_symlinks=follow_symlinks)
 
     def copy(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
              quiet: bool = True):
-        shutil.copy(self._path2str(src), self._path2str(dst),
+        shutil.copy(self.c._path2str(src), self.c._path2str(dst),
                     follow_symlinks=follow_symlinks)
 
     def copy2(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
               follow_symlinks: bool = True, callback: "_CALLBACK" = None,
               quiet: bool = True):
-        shutil.copy2(self._path2str(src), self._path2str(dst),
+        shutil.copy2(self.c._path2str(src), self.c._path2str(dst),
                      follow_symlinks=follow_symlinks)
 
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
@@ -73,8 +73,8 @@ class Shutil(ConnectionABC):
 
         allow_file = file_filter(include, exclude)
 
-        remote_path = self._path2str(remote_path)
-        local_path = self._path2str(local_path)
+        remote_path = self.c._path2str(remote_path)
+        local_path = self.c._path2str(local_path)
 
         if remove_after:
             shutil.move(remote_path, local_path, copy_function=_cpy)

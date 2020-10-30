@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..base import ConnectionABC
+from ..base import PathlibABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
@@ -15,12 +15,11 @@ __all__ = ["Pathlib"]
 logging.getLogger(__name__)
 
 
-class Pathlib(ConnectionABC):
-    """Simple proxy for `pathlib.Path` object with same API as remote version.
-    """ 
+class Pathlib(PathlibABC):
+    """Proxy for `pathlib.Path` object with same API as remote version."""
 
     def __init__(self, connection: "LocalConnection") -> None:
-        pass
+        self.c = connection
 
     def Path(self, path: "_SPATH") -> Path:
-        return Path(self._path2str(path))
+        return Path(self.c._path2str(path))

@@ -1,15 +1,20 @@
 import logging
 import time
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from paramiko import SFTPError
+from paramiko.client import SSHClient
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
 from ..exceptions import ConnectionError, SFTPOpenError
 
 if TYPE_CHECKING:
     from ..typeshed import _EXCTYPE
+    from . import Builtins, Os, Pathlib, Shutil, Subprocess
+    from .remote import SSHConnection
+
+    _CLASS = Union[Builtins, Os, Pathlib, Shutil, Subprocess, SSHConnection]
 
 log = logging.getLogger(__name__)
 
@@ -63,16 +68,27 @@ def check_connections(original_function: Optional[Callable] = None, *,
     def _decorate(function):
 
         @wraps(function)
-        def connect_wrapper(self, *args, **kwargs):
+        def connect_wrapper(self: "_CLASS", *args, **kwargs):
+
+            # we have to deal with branching inner classes where attribute 'c'
+            # is instance of SSHConnection not paramiko SSHClient
+            # as of now we have 2 inner levels so we must iterate until we get
+            # to the base
+            while True:
+                if not isinstance(self.c, SSHClient):
+                    instance = self.c
+                else:
+                    instance = self
+                    break
 
             def negotiate() -> bool:
                 try:
-                    self.close(quiet=True)
+                    instance.close(quiet=True)
                 except Exception as e:
                     log.exception(f"Couldn't close connection: {e}")
 
                 try:
-                    self._get_ssh()
+                    instance._get_ssh()
                 except ConnectionError:
                     success = False
                 else:
@@ -82,10 +98,10 @@ def check_connections(original_function: Optional[Callable] = None, *,
                 if not success:
                     return False
 
-                if self._sftp_open:
+                if instance._sftp_open:
                     log.debug(f"success 2: {success}")
                     try:
-                        self.sftp
+                        instance.sftp
                     except SFTPOpenError:
                         success = False
                         log.debug(f"success 3: {success}")
@@ -99,20 +115,20 @@ def check_connections(original_function: Optional[Callable] = None, *,
 
                 log.exception(f"Relevant variables:\n"
                               f"success:    {success}\n"
-                              f"password:   {self.password}\n"
-                              f"address:    {self.address}\n"
-                              f"username:   {self.username}\n"
-                              f"ssh class:  {type(self._c)}\n"
-                              f"sftp class: {type(self.sftp)}")
-                if self._sftp_open:
-                    log.exception(f"remote home: {self.remote_home}")
+                              f"password:   {instance.password}\n"
+                              f"address:    {instance.address}\n"
+                              f"username:   {instance.username}\n"
+                              f"ssh class:  {type(instance.c)}\n"
+                              f"sftp class: {type(instance.sftp)}")
+                if instance._sftp_open:
+                    log.exception(f"remote home: {instance.remote_home}")
 
                 return success
 
             n = function.__name__
             error = None
             try:
-                return function(self, *args, **kwargs)
+                return function(instance, *args, **kwargs)
             except exclude_exceptions as e:
                 # if exception is one of the excluded, re-raise it
                 raise e from None
@@ -138,7 +154,7 @@ def check_connections(original_function: Optional[Callable] = None, *,
                     log.warning("Connection is down, trying to reconnect")
                     if negotiate():
                         log.info("Connection restablished, continuing ..")
-                        connect_wrapper(self, *args, **kwargs)
+                        connect_wrapper(instance, *args, **kwargs)
                         break
                     else:
                         log.warning("Unsuccessful, wait 60 seconds "
@@ -151,4 +167,3 @@ def check_connections(original_function: Optional[Callable] = None, *,
         return _decorate(original_function)
 
     return _decorate
-

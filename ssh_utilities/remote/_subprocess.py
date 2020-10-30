@@ -1,4 +1,4 @@
-"""Remote version of subprocess module"""
+"""Remote version of subprocess module."""
 
 import logging
 import os
@@ -8,7 +8,7 @@ from io import BytesIO, StringIO, TextIOBase
 from subprocess import DEVNULL, PIPE, STDOUT
 from typing import TYPE_CHECKING, Optional
 
-from ..base import ConnectionABC
+from ..base import SubprocessABC
 from ..constants import C, R, Y
 from ..exceptions import CalledProcessError, TimeoutExpired
 from ..utils import CompletedProcess, lprint
@@ -23,11 +23,11 @@ __all__ = ["Subprocess", "PIPE", "STDOUT", "DEVNULL"]
 log = logging.getLogger(__name__)
 
 
-class Subprocess(ConnectionABC):
+class Subprocess(SubprocessABC):
     """Class with similar API to subprocess module."""
 
     def __init__(self, connection: "SSHConnection") -> None:
-        pass
+        self.c = connection
 
     # TODO WORKS weird on AIX only first/last line of output
     @check_connections(exclude_exceptions=(TypeError, CalledProcessError))
@@ -221,11 +221,11 @@ class Subprocess(ConnectionABC):
 
         if isinstance(args, list):
             if isinstance(args[0], os.PathLike):
-                args[0] = self._path2str(args[0])
+                args[0] = self.c._path2str(args[0])
 
             command = " ".join(args)
         elif isinstance(args, os.PathLike):
-            command = self._path2str(args)
+            command = self.c._path2str(args)
         elif isinstance(args, str):
             command = args
         else:
@@ -241,7 +241,7 @@ class Subprocess(ConnectionABC):
 
         # change work directory for command execution
         if cwd:
-            command = f"cd {self._path2str(cwd)} && {command}"
+            command = f"cd {self.c._path2str(cwd)} && {command}"
 
         try:
             # create output object
@@ -249,7 +249,7 @@ class Subprocess(ConnectionABC):
             cp.args = args
 
             # carry out command
-            ssh_stdin, ssh_stdout, ssh_stderr = self._c.exec_command(
+            ssh_stdin, ssh_stdout, ssh_stderr = self.c.c.exec_command(
                 command, bufsize=bufsize, timeout=timeout, get_pty=shell,
                 environment=env)
 
