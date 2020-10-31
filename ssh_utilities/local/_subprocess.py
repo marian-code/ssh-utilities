@@ -21,6 +21,11 @@ class Subprocess(SubprocessABC):
     """Local proxy for subprocess module.
 
     Supports same subset of API as remote version.
+
+    See also
+    --------
+    :class:`ssh_utilities.remote.Subprocess`
+        remote version of class with same API
     """
 
     def __init__(self, connection: "LocalConnection") -> None:
@@ -35,20 +40,21 @@ class Subprocess(SubprocessABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None,
-            universal_newlines: Optional[bool] = None
+            env: Optional["_ENV"] = None, universal_newlines: bool = False
             ) -> subprocess.CompletedProcess:
 
         if capture_output:
             stdout = subprocess.PIPE
             stderr = subprocess.PIPE
 
-        out = subprocess.run(args, bufsize=bufsize, executable=executable,
-                             input=input, stdin=stdin, stdout=stdout,
-                             stderr=stderr, shell=shell, cwd=cwd,
-                             timeout=timeout, check=check, encoding=encoding,
-                             errors=errors, text=text,
-                             universal_newlines=universal_newlines)
+        out = subprocess.run(  # type: ignore
+            args, bufsize=bufsize,
+            executable=executable,  # type: ignore
+            input=input, stdin=stdin, stdout=stdout, stderr=stderr,
+            shell=shell, cwd=cwd, timeout=timeout, check=check,
+            encoding=encoding,  # type: ignore
+            errors=errors, text=text, universal_newlines=universal_newlines
+        )
 
         if capture_output and not suppress_out:
             lprint(quiet)(f"{C}Printing local output\n{'-' * 111}{R}")

@@ -18,6 +18,11 @@ class Builtins(BuiltinsABC):
     """Local proxy for python builtins, mainly the open function.
 
     Supports same subset of API as remote version.
+
+    See also
+    --------
+    :class:`ssh_utilities.remote.Builtins`
+        remote version of class with same API
     """
 
     def __init__(self, connection: "LocalConnection") -> None:

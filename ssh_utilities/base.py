@@ -1,10 +1,8 @@
 """Template module for all connections classes."""
-import builtins
 import logging
 from abc import ABC, abstractmethod
 from os import fspath
 from pathlib import Path
-import subprocess
 from typing import IO, TYPE_CHECKING, List, Optional, Union
 
 from typing_extensions import Literal
@@ -117,8 +115,17 @@ class ShutilABC(ABC):
                  callback: "_CALLBACK" = None, quiet: bool = True):
         raise NotImplementedError
 
-    copy = copyfile
-    copy2 = copyfile
+    @abstractmethod
+    def copy(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+             follow_symlinks: bool = True, callback: "_CALLBACK" = None,
+             quiet: bool = True):
+        raise NotImplementedError
+
+    @abstractmethod
+    def copy2(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
+              quiet: bool = True):
+        raise NotImplementedError
 
     @abstractmethod
     def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
@@ -151,7 +158,7 @@ class SubprocessABC(ABC):
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
             env: Optional["_ENV"] = None,
-            universal_newlines: Optional[bool] = None
+            universal_newlines: bool = False
             ) -> "CompletedProcess":
         raise NotImplementedError
 
@@ -258,7 +265,7 @@ class ConnectionABC(ABC):
 
     @staticmethod
     def to_str(connection_name: str, host_name: str, address: Optional[str],
-               user_name: str, ssh_key: Union[Path, str]) -> str:
+               user_name: str, ssh_key: Optional[Union[Path, str]]) -> str:
         """Aims to ease persistance, returns string representation of instance.
 
         With this method all data needed to initialize class are saved to sting
@@ -275,8 +282,8 @@ class ConnectionABC(ABC):
             server address in case of remote connection
         user_name : str
             server login name
-        ssh_key : Union[Path, str]
-            file with public key
+        ssh_key : Optional[Union[Path, str]]
+            file with public key, pass none for LocalConnection
 
         Returns
         -------
@@ -287,10 +294,13 @@ class ConnectionABC(ABC):
         --------
         :class:`ssh_utilities.conncection.Connection`
         """
-        key_path = Path(ssh_key)
+        if ssh_key is None:
+            key_path = ssh_key
+        else:
+            key_path = str(Path(ssh_key).resolve())
         return (f"<{connection_name}:{host_name}>("
                 f"user_name:{user_name} | "
-                f"rsa_key:{str(key_path.resolve())} | "
+                f"rsa_key:{key_path} | "
                 f"address:{address})")
 
     def __del__(self):

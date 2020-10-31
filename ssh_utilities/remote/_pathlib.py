@@ -17,12 +17,18 @@ log = logging.getLogger(__name__)
 
 
 class Pathlib(PathlibABC):
-    """Expose pathlib like API for remote hosts."""
+    """Expose pathlib like API for remote hosts.
+
+    See also
+    --------
+    :class:`ssh_utilities.local.Pathlib`
+        local version of class with same API
+    """
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
 
-    @check_connections
+    @check_connections()
     def Path(self, path: "_SPATH") -> SSHPath:
         """Provides API similar to pathlib.Path only for remote host.
 

@@ -256,6 +256,10 @@ class Connection(metaclass=_ConnectionMeta):
             if int number of shared instances is set to that number
             if False number of shared instances is set to 0
             if True number of shared instances is set to 10
+
+        Warnings
+        --------
+        This is not implemented yet!
         """
         if number_of_shared is True:
             number_of_shared = 10

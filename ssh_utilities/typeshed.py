@@ -1,14 +1,15 @@
 """Module containing typing aliases for ssh-utilities."""
 
-from typing import (IO, TYPE_CHECKING, Any, Callable, Generator, List, Mapping,
+from typing import (IO, TYPE_CHECKING, Any, Callable, Iterator, List, Mapping,
                     Optional, Sequence, Tuple, Union, Type)
+
+from typing_extensions import Literal
 
 if TYPE_CHECKING:
     from os import PathLike
     from pathlib import Path
 
-    from .constants import GET, PUT
-    from .path import SSHPath
+    from .remote.path import SSHPath
 
     AnyPath = Union[str, bytes, PathLike[str], PathLike[bytes]]
 
@@ -21,9 +22,9 @@ if TYPE_CHECKING:
 
     _GLOBPAT = Optional[str]
     _SPATH = Union[str, Path, SSHPath]
-    _DIRECTION = Union[GET, PUT]
+    _DIRECTION = Literal["get", "put"]
     _CALLBACK = Optional[Callable[[float, float], Any]]
-    _WALK = Generator[Tuple[str, List[str], List[str]]]
+    _WALK = Iterator[Tuple[str, List[str], List[str]]]
     _EXCTYPE = Union[Type[Exception], Tuple[Type[Exception], ...]]
 
 

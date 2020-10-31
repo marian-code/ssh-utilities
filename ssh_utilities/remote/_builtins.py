@@ -20,7 +20,13 @@ log = logging.getLogger(__name__)
 
 
 class Builtins(BuiltinsABC):
-    """Remote replacement for python builtins, mainly the open function."""
+    """Remote replacement for python builtins, mainly the open function.
+
+    See also
+    --------
+    :class:`ssh_utilities.local.Builtins`
+        local version of class with same API
+    """
 
     sftp: "SFTPClient"
 

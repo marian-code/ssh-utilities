@@ -5,7 +5,7 @@ import os
 import shutil
 from os.path import join as jn
 from stat import S_ISDIR, S_ISLNK
-from typing import TYPE_CHECKING, List, Tuple, Type, Union
+from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
@@ -17,11 +17,13 @@ from ..utils import context_timeit, file_filter, lprint
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
-    ExcType = Union[Type[Exception], Tuple[Type[Exception], ...]]
-    from paramiko.sftp_client import SFTPClient
+    from typing_extensions import TypedDict
 
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH, _WALK
     from .remote import SSHConnection
+
+    _COPY_FILES = TypedDict("_COPY_FILES", {"dst": str, "src": str,
+                                            "size": int})
 
 __all__ = ["Shutil"]
 
@@ -29,7 +31,13 @@ log = logging.getLogger(__name__)
 
 
 class Shutil(ShutilABC):
-    """Class with remote versions of shutil methods."""
+    """Class with remote versions of shutil methods.
+
+    See also
+    --------
+    :class:`ssh_utilities.local.Shutil`
+        local version of class with same API
+    """
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
@@ -234,10 +242,12 @@ class Shutil(ShutilABC):
                     raise FileNotFoundError(e)
 
     @check_connections(exclude_exceptions=FileNotFoundError)
-    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
-                      include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                      remove_after: bool = False, quiet: Literal[True, False,
-                      "stats", "progress"] = False):
+    def download_tree(
+        self, remote_path: "_SPATH", local_path: "_SPATH",
+        include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+        remove_after: bool = False,
+        quiet: Literal[True, False, "stats", "progress"] = False
+    ):
         """Download directory tree from remote.
 
         Remote directory must exist otherwise exception is raised.
@@ -281,7 +291,7 @@ class Shutil(ShutilABC):
         lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
         allow_file = file_filter(include, exclude)
 
-        copy_files = []
+        copy_files: List["_COPY_FILES"] = []
         dst_dirs = []
 
         lprnt(f"{C}Building directory structure for download from remote...\n")
@@ -344,10 +354,12 @@ class Shutil(ShutilABC):
             self.rmtree(src)
 
     @check_connections(exclude_exceptions=FileNotFoundError)
-    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
-                    include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
-                    remove_after: bool = False, quiet: Literal[True, False,
-                    "stats", "progress"] = False):
+    def upload_tree(
+        self, local_path: "_SPATH", remote_path: "_SPATH",
+        include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
+        remove_after: bool = False,
+        quiet: Literal[True, False, "stats", "progress"] = False
+    ):
         """Upload directory tree to remote.
 
         Local path must exist otherwise, exception is raised.
@@ -391,7 +403,7 @@ class Shutil(ShutilABC):
         lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
         allow_file = file_filter(include, exclude)
 
-        copy_files = []
+        copy_files: List["_COPY_FILES"] = []
         dst_dirs = []
 
         lprnt(f"{C}Building directory structure for upload to remote...\n")
@@ -456,7 +468,7 @@ class Shutil(ShutilABC):
         if remove_after:
             shutil.rmtree(src)
 
-    @check_connections
+    @check_connections()
     def _sftp_walk(self, remote_path: "_SPATH") -> "_WALK":
         """Recursive directory listing."""
         remote_path = self.c._path2str(remote_path)

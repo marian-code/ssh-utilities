@@ -21,6 +21,7 @@ from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
     from paramiko.sftp_client import SFTPClient
+    from paramiko.client import SSHClient
 
 __all__ = ["SSHConnection"]
 
@@ -142,6 +143,7 @@ class SSHConnection(ConnectionABC):
     """
 
     _remote_home: str = ""
+    c: "SSHClient"
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -208,29 +210,49 @@ class SSHConnection(ConnectionABC):
 
     @property
     def builtins(self) -> Builtins:
+        """Inner class providing access to substitutions for python builtins.
+
+        :type: .remote.Builtins
+        """
         return self._builtins
 
     @property
     def os(self) -> Os:
+        """Inner class providing access to substitutions for python os module.
+
+        :type: .remote.Os
+        """
         return self._os
 
     @property
     def pathlib(self) -> Pathlib:
+        """Inner class providing access to substitutions for pathlib module.
+
+        :type: .remote.Pathlib
+        """
         return self._pathlib
 
     @property
     def shutil(self) -> Shutil:
+        """Inner class providing access to substitutions for shutil module.
+
+        :type: .remote.Shutil
+        """
         return self._shutil
 
     @property
     def subprocess(self) -> Subprocess:
+        """Inner class providing access to substitutions for subprocess module.
+
+        :type: .remote.Subprocess
+        """
         return self._subprocess
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
                            self.username, self.rsa_key_file)
 
-    @check_connections
+    @check_connections()
     def close(self, *, quiet: bool = True):
         """Close SSH connection.
 
@@ -292,18 +314,18 @@ class SSHConnection(ConnectionABC):
         return self._remote_home
 
     @property  # type: ignore
-    @check_connections
+    @check_connections()
     def sftp(self) -> "SFTPClient":
         """Opens and return sftp channel.
 
         If SFTP coud be open then return SFTPClient instance else return None.
 
+        :type: :class:`Optional[paramiko.SFTPClient]`
+
         Raises
         ------
         SFTPOpenError
             when remote home could not be found
-
-        :type: Optional[paramiko.SFTPClient]
         """
         if not self._sftp_open:
 
@@ -322,7 +344,8 @@ class SSHConnection(ConnectionABC):
                     self._sftp_open = True
                     break
             else:
-                print(f"{RED}Remote home could not be found {exception}")
+                print(f"{RED}Remote home could not be found "
+                      f"{exception}")  # type: ignore
                 self._sftp_open = False
                 raise SFTPOpenError("Remote home could not be found")
 

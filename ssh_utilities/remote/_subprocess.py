@@ -5,8 +5,9 @@ import os
 import socket
 import sys
 from io import BytesIO, StringIO, TextIOBase
+from pathlib import Path
 from subprocess import DEVNULL, PIPE, STDOUT
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, TextIO, Union
 
 from ..base import SubprocessABC
 from ..constants import C, R, Y
@@ -24,7 +25,13 @@ log = logging.getLogger(__name__)
 
 
 class Subprocess(SubprocessABC):
-    """Class with similar API to subprocess module."""
+    """Class with similar API to subprocess module.
+
+    See also
+    --------
+    :class:`ssh_utilities.local.Subprocess`
+        local version of class with same API
+    """
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
@@ -39,8 +46,7 @@ class Subprocess(SubprocessABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None,
-            universal_newlines: Optional[bool] = None
+            env: Optional["_ENV"] = None, universal_newlines: bool = False
             ) -> CompletedProcess:
         """Excecute command on remote, has simillar API to subprocess run.
 
@@ -102,7 +108,7 @@ class Subprocess(SubprocessABC):
             environment. This is different to `subprocess` behaviour which
             creates new environment with only specified variables,
             by default None
-        universal_newlines : Optional[bool], optional
+        universal_newlines : bool, optional
             an alias for text keyword argument, by default None
 
         Warnings
@@ -144,6 +150,8 @@ class Subprocess(SubprocessABC):
             if the command exceeded allowed run time
         """
         command: str
+        stdout_pipe: Union[BytesIO, StringIO, TextIO]
+        stderr_pipe: Union[BytesIO, StringIO, TextIO]
 
         # init limited printing
         lprnt = lprint(quiet=quiet)
@@ -171,6 +179,8 @@ class Subprocess(SubprocessABC):
         else:
             if encoding and not errors:
                 errors = "strict"
+            else:  # only for typechecker otherwise not needed
+                errors = ""
 
         if not stdin:
             stdin_pipe = sys.stdin
@@ -220,11 +230,11 @@ class Subprocess(SubprocessABC):
             raise TypeError("stderr argument is of unsupported type")
 
         if isinstance(args, list):
-            if isinstance(args[0], os.PathLike):
+            if isinstance(args[0], Path):
                 args[0] = self.c._path2str(args[0])
 
             command = " ".join(args)
-        elif isinstance(args, os.PathLike):
+        elif isinstance(args, Path):
             command = self.c._path2str(args)
         elif isinstance(args, str):
             command = args
@@ -243,9 +253,9 @@ class Subprocess(SubprocessABC):
         if cwd:
             command = f"cd {self.c._path2str(cwd)} && {command}"
 
+        cp = CompletedProcess(bytes_out=not encoding)
         try:
             # create output object
-            cp = CompletedProcess()
             cp.args = args
 
             # carry out command
@@ -268,21 +278,21 @@ class Subprocess(SubprocessABC):
                         data = ssh_stdout.channel.recv(1024)
                         if encoding:
                             data_dec = str(data, encoding, errors)
-                            stdout_pipe.write(data_dec)
-                            cp.stdout = data_dec
+                            stdout_pipe.write(data_dec)  # type: ignore
+                            cp.stdout += data_dec  # type: ignore
                         else:
                             stdout_pipe.write(data)
-                            cp.stdout = data
+                            cp.stdout += data
 
                     if ssh_stderr.channel.recv_stderr_ready():
                         data = ssh_stderr.channel.recv_stderr(1024)
                         if encoding:
                             data_dec = str(data, encoding, errors)
-                            stderr_pipe.write(data_dec)
-                            cp.stderr = data_dec
+                            stderr_pipe.write(data_dec)  # type: ignore
+                            cp.stderr += data_dec  # type: ignore
                         else:
                             stderr_pipe.write(data)
-                            cp.stderr = data
+                            cp.stderr += data
 
                 # strip unnecessary newlines
                 cp.stdout = cp.stdout.rstrip()
@@ -301,6 +311,10 @@ class Subprocess(SubprocessABC):
                     lprnt(cp.stdout)
                     lprnt(f"{C}{'-' * 111}{R}\n")
 
+                if not capture_output:
+                    cp.stdout = ""
+                    cp.stderr = ""
+
                 return cp
             else:
 
@@ -312,4 +326,8 @@ class Subprocess(SubprocessABC):
 
                 return cp
         except socket.timeout:
-            raise TimeoutExpired(args, timeout, cp.stdout, cp.stderr)
+            if isinstance(timeout, float):
+                raise TimeoutExpired(args, timeout, cp.stdout, cp.stderr)
+            else:
+                raise Exception("command timed out even though timeout "
+                                "was not set")

@@ -1,7 +1,9 @@
+"""Module taking care of ssh connection resilience to drops."""
+
 import logging
 import time
-from functools import wraps
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from functools import wraps, update_wrapper
+from typing import TYPE_CHECKING, Callable, Optional, Union, overload
 
 from paramiko import SFTPError
 from paramiko.client import SSHClient
@@ -22,13 +24,10 @@ __all__ = ["check_connections"]
 
 
 class check_connections:
-    """A decorator to check SSH connections.
+    """A decorator to check SSH connections, implemented as callble class.
 
     If connection is dropped while running function, re-negotiate new
     connection and run function again.
-    If the decorator is used without arguments, then class `__init__` is called
-    instead of `__call__` that is why we employ this logic in `__new__`
-    constructor
 
     Parameters
     ----------
@@ -39,12 +38,9 @@ class check_connections:
 
     Raises
     ------
-    Exception
-        Any exception that is not specified in the wrapper when it is thrown
-        in the decorated method
-    exclude_exceptions
-        Any exception specified in this list when it is thrown
-        in the decorated method
+    `exclude_exceptions`
+        The esception specified in this parameter are allowed to bypass this
+        decorator uncaught
 
     Warnings
     --------
@@ -57,7 +53,7 @@ class check_connections:
 
     Examples
     --------
-    First use cases is without arguments:
+    First use case is without arguments:
 
     >>> @check_connections
     ... def function(*args, **kwargs):
@@ -72,7 +68,12 @@ class check_connections:
 
     def __new__(cls, function: Optional[Callable] = None, *,
                 exclude_exceptions: "_EXCTYPE" = ()):
+        """Decorator custom constructor.
 
+        If the decorator is used without arguments, then class `__init__`
+        is called instead of `__call__` that is why we employ this logic
+        in `__new__` constructor.
+        """
         self = super().__new__(cls)
         self._init(exclude_exceptions=exclude_exceptions)
 
@@ -97,8 +98,9 @@ class check_connections:
         Parameters
         ----------
         wrapped_instance : _CLASS
-            any of: `Builtins`, `Os`, `Pathlib`, `Shutil`, `Subprocess`,
-            `SSHConnection`
+            any of: :class:`.remote.Builtins`, :class:`.remote.Os`,
+            :class:`.remote.Pathlib`, :class:`.remote.Shutil`,
+            :class:`.remote.Subprocess`, :class:`.remote.SSHConnection`
 
         Returns
         -------
@@ -109,7 +111,7 @@ class check_connections:
             if not isinstance(wrapped_instance.c, SSHClient):
                 wrapped_instance = wrapped_instance.c
             else:
-                return wrapped_instance
+                return wrapped_instance  # type: ignore
 
     def _negotiate(self, wrapped_instance: "_CLASS") -> bool:
         """Negotiate new paramiko ssh connection for `SSHConnection` class.
@@ -117,8 +119,9 @@ class check_connections:
         Parameters
         ----------
         wrapped_instance : _CLASS
-            any of: `Builtins`, `Os`, `Pathlib`, `Shutil`, `Subprocess`,
-            `SSHConnection`
+            any of: :class:`.remote.Builtins`, :class:`.remote.Os`,
+            :class:`.remote.Pathlib`, :class:`.remote.Shutil`,
+            :class:`.remote.Subprocess`, :class:`.remote.SSHConnection`
 
         Returns
         -------
@@ -170,7 +173,7 @@ class check_connections:
 
         return success
 
-    def __call__(self, function: Callable):
+    def __call__(self, function: Callable) -> Callable:
 
         @wraps(function)
         def connect_wrapper(wrapped_instance: "_CLASS", *args, **kwargs):
@@ -212,6 +215,7 @@ class check_connections:
                         time.sleep(60)
 
         return connect_wrapper
+
 
 """
 def check_connections(original_function: Optional[Callable] = None, *,

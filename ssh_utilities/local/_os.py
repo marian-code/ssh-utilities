@@ -20,9 +20,14 @@ logging.getLogger(__name__)
 
 class Os(OsABC):
     """Class housing subset os module methods with same API as remote version.
+
+    See also
+    --------
+    :class:`ssh_utilities.remote.Os`
+        remote version of class with same API
     """
 
-    _osname: Literal["nt", "posix", "java", ""] = ""
+    _osname: Literal["nt", "posix", "java"]
 
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
@@ -62,10 +67,12 @@ class Os(OsABC):
 
     @property
     def name(self) -> Literal["nt", "posix", "java"]:
-        if not self._osname:
-            self._osname = os.name
-
-        return self._osname
+        try:
+            self._osname
+        except AttributeError:
+            self._osname = os.name  # type: ignore
+        finally:
+            return self._osname
 
     osname = name
 

@@ -1,11 +1,10 @@
 """Helper function and classes for ssh_utilities module."""
 
 import re
-import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence, Union
 
 from paramiko.config import SSHConfig
 from tqdm import tqdm
@@ -13,20 +12,37 @@ from tqdm.utils import _term_move_up
 
 from .exceptions import CalledProcessError
 
-__all__ = ["ProgressBar", "N_lines_up", "bytes_2_human_readable",
-           "CompletedProcess", "lprint", "for_all_methods", "glob2re",
-           "file_filter", "config_parser", "context_timeit"]
+if TYPE_CHECKING:
+    from .typeshed import _CMD
+
+__all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
+           "lprint", "for_all_methods", "glob2re", "file_filter",
+           "config_parser", "context_timeit"]
 
 
 class CompletedProcess:
-    """Completed remote process, mimics subprocess.CompletedProcess API."""
+    """Completed remote process, mimics subprocess.CompletedProcess API.
 
-    def __init__(self):
+    Parameters
+    ----------
+    bytes_out: bool
+        is true set stderr and stdout to bytes
+    """
 
-        self.args: List[str] = []
+    stdout: Union[bytes, str]
+    stderr: Union[bytes, str]
+
+    def __init__(self, bytes_out: bool = False):
+
+        self.args: "_CMD" = []
         self.returncode: Optional[int] = None
-        self.stdout: str = ""
-        self.stderr: str = ""
+
+        if bytes_out:
+            self.stdout = b""
+            self.stderr = b""
+        else:
+            self.stdout = ""
+            self.stderr = ""
 
     def __str__(self):
         return (f"<CompletedProcess>(\n"
@@ -216,32 +232,6 @@ def for_all_methods(decorator: Callable, exclude: Sequence[str] = [],
     return decorate
 
 
-# ! DEPRECATED
-class N_lines_up:
-    """Move cursor N lines up.
-
-    Warnings
-    --------
-    function is deprecated !
-
-    Parameters
-    ----------
-    quiet: bool
-        if true print of message is suppressed
-    """
-
-    line_rewrite = True
-
-    def __init__(self, *, quiet: bool) -> None:
-        self._print = all([not quiet, self.line_rewrite])
-
-    def __call__(self, N: int):
-        if self._print:
-            sys.stdout.write(f"\033[{N}A")
-            sys.stdout.write("\033[K ")
-            print("\r", end="")
-
-
 class file_filter:
     """Discriminate files to copy by passed in glob patterns.
 
@@ -338,7 +328,7 @@ def glob2re(patern):
                 res = '%s[%s]' % (res, stuff)
         else:
             res = res + re.escape(c)
-    return '(?ms)' + res + '\Z'
+    return '(?ms)' + res + '\Z'  # noqa
 
 
 def config_parser(config_path: Union["Path", str]) -> SSHConfig:

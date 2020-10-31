@@ -19,6 +19,11 @@ logging.getLogger(__name__)
 
 class Shutil(ShutilABC):
     """Local version of shutil supporting same subset of API as remote version.
+
+    See also
+    --------
+    :class:`ssh_utilities.remote.Shutil`
+        remote version of class with same API
     """
 
     def __init__(self, connection: "LocalConnection") -> None:

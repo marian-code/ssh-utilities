@@ -40,6 +40,7 @@ Paramiko wrapper
 
 Simple paramiko wrapper that aims to facilitate easy remote file operations
 and command execution. The API vaguely follows python libraries:
+`os <https://docs.python.org/3/library/os.html>`_,
 `os.path <https://docs.python.org/3/library/os.path.html>`_,
 `subprocess <https://docs.python.org/3/library/subprocess.html>`_,
 `shutil <https://docs.python.org/3/library/shutil.html>`_,
@@ -96,9 +97,11 @@ API exposes three main connection classes, and one path manipulation class:
 ``LocalConnection`` classes based on input parameters.
 
 ``SSHConnection`` is the remote connection class with API partly following that
-of python `os.path library <https://docs.python.org/3/library/os.path.html>`_,
+of python `os <https://docs.python.org/3/library/os.html>`_,
+`os.path library <https://docs.python.org/3/library/os.path.html>`_,
 `shutil library <https://docs.python.org/3/library/shutil.html>`_ and
 `subprocess library <https://docs.python.org/3/library/subprocess.html>`_
+`pathlib <https://docs.python.org/3/library/pathlib.html>`_
 
 ``LocalConnection`` is included only for convenience purposes so same API as for
 ``SSHConnection`` can be used for interacting with local machine
@@ -188,7 +191,7 @@ connection
 
 .. code-block:: python
 
-    >>> from ssh_utilities import Connection
+    >>> from ssh_utilities import Connection, SSHPath
     >>> conn = Connection.get(<server_name>)
     >>> sshpath = SSHPath(conn, <some_path>)
 

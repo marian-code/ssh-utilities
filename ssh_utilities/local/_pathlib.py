@@ -16,7 +16,13 @@ logging.getLogger(__name__)
 
 
 class Pathlib(PathlibABC):
-    """Proxy for `pathlib.Path` object with same API as remote version."""
+    """Proxy for `pathlib.Path` object with same API as remote version.
+
+    See also
+    --------
+    :class:`ssh_utilities.remote.Pathlib`
+        remote version of class with same API
+    """
 
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection

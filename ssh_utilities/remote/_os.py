@@ -25,9 +25,15 @@ log = logging.getLogger(__name__)
 
 
 class Os(OsABC):
-    """Class gathering all remote methods similar to python os module."""
+    """Class gathering all remote methods similar to python os module.
 
-    _osname: Literal["nt", "posix", ""] = ""
+    See also
+    --------
+    :class:`ssh_utilities.local.Os`
+        local version of class with same API
+    """
+
+    _osname: Literal["nt", "posix"]
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
@@ -37,9 +43,9 @@ class Os(OsABC):
     def path(self) -> "OsPathRemote":
         return self._path
 
-    @check_connections
+    @check_connections()
     def isfile(self, path: "_SPATH") -> bool:
-        """Check ifg path points to a file.
+        """Check if path points to a file.
 
         Parameters
         ----------
@@ -56,7 +62,7 @@ class Os(OsABC):
         except IOError:
             return False
 
-    @check_connections
+    @check_connections()
     def isdir(self, path: "_SPATH") -> bool:
         """Check if path points to directory.
 
@@ -181,7 +187,7 @@ class Os(OsABC):
         except IOError as e:
             raise FileNotFoundError(f"Directory does not exist: {e}")
 
-    @check_connections
+    @check_connections()
     def chdir(self, path: "_SPATH"):
         """Change sftp working directory.
 
@@ -222,7 +228,11 @@ class Os(OsABC):
         UnknownOsError
             if remote server os name could not be determined
         """
-        if self._osname:
+        try:
+            self._osname
+        except AttributeError:
+            pass
+        else:
             return self._osname
 
         error_count = 0
@@ -232,7 +242,7 @@ class Os(OsABC):
             try:
                 info = self.c.subprocess.run(
                     [cmd], suppress_out=True, quiet=True,
-                    check=True, capture_output=True
+                    check=True, capture_output=True, encoding="utf-8",
                 ).stdout
             except CalledProcessError as e:
                 log.debug(f"Couldn't get os name: {e}")
@@ -255,7 +265,7 @@ class Os(OsABC):
 
     osname = name
 
-    @check_connections
+    @check_connections()
     def stat(self, path: "_SPATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> "SFTPAttributes":
         """Replacement for os.stat function.
