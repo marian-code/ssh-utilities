@@ -21,6 +21,11 @@ from .utils import config_parser
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from typing_extensions import TypedDict
+
+    _HOSTS = TypedDict("_HOSTS", {"user": str, "hostname": str,
+                                  "identityfile": Union[str, List[str]]})
+
 __all__ = ["Connection"]
 
 logging.getLogger(__name__)
@@ -37,7 +42,6 @@ class _ConnectionMeta(type):
     The inheriting classes can be indexed by keys in ~/.ssh/config file
     """
 
-    SHARE_CONNECTION: int = 10
     available_hosts: Dict
 
     def __new__(cls, classname, bases, dictionary: dict):
@@ -54,7 +58,7 @@ class _ConnectionMeta(type):
         return type.__new__(cls, classname, bases, dictionary)
 
     def __getitem__(cls, key: str) -> Union[SSHConnection, LocalConnection]:
-        return cls.get(key, local=False, quiet=False)
+        return cls.get(key, local=False, quiet=False, thread_safe=False)
 
     def get(cls, *args, **kwargs) -> Union[SSHConnection, LocalConnection]:
         """Overriden in class that inherits this metaclass."""
@@ -112,12 +116,13 @@ class Connection(metaclass=_ConnectionMeta):
 
     >>> from ssh_utilities import Connection
     >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>,
-                               <server_name>, <share_connection>):
+                               <server_name>, <thread_safe>):
     """
 
     def __init__(self, ssh_server: str, local: bool = False,
-                 quiet: bool = False) -> None:
-        self._connection = self.get(ssh_server, local=local, quiet=quiet)
+                 quiet: bool = False, thread_safe: bool = False) -> None:
+        self._connection = self.get(ssh_server, local=local, quiet=quiet,
+                                    thread_safe=thread_safe)
 
     def __enter__(self) -> Union[SSHConnection, LocalConnection]:
         return self._connection
@@ -148,24 +153,25 @@ class Connection(metaclass=_ConnectionMeta):
 
     @overload
     @classmethod
-    def get(cls, ssh_server: str, local: Literal[False], quiet: bool
-            ) -> SSHConnection:
+    def get(cls, ssh_server: str, local: Literal[False], quiet: bool,
+            thread_safe: bool) -> SSHConnection:
         ...
 
     @overload
     @classmethod
     def get(cls, ssh_server: str, local: Literal[True], quiet: bool,
-            ) -> LocalConnection:
+            thread_safe: bool) -> LocalConnection:
         ...
 
     @overload
     @classmethod
     def get(cls, ssh_server: str, local: bool, quiet: bool,
-            ) -> Union[SSHConnection, LocalConnection]:
+            thread_safe: bool) -> Union[SSHConnection, LocalConnection]:
         ...
 
     @classmethod
-    def get(cls, ssh_server: str, local: bool = False, quiet: bool = False):
+    def get(cls, ssh_server: str, local: bool = False, quiet: bool = False,
+            thread_safe: bool = False):
         """Get Connection based on one of names defined in .ssh/config file.
 
         If name of local PC is passed initilize LocalConnection
@@ -178,6 +184,10 @@ class Connection(metaclass=_ConnectionMeta):
             if True return emulated connection to loacl host
         quiet: bool
             If True suppress login messages
+        thread_safe: bool
+            make connection object thread safe so it can be safely accessed
+            from  any number of threads, it is disabled by default to avoid
+            performance  penalty of threading locks
 
         Raises
         ------
@@ -203,12 +213,38 @@ class Connection(metaclass=_ConnectionMeta):
                 return cls.open(credentials["user"], credentials["hostname"],
                                 credentials["identityfile"][0],
                                 server_name=ssh_server, quiet=quiet,
-                                share_connection=cls.SHARE_CONNECTION)
+                                thread_safe=thread_safe)
             except KeyError as e:
                 raise KeyError(f"{RED}missing key in config dictionary for "
                                f"{ssh_server}: {R}{e}")
 
     get_connection = get
+
+    @classmethod
+    def add_hosts(cls, hosts: Union["_HOSTS", List["_HOSTS"]]):
+        """add or override availbale host read fron ssh config file.
+
+        You can use supplied config parser to parse some externaf ssh config
+        file.
+
+        Parameters
+        ----------
+        hosts : Union[_HOSTS, List[_HOSTS]]
+            dictionary or a list of dictionaries containing keys: `user`,
+            `hostname` and `identityfile`
+
+        See also
+        --------
+        :func: ssh_utilities.config_parser
+        """
+        if not isinstance(hosts, list):
+            hosts = [hosts]
+
+        for h in hosts:
+            if not isinstance(h["identityfile"], list):
+                h["identityfile"] = [h["identityfile"]]
+
+        cls.available_hosts.update({h: h["hostname"] for h in hosts})
 
     @classmethod
     def from_str(cls, string: str, quiet: bool = False
@@ -239,33 +275,12 @@ class Connection(metaclass=_ConnectionMeta):
         try:
             server_name = re.findall(r"<\S*:(\S*)>", string)[0]
             user_name, ssh_key, address = re.findall(
-                r"\(user_name:(\S*) \| rsa_key:(\S*) \| address:(\S*)\)",
-                string)[0]
+                r"\(user_name:(\S*) \| rsa_key:(\S*) \| address:(\S*) \| "
+                r"threadsafe:(\S*)\)", string)[0]
         except IndexError:
             raise ValueError("String is not formated correctly")
 
         return cls.open(user_name, address, ssh_key, server_name, quiet=quiet)
-
-    @classmethod
-    def set_shared(cls, number_of_shared: Union[int, bool]):
-        """Set how many instancesd can share the same connection to server.
-
-        Parameters
-        ----------
-        number_of_shared: Union[int, bool]
-            if int number of shared instances is set to that number
-            if False number of shared instances is set to 0
-            if True number of shared instances is set to 10
-
-        Warnings
-        --------
-        This is not implemented yet!
-        """
-        if number_of_shared is True:
-            number_of_shared = 10
-        elif number_of_shared is False:
-            number_of_shared = 0
-        cls.SHARE_CONNECTION = number_of_shared
 
     @overload
     @staticmethod
@@ -273,7 +288,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             share_connection: int = 10) -> LocalConnection:
+             thread_safe: bool = False) -> LocalConnection:
         ...
 
     @overload
@@ -282,7 +297,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             share_connection: int = 10) -> SSHConnection:
+             thread_safe: bool = False) -> SSHConnection:
         ...
 
     @staticmethod
@@ -290,7 +305,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             share_connection: int = 10):
+             thread_safe: bool = False):
         """Initialize SSH or local connection.
 
         Local connection is only a wrapper around os and shutil module methods
@@ -313,9 +328,10 @@ class Connection(metaclass=_ConnectionMeta):
             default than it will be replaced with address.
         quiet: bool
             If True suppress login messages
-        share_connection: int
-            share connection between different instances of class, number says
-            how many instances can share the same connection
+        thread_safe: bool
+            make connection object thread safe so it can be safely accessed
+            from  any number of threads, it is disabled by default to avoid
+            performance  penalty of threading locks
 
         Warnings
         --------
@@ -331,7 +347,7 @@ class Connection(metaclass=_ConnectionMeta):
                 c = SSHConnection(ssh_server, ssh_username,
                                   rsa_key_file=ssh_key_file, line_rewrite=True,
                                   server_name=server_name, quiet=quiet,
-                                  share_connection=share_connection)
+                                  thread_safe=thread_safe)
             else:
                 if not ssh_password:
                     ssh_password = getpass.getpass(prompt="Enter password: ")
@@ -339,6 +355,6 @@ class Connection(metaclass=_ConnectionMeta):
                 c = SSHConnection(ssh_server, ssh_username,
                                   password=ssh_password, line_rewrite=True,
                                   server_name=server_name, quiet=quiet,
-                                  share_connection=share_connection)
+                                  thread_safe=thread_safe)
 
             return c

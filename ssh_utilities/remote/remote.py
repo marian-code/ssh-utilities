@@ -1,14 +1,11 @@
 """Module implementing SSH connection functionality."""
 
-import builtins
 import logging
 import os
+from contextlib import nullcontext
 from pathlib import Path
-import pathlib
-import shutil
-import subprocess
-from typing import TYPE_CHECKING, Optional, Union
-from colorama.initialise import reinit
+from threading import RLock
+from typing import TYPE_CHECKING, ContextManager, Optional, Union
 
 import paramiko
 
@@ -20,8 +17,8 @@ from . import Builtins, Os, Pathlib, Shutil, Subprocess
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
-    from paramiko.sftp_client import SFTPClient
     from paramiko.client import SSHClient
+    from paramiko.sftp_client import SFTPClient
 
 __all__ = ["SSHConnection"]
 
@@ -125,16 +122,17 @@ class SSHConnection(ConnectionABC):
     server_name: Optional[str]
         input server name that will be later displayed on file operations,
         if None then IP address will be used
-    share_connection: int
-        share connection between different instances of class, number says
-        how many instances can share the same connection
+    thread_safe: bool
+        make connection object thread safe so it can be safely accessed from
+        any number of threads, it is disabled by default to avoid performance
+        penalty of threading locks
 
     Warnings
     --------
     At least one of (password, rsa_key_file) must be specified, if both are,
     RSA key will be used
 
-    share_connection parameter is not implemented yet!!!
+    thread_safe parameter is not implemented yet!!!
 
     Raises
     ------
@@ -143,13 +141,23 @@ class SSHConnection(ConnectionABC):
     """
 
     _remote_home: str = ""
-    c: "SSHClient"
+    __lock: Union[ContextManager[None], RLock]
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
                  rsa_key_file: Optional[Union[str, Path]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
-                 quiet: bool = False, share_connection: int = 10) -> None:
+                 quiet: bool = False, thread_safe: bool = False) -> None:
+
+        log.info(f"Connection object will {'' if thread_safe else 'not'} be "
+                 f"thread safe")
+
+        if thread_safe:
+            self.thread_safe = True
+            self.__lock = RLock()
+        else:
+            self.thread_safe = False
+            self.__lock = nullcontext()
 
         lprint.line_rewrite = line_rewrite
         lprnt = lprint(quiet)
@@ -195,8 +203,8 @@ class SSHConnection(ConnectionABC):
         else:
             raise RuntimeError("Must input password or path to rsa_key")
 
-        self.c = paramiko.client.SSHClient()
-        self.c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+        self._c = paramiko.client.SSHClient()
+        self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
 
         # negotiate connection
         self._get_ssh()
@@ -207,6 +215,11 @@ class SSHConnection(ConnectionABC):
         self._pathlib = Pathlib(self)  # type: ignore
         self._shutil = Shutil(self)  # type: ignore
         self._subprocess = Subprocess(self)  # type: ignore
+
+    @property
+    def c(self) -> "SSHClient":
+        with self.__lock:
+            return self._c
 
     @property
     def builtins(self) -> Builtins:
@@ -250,7 +263,7 @@ class SSHConnection(ConnectionABC):
 
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
-                           self.username, self.rsa_key_file)
+                           self.username, self.rsa_key_file, self.thread_safe)
 
     @check_connections()
     def close(self, *, quiet: bool = True):
@@ -284,27 +297,30 @@ class SSHConnection(ConnectionABC):
     # * additional methods needed by remote ssh class, not in ABC definition
     def _get_ssh(self, authentication_attempts: int = 0):
 
-        try:
-            if self.rsa_key:
-                # connect with public key
-                self.c.connect(self.address, username=self.username,
-                               pkey=self.rsa_key)
-            else:
-                # if password was passed try to connect with it
-                self.c.connect(self.address, username=self.username,
-                               password=self.password, look_for_keys=False)
+        with self.__lock:
+            try:
+                if self.rsa_key:
+                    # connect with public key
+                    self.c.connect(self.address, username=self.username,
+                                   pkey=self.rsa_key)
+                else:
+                    # if password was passed try to connect with it
+                    self.c.connect(self.address, username=self.username,
+                                   password=self.password, look_for_keys=False)
 
-        except (paramiko.ssh_exception.AuthenticationException,
-                paramiko.ssh_exception.NoValidConnectionsError) as e:
-            log.warning(f"Error in authentication {e}. Trying again ...")
+            except (paramiko.ssh_exception.AuthenticationException,
+                    paramiko.ssh_exception.NoValidConnectionsError) as e:
+                log.warning(f"Error in authentication {e}. Trying again ...")
 
-            # max three attempts to connect at once
-            authentication_attempts += 1
-            if authentication_attempts >= 3:
-                raise ConnectionError(f"Connection to {self.address} "
-                                      f"could not be established")
-            else:
-                self._get_ssh(authentication_attempts=authentication_attempts)
+                # max three attempts to connect at once
+                authentication_attempts += 1
+                if authentication_attempts >= 3:
+                    raise ConnectionError(f"Connection to {self.address} "
+                                          f"could not be established")
+                else:
+                    self._get_ssh(
+                        authentication_attempts=authentication_attempts
+                    )
 
     @property
     def remote_home(self) -> str:
@@ -327,26 +343,28 @@ class SSHConnection(ConnectionABC):
         SFTPOpenError
             when remote home could not be found
         """
-        if not self._sftp_open:
+        with self.__lock:
+            if not self._sftp_open:
 
-            self._sftp = self.c.open_sftp()
-            self.local_home = os.path.expanduser("~")
+                self._sftp = self.c.open_sftp()
+                self.local_home = os.path.expanduser("~")
 
-            for _ in range(3):  # sometimes failes, give it three tries
-                try:
-                    self._remote_home = self.subprocess.run(
-                        ["echo $HOME"], suppress_out=True, quiet=True,
-                        check=True, capture_output=True).stdout.strip()
-                except CalledProcessError as e:
-                    print(f"{RED}Cannot establish remote home, trying again..")
-                    exception = e
+                for _ in range(3):  # sometimes failes, give it three tries
+                    try:
+                        self._remote_home = self.subprocess.run(
+                            ["echo $HOME"], suppress_out=True, quiet=True,
+                            check=True, capture_output=True).stdout.strip()
+                    except CalledProcessError as e:
+                        print(f"{RED}Cannot establish remote home, "
+                              f"trying again..")
+                        exception = e
+                    else:
+                        self._sftp_open = True
+                        break
                 else:
-                    self._sftp_open = True
-                    break
-            else:
-                print(f"{RED}Remote home could not be found "
-                      f"{exception}")  # type: ignore
-                self._sftp_open = False
-                raise SFTPOpenError("Remote home could not be found")
+                    print(f"{RED}Remote home could not be found "
+                          f"{exception}")  # type: ignore
+                    self._sftp_open = False
+                    raise SFTPOpenError("Remote home could not be found")
 
-        return self._sftp
+            return self._sftp

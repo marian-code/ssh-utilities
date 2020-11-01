@@ -2,8 +2,8 @@
 
 import logging
 import time
-from functools import wraps, update_wrapper
-from typing import TYPE_CHECKING, Callable, Optional, Union, overload
+from functools import wraps
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from paramiko import SFTPError
 from paramiko.client import SSHClient

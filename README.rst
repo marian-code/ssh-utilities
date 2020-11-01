@@ -73,14 +73,16 @@ Use ``-e`` only to install in editable mode
 If you encounter some import errors try installing from requirements.txt file:
 ``pip install requirements.txt``
 
+Warning
+-------
+
+There has been a recent mayor change in modules API betweeen versions 0.4.2
+and 0.5.0. Most methods of the connection classes have been moved a level
+deeper. See `migration from 0.4.x to 0.5.x <https://ssh-utilities.readthedocs.io/en/latest/migration.html>`_
+for details how to port to newer version
+
 API and documentation
 ---------------------
-
-.. warning:: 
-    There has been a recent mayor change in modules API betweeen versions 0.4.2
-    and 0.5.0. Most methods of the connection classes have been moved a level
-    deeper. See `migration from 0.4.x to 0.5.x <https://ssh-utilities.readthedocs.io/en/latest/migration.html>`_
-    for details how to port to newer version
 
 It is recommended that you have configured **rsa** keys with config file according
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
@@ -132,7 +134,8 @@ for more detailed usage examples please refer to
 `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in
-your **~/.ssh/config** file
+your **~/.ssh/config** file. It can be made thread safe by passing
+``thread_safe=True`` argument to the constructor
 
 .. code-block:: python
 
@@ -146,7 +149,7 @@ support than dict-like indexing
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection.get(<server_name>)
+    >>> Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -154,7 +157,7 @@ Class can be also used as a context manager.
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection(<server_name>) as conn:
+    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
     >>>     conn.something(...)
 
 Connection can also be initialized from appropriately formated string.
@@ -173,7 +176,7 @@ customization is required, use open method, this also allows use of passwords
 
     >>> from ssh_utilities import Connection
     >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
-                               <share_connection>):
+                               <thread_safe>):
 
 Module API also exposes powerfull SSHPath object with identical API as
 ``pathlib.Path`` only this one works for remote files. It must be always tied to
@@ -211,5 +214,4 @@ LGPL-2.1
 
 TODO
 ----
-- make connection object thread-safe
 - implement wrapper for pool of connections

@@ -22,8 +22,9 @@ from .local import LocalConnection
 from .remote.path import SSHPath
 from .remote import SSHConnection, PIPE, STDOUT, DEVNULL
 from .constants import GET, PUT
+from .utils import config_parser
 
 __all__ = ["SSHConnection", "Connection", "LocalConnection", "SSHPath", "PIPE",
-           "STDOUT", "DEVNULL", "GET", "PUT"]
+           "STDOUT", "DEVNULL", "GET", "PUT", "config_parser"]
 
 logging.getLogger(__name__)

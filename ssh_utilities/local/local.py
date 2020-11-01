@@ -25,7 +25,7 @@ class LocalConnection(ConnectionABC):
                  password: Optional[str] = None,
                  rsa_key_file: Optional[Union[str, Path]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
-                 quiet: bool = False, share_connection: int = 10) -> None:
+                 quiet: bool = False, thread_safe: bool = False) -> None:
 
         # set login credentials
         self.password = password
@@ -67,7 +67,7 @@ class LocalConnection(ConnectionABC):
 
     def __str__(self) -> str:
         return self.to_str("LocalConnection", self.server_name, None,
-                           self.username, None)
+                           self.username, None, True)
 
     @staticmethod
     def close(*, quiet: bool = True):

@@ -265,7 +265,8 @@ class ConnectionABC(ABC):
 
     @staticmethod
     def to_str(connection_name: str, host_name: str, address: Optional[str],
-               user_name: str, ssh_key: Optional[Union[Path, str]]) -> str:
+               user_name: str, ssh_key: Optional[Union[Path, str]],
+               thread_safe: bool) -> str:
         """Aims to ease persistance, returns string representation of instance.
 
         With this method all data needed to initialize class are saved to sting
@@ -284,6 +285,10 @@ class ConnectionABC(ABC):
             server login name
         ssh_key : Optional[Union[Path, str]]
             file with public key, pass none for LocalConnection
+        thread_safe: bool
+            make connection object thread safe so it can be safely accessed
+            from  any number of threads, it is disabled by default to avoid
+            performance  penalty of threading locks
 
         Returns
         -------
@@ -301,7 +306,8 @@ class ConnectionABC(ABC):
         return (f"<{connection_name}:{host_name}>("
                 f"user_name:{user_name} | "
                 f"rsa_key:{key_path} | "
-                f"address:{address})")
+                f"address:{address} | "
+                f"threadsafe:{thread_safe})")
 
     def __del__(self):
         self.close(quiet=True)

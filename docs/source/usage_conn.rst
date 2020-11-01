@@ -5,7 +5,10 @@ Instantiating connection
 ------------------------
 
 ``Connection`` factory supports dict-like indexing by values that are in
-your **~/.ssh/config** file
+your **~/.ssh/config** file. It can be made thread safe by passing
+``thread_safe=True`` argument to the constructor. Your ``~/.ssh.config`` file
+is parsed upon module import and the ``Connection`` factory is indexable by
+values in this file.
 
 .. code-block:: python
 
@@ -13,13 +16,21 @@ your **~/.ssh/config** file
     >>> Connection[<server_name>]
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
+More hosts can be simply added.
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> Connection.add_hosts({"user": <some_user>, "hostname": <my_ssh_server>,
+                              "identityfile": <path_to_my_identity_file>})
+
 There is also a specific get method which is safer and with better typing
 support than dict-like indexing
 
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection.get(<server_name>)
+    >>> Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -27,7 +38,7 @@ Class can be also used as a context manager.
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection(<server_name>) as conn:
+    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
     >>>     conn.something(...)
 
 Connection can also be initialized from appropriately formated string.
@@ -46,7 +57,7 @@ customization is required, use open method, this also allows use of passwords
 
     >>> from ssh_utilities import Connection
     >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
-                               <share_connection>)
+                               <thread_safe>)
     >>>
 
 Using connection - subprocess
