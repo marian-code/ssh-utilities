@@ -20,6 +20,7 @@ Paramiko wrapper
 :Version Info:
 
     .. image:: https://img.shields.io/pypi/v/ssh-utilities
+        :target: https://pypi.org/project/ssh-utilities/
         :alt: PyPI
 
     .. image:: https://img.shields.io/pypi/implementation/ssh-utilities
