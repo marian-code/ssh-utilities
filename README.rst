@@ -46,8 +46,8 @@ and command execution. The API vaguely follows python libraries:
 `shutil <https://docs.python.org/3/library/shutil.html>`_,
 `pathlib <https://docs.python.org/3/library/pathlib.html>`_. Has also
 local variant that mimics the remote API on local machine. The connection is
-resilient to interruptions. Everything is well documented by dostrings and
-typed.
+resilient to interruptions and thread safe. Everything is well documented by
+dostrings and typed.
 
 This module should be ideally platform agnostic, but only connections from
 Windows and Linux(Debian, Ubuntu) to Linux(Debian, Ubuntu) have been tested
@@ -88,12 +88,16 @@ It is recommended that you have configured **rsa** keys with config file accordi
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
 you can look at: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
 
-API exposes three main connection classes, and one path manipulation class:
+API exposes three main connection classes one path manipulation class, python
+module replacement classes, utility functions and constants:
 
 .. code-block:: python
 
     from ssh_utilities import SSHConnection, Connection, LocalConnection
     from ssh_utilities import SSHPath
+    from ssh_utilities import Builtins, Os, Pathlib, Shutil, Subprocess
+    from ssh_utilities import config_parser
+    from ssh_utilities import PIPE, STDOUT, DEVNULL, GET, PUT
 
 ``Connection`` is the a factory class that initializes ``SSHConnection`` or
 ``LocalConnection`` classes based on input parameters.
@@ -175,8 +179,8 @@ customization is required, use open method, this also allows use of passwords
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
-                               <thread_safe>):
+    >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>,
+                               <server_name>, <thread_safe>):
 
 Module API also exposes powerfull SSHPath object with identical API as
 ``pathlib.Path`` only this one works for remote files. It must be always tied to
@@ -197,6 +201,38 @@ connection
     >>> from ssh_utilities import Connection, SSHPath
     >>> conn = Connection.get(<server_name>)
     >>> sshpath = SSHPath(conn, <some_path>)
+
+The replacements for parts of python standard lib can be used as inner classes
+of ``SSHConnection`` or ``LocalConnection``:
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
+    >>>     conn.os.isfile(<path_to_some_file>)
+    >>>     conn.subprocess.run(*args, **kwargs)
+    >>>     # and so on for other modules
+
+Or you can assign the inner class to another variable but keep in mind
+that when connection is closed it will stop working!
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> conn = Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> remote_os =conn.os
+    >>> remote_subprocess = conn.subprocess
+
+The last possibility is to instantiate each module by itself
+
+.. code-block:: python
+
+
+    >>> from ssh_utilities import Connection, Os, Subprocess
+    >>> conn = Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> remote_os = Os(conn)
+    >>> remote_subprocess = Subprocess(conn)
+
 
 Contributing
 ------------
