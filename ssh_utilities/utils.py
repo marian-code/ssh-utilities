@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 __all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
            "lprint", "for_all_methods", "glob2re", "file_filter",
-           "config_parser", "context_timeit"]
+           "config_parser", "context_timeit", "NullContext"]
 
 
 class CompletedProcess:
@@ -426,6 +426,15 @@ def context_timeit(quiet: bool = False):
     else:
         pass
 
+
+class NullContext:
+    """Replacement for contextlib.nullcontext for python 3.6."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
 
 # \033[<L>;<C>H # Move the cursor to line L, column C
 # \033[<N>A     # Move the cursor up N lines

@@ -2,7 +2,10 @@
 
 import logging
 import os
-from contextlib import nullcontext
+try:
+    from contextlib import nullcontext
+except ImportError:
+    from ..utils import NullContext as nullcontext  # type: ignore
 from pathlib import Path
 from threading import RLock
 from typing import TYPE_CHECKING, ContextManager, Optional, Union
