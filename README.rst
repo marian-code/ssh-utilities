@@ -32,6 +32,7 @@ Paramiko wrapper
 
     .. image:: https://img.shields.io/pypi/dm/ssh-utilities
         :alt: PyPI - Downloads
+        :target: https://pypistats.org/packages/ssh-utilities
 
 :License:
 
