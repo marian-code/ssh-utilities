@@ -274,13 +274,14 @@ class Connection(metaclass=_ConnectionMeta):
         """
         try:
             server_name = re.findall(r"<\S*:(\S*)>", string)[0]
-            user_name, ssh_key, address = re.findall(
+            user_name, ssh_key, address, thread_safe = re.findall(
                 r"\(user_name:(\S*) \| rsa_key:(\S*) \| address:(\S*) \| "
                 r"threadsafe:(\S*)\)", string)[0]
         except IndexError:
             raise ValueError("String is not formated correctly")
 
-        return cls.open(user_name, address, ssh_key, server_name, quiet=quiet)
+        return cls.open(user_name, address, ssh_key, server_name, quiet=quiet,
+                        thread_safe=thread_safe)
 
     @overload
     @staticmethod
