@@ -57,6 +57,9 @@ class Os(OsABC):
     def listdir(path: "_SPATH") -> List[str]:
         return os.listdir(path)
 
+    def chdir(self, path: "_SPATH"):
+        os.chdir(self.c._path2str(path))
+
     def stat(self, path: "_SPATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> os.stat_result:
         return os.stat(self.c._path2str(path), dir_fd=dir_fd,
@@ -71,8 +74,8 @@ class Os(OsABC):
             self._osname
         except AttributeError:
             self._osname = os.name  # type: ignore
-        finally:
-            return self._osname
+
+        return self._osname
 
     osname = name
 

@@ -7,7 +7,7 @@ or remote connection classes as needed based on input arguments.
 import getpass
 import logging
 import os
-import re
+from json import loads
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 
@@ -70,7 +70,7 @@ class Connection(metaclass=_ConnectionMeta):
 
     Main purpose is to have SSH connection with convenience methods which can
     be easily used. Connection is resiliet to errors and will reinitialize
-    itself if for some reason it fails. It also has a local wariant which is
+    itself if for some reason it fails. It also has a local variant which is
     mirroring its API but uses os and shutil and subprocess modules internally.
 
     This is a factory class so calling any of the initializer classmethods
@@ -222,7 +222,7 @@ class Connection(metaclass=_ConnectionMeta):
 
     @classmethod
     def add_hosts(cls, hosts: Union["_HOSTS", List["_HOSTS"]]):
-        """add or override availbale host read fron ssh config file.
+        """Add or override availbale host read fron ssh config file.
 
         You can use supplied config parser to parse some externaf ssh config
         file.
@@ -257,7 +257,7 @@ class Connection(metaclass=_ConnectionMeta):
         Parameters
         ----------
         string: str
-            str to initialize connection from
+            json str to initialize connection from
         quiet: bool
             If True suppress login messages
 
@@ -269,19 +269,35 @@ class Connection(metaclass=_ConnectionMeta):
 
         Raises
         ------
-        ValueError
-            if string with wrong formating is passed
+        KeyError
+            if required key is missing from string
         """
-        try:
-            server_name = re.findall(r"<\S*:(\S*)>", string)[0]
-            user_name, ssh_key, address, thread_safe = re.findall(
-                r"\(user_name:(\S*) \| rsa_key:(\S*) \| address:(\S*) \| "
-                r"threadsafe:(\S*)\)", string)[0]
-        except IndexError:
-            raise ValueError("String is not formated correctly")
+        return cls.from_dict(loads(string), quiet=quiet)
 
-        return cls.open(user_name, address, ssh_key, server_name, quiet=quiet,
-                        thread_safe=thread_safe)
+    @classmethod
+    def from_dict(cls, json: dict, quiet: bool = False
+                  ) -> Union[SSHConnection, LocalConnection]:
+        """Initializes Connection from str.
+
+        String must be formated as defined by `base.ConnectionABC.to_str`
+        method.
+
+        Parameters
+        ----------
+        json: dict
+            dictionary initialize connection from
+        quiet: bool
+            If True suppress login messages
+
+        Returns
+        -------
+        Union[SSHConnection, LocalConnection]
+            initialized local or remmote connection
+            based on parameters parsed from string
+        """
+        return cls.open(json["user_name"], json["address"], json["ssh_key"],
+                        json["server_name"], quiet=quiet,
+                        thread_safe=json["thread_safe"])
 
     @overload
     @staticmethod

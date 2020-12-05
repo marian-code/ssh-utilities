@@ -38,32 +38,7 @@ class Builtins(BuiltinsABC):
              encoding: Optional[str] = None,
              bufsize: int = -1, errors: Optional[str] = None
              ) -> "SFTPFile":
-        """Opens remote file, works as python open function.
 
-        Can be used both as a function or a decorator.
-
-        Parameters
-        ----------
-        filename: _SPATH
-            path to file to be opened
-        mode: str
-            select mode to open file. Same as python open modes
-        encoding: Optional[str]
-            encoding type to decode file bytes stream
-        bufsize: int
-            buffer size, 0 turns off buffering, 1 uses line buffering, and any
-            number greater than 1 (>1) uses that specific buffer size
-        errors: Optional[str]
-            string that specifies how encoding and decoding errors are to be
-            handled, see builtin function
-            `open <https://docs.python.org/3/library/functions.html#open>`_
-            documentation for more details
-
-        Raises
-        ------
-        FileNotFoundError
-            when mode is 'r' and file does not exist
-        """
         path = self.c._path2str(filename)
         encoding = encoding if encoding else "utf-8"
         errors = errors if errors else "strict"

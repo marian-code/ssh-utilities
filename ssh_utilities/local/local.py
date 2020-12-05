@@ -4,14 +4,19 @@ Has the same API as remote version.
 """
 
 import logging
-from pathlib import Path
 from socket import gethostname
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
+from ..base import ConnectionABC
 from ..constants import G, Y
 from ..utils import lprint
-from ..base import ConnectionABC
 from . import Builtins, Os, Pathlib, Shutil, Subprocess
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..base import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
+                        _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
 
 __all__ = ["LocalConnection"]
 
@@ -23,7 +28,7 @@ class LocalConnection(ConnectionABC):
 
     def __init__(self, address: Optional[str], username: str,
                  password: Optional[str] = None,
-                 rsa_key_file: Optional[Union[str, Path]] = None,
+                 rsa_key_file: Optional[Union[str, "Path"]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
                  quiet: bool = False, thread_safe: bool = False) -> None:
 
@@ -46,28 +51,52 @@ class LocalConnection(ConnectionABC):
         self._subprocess = Subprocess(self)  # type: ignore
 
     @property
-    def builtins(self) -> Builtins:
+    def builtins(self) -> "_BUILTINS_LOCAL":
+        """Inner class providing access to substitutions for python builtins.
+
+        :type: .remote.Builtins
+        """
         return self._builtins
 
     @property
-    def os(self) -> Os:
+    def os(self) -> "_OS_LOCAL":
+        """Inner class providing access to substitutions for python os module.
+
+        :type: .remote.Os
+        """
         return self._os
 
     @property
-    def pathlib(self) -> Pathlib:
+    def pathlib(self) -> "_PATHLIB_LOCAL":
+        """Inner class providing access to substitutions for pathlib module.
+
+        :type: .remote.Pathlib
+        """
         return self._pathlib
 
     @property
-    def shutil(self) -> Shutil:
+    def shutil(self) -> "_SHUTIL_LOCAL":
+        """Inner class providing access to substitutions for shutil module.
+
+        :type: .remote.Shutil
+        """
         return self._shutil
 
     @property
-    def subprocess(self) -> Subprocess:
+    def subprocess(self) -> "_SUBPROCESS_LOCAL":
+        """Inner class providing access to substitutions for subprocess module.
+
+        :type: .remote.Subprocess
+        """
         return self._subprocess
 
     def __str__(self) -> str:
         return self.to_str("LocalConnection", self.server_name, None,
                            self.username, None, True)
+
+    def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
+        return self._to_dict("LocalConnection", self.server_name, None,
+                             self.username, None, True)
 
     @staticmethod
     def close(*, quiet: bool = True):

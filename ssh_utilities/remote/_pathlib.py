@@ -30,18 +30,5 @@ class Pathlib(PathlibABC):
 
     @check_connections()
     def Path(self, path: "_SPATH") -> SSHPath:
-        """Provides API similar to pathlib.Path only for remote host.
 
-        Only for Unix to Unix connections
-
-        Parameters
-        ----------
-        path: _SPATH
-            provide initial path
-
-        Returns
-        -------
-        SSHPath
-            object representing remote path
-        """
         return SSHPath(self.c, self.c._path2str(path))

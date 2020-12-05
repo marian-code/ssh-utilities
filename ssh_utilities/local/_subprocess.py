@@ -32,8 +32,8 @@ class Subprocess(SubprocessABC):
         self.c = connection
 
     @staticmethod
-    def run(args: "_CMD", *, suppress_out: bool, quiet: bool = True,
-            bufsize: int = -1, executable: "_SPATH" = None,
+    def run(args: "_CMD", *, suppress_out: bool,  # NOSONAR
+            quiet: bool = True, bufsize: int = -1, executable: "_SPATH" = None,
             input: Optional[str] = None, stdin: "_FILE" = None,
             stdout: "_FILE" = None, stderr: "_FILE" = None,
             capture_output: bool = False, shell: bool = False,

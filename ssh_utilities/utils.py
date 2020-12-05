@@ -4,7 +4,8 @@ import re
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence, Union
+from typing import (TYPE_CHECKING, Any, Callable, Generic, Optional, Sequence,
+                    TypeVar, Union)
 
 from paramiko.config import SSHConfig
 from tqdm import tqdm
@@ -20,7 +21,10 @@ __all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
            "config_parser", "context_timeit", "NullContext"]
 
 
-class CompletedProcess:
+_CompletedProcess = TypeVar("_CompletedProcess", str, bytes)
+
+
+class CompletedProcess(Generic[_CompletedProcess]):
     """Completed remote process, mimics subprocess.CompletedProcess API.
 
     Parameters
@@ -29,14 +33,16 @@ class CompletedProcess:
         is true set stderr and stdout to bytes
     """
 
-    stdout: Union[bytes, str]
-    stderr: Union[bytes, str]
+    stdout: _CompletedProcess
+    stderr: _CompletedProcess
 
     def __init__(self, bytes_out: bool = False):
 
         self.args: "_CMD" = []
         self.returncode: Optional[int] = None
 
+        # TODO sort this out! maybe replace bytes_our arg with generic initial
+        # TODO value which will then set the return
         if bytes_out:
             self.stdout = b""
             self.stderr = b""
@@ -71,20 +77,24 @@ class CompletedProcess:
 
 
 class _DummyTqdmWrapper:
+    """Dummy wrapper mirroring tqdm wrapper.
 
-    def __init__(self, *args, **kwargs) -> None:
+    All methods do nothing, used when no output is to be printed.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:  # NOSONAR
         pass
 
     def __enter__(self):
         return self
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *args, **kwargs):  # NOSONAR
         pass
 
-    def update_bar(self, *args, **kwargs):
+    def update_bar(self, *args, **kwargs):  # NOSONAR
         pass
 
-    def write(self, *args, **kwargs):
+    def write(self, *args, **kwargs):  # NOSONAR
         pass
 
 
@@ -113,7 +123,7 @@ class _TqdmWrapper(tqdm):
         super().write(self._prefix + s, file=_file, end=end, nolock=nolock)
 
 
-def ProgressBar(total: Optional[float] = None, unit: str = 'b',
+def ProgressBar(total: Optional[float] = None, unit: str = 'b',  # NOSONAR
                 unit_scale: bool = True, miniters: int = 1, ncols: int = 100,
                 unit_divisor: int = 1024, write_up=2,
                 quiet: bool = True, *args, **kwargs
@@ -283,7 +293,7 @@ class file_filter:
         return self.match(filename)
 
 
-def glob2re(patern):
+def glob2re(patern):  # NOSONAR
     """Translate a shell PATTERN to a regular expression.
 
     There is no way to quote meta-characters.
@@ -304,10 +314,8 @@ def glob2re(patern):
         i += 1
         if c == '*':
             res = res + '.*'
-            # res += '[^/]*'
         elif c == '?':
             res = res + '.'
-            # res +='[^/]'
         elif c == '[':
             j = i
             if j < n and patern[j] == '!':
@@ -423,8 +431,6 @@ def context_timeit(quiet: bool = False):
     end = time.time()
     if not quiet:
         print(f"CPU time: {(end - start):.2f}s")
-    else:
-        pass
 
 
 class NullContext:
@@ -434,6 +440,7 @@ class NullContext:
         return self
 
     def __exit__(self, *args):
+        """Replacement for arbitrrary context that does nothing."""
         pass
 
 # \033[<L>;<C>H # Move the cursor to line L, column C

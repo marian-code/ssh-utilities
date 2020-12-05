@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 from os.path import join as jn
-from stat import S_ISDIR, S_ISLNK
 from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
@@ -19,7 +18,7 @@ from ._connection_wrapper import check_connections
 if TYPE_CHECKING:
     from typing_extensions import TypedDict
 
-    from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH, _WALK
+    from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
     from .remote import SSHConnection
 
     _COPY_FILES = TypedDict("_COPY_FILES", {"dst": str, "src": str,
@@ -46,21 +45,7 @@ class Shutil(ShutilABC):
     def copy_files(self, files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", *, direction: "_DIRECTION",
                    follow_symlinks: bool = True, quiet: bool = False):
-        """Send files in the chosen direction local <-> remote.
 
-        Parameters
-        ----------
-        files: List[str]
-            list of files to upload/download
-        remote_path: "_SPATH"
-            path to remote directory with files
-        local_path: "_SPATH"
-            path to local directory with files
-        direction: str
-            get for download and put for upload
-        quiet: bool
-            if True informative messages are suppresssed
-        """
         with context_timeit(quiet):
             for f in files:
                 if direction == "get":
@@ -82,34 +67,9 @@ class Shutil(ShutilABC):
     def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
                  direction: "_DIRECTION", follow_symlinks: bool = True,
                  callback: "_CALLBACK" = None, quiet: bool = True):
-        """Send files in the chosen direction local <-> remote.
 
-        Parameters
-        ----------
-        src: "_SPATH"
-            path to the file
-        dst: "_SPATH"
-            path to copy into
-        direction: str
-            'get' for download and 'put' for upload
-        follow_symlinks: bool
-            resolve symlinks when looking for file, by default True
-        callback: Callable[[float, float], Any]
-            callback function that recives two arguments: amount done and total
-            amount to be copied
-        quiet: bool
-            if True informative messages are suppresssed
-
-        Raises
-        ------
-        FileNotFoundError
-            if `src` is not file
-        IsADirectoryError
-            if dst is a targer directory not full path
-        ValueError
-            if direction is not `put` or `get`
-        """
         def _dummy_callback(_1: float, _2: float):
+            """Dummy callback function."""
             pass
 
         callback = callback if callback else _dummy_callback
@@ -154,43 +114,13 @@ class Shutil(ShutilABC):
     def copy(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
              quiet: bool = True):
-        """Send files in the chosen direction local <-> remote.
 
-        Parameters
-        ----------
-        src: "_SPATH"
-            path to the file
-        dst: "_SPATH"
-            path to copy into
-        direction: str
-            'get' for download and 'put' for upload
-        follow_symlinks: bool
-            resolve symlinks when looking for file, by default True
-        callback: Callable[[float, float], Any]
-            callback function that recives two arguments: amount done and total
-            amount to be copied
-        quiet: bool
-            if True informative messages are suppresssed
-
-        Warnings
-        --------
-        Unlike shutil this function cannot preserve file permissions (`copy`)
-        or file metadata (`copy2`)
-
-        Raises
-        ------
-        FileNotFoundError
-            if `src` is not file
-        ValueError
-            if direction is not `put` or `get`
-        """
         if direction == "get":
             if os.path.isdir(self.c._path2str(dst)):
                 dst = jn(dst, os.path.basename(self.c._path2str(src)))
 
-        elif direction == "put":
-            if self.c.os.isdir(dst):
-                dst = jn(dst, os.path.basename(self.c._path2str(src)))
+        elif direction == "put" and self.c.os.isdir(dst):
+            dst = jn(dst, os.path.basename(self.c._path2str(src)))
 
         self.copyfile(src, dst, direction=direction,
                       follow_symlinks=follow_symlinks, callback=callback,
@@ -201,22 +131,7 @@ class Shutil(ShutilABC):
     @check_connections(exclude_exceptions=FileNotFoundError)
     def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
-        """Recursively remove directory tree.
 
-        Parameters
-        ----------
-        path: "_SPATH"
-            directory to be recursively removed
-        ignore_errors: bool
-            if True only log warnings do not raise exception
-        quiet: bool
-            if True informative messages are suppresssed
-
-        Raises
-        ------
-        FileNotFoundError
-            if some part of deleting filed
-        """
         sn = self.c.server_name
         path = self.c._path2str(path)
 
@@ -224,7 +139,7 @@ class Shutil(ShutilABC):
             lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
 
             try:
-                for root, _, files in self._sftp_walk(path):
+                for root, _, files in self.c.os.walk(path, followlinks=True):
                     for f in files:
                         f = jn(root, f)
                         lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
@@ -248,39 +163,7 @@ class Shutil(ShutilABC):
         remove_after: bool = False,
         quiet: Literal[True, False, "stats", "progress"] = False
     ):
-        """Download directory tree from remote.
 
-        Remote directory must exist otherwise exception is raised.
-
-        Parameters
-        ----------
-        remote_path: "_SPATH"
-            path to directory which should be downloaded
-        local_path: "_SPATH"
-            directory to copy to, must be full path!
-        remove_after: bool
-            remove remote copy after directory is uploaded
-        include: _GLOBPAT
-            glob pattern of files to include in copy, can be used
-            simultaneously with exclude, default is None = no filtering
-        exclude: _GLOBPAT
-            glob pattern of files to exclude in copy, can be used
-            simultaneously with include, default is None = no filtering
-        quiet:  Literal[True, False, "stats", "progress"]
-            if `True` informative messages are suppresssed if `False` all is
-            printed, if `stats` all statistics except progressbar are
-            suppressed if `progress` only progressbar is suppressed
-
-        Warnings
-        --------
-        both paths must be full: <some_remote_path>/my_directory ->
-        <some_local_path>/my_directory
-
-        Raises
-        ------
-        FileNotFoundError
-            when remote directory does not exist
-        """
         dst = self.c._path2str(local_path)
         src = self.c._path2str(remote_path)
 
@@ -297,7 +180,7 @@ class Shutil(ShutilABC):
         lprnt(f"{C}Building directory structure for download from remote...\n")
 
         # create a list of directories and files to copy
-        for root, _, files in self._sftp_walk(src):
+        for root, _, files in self.c.os.walk(src, followlinks=True):
 
             lprnt(f"{G}Searching remote directory:{R} "
                   f"{self.c.server_name}@{root}", up=1)
@@ -340,13 +223,13 @@ class Shutil(ShutilABC):
 
         q = True if quiet or quiet == "progress" else False
         with ProgressBar(total=total, quiet=q) as t:
-            for f in copy_files:
+            for cf in copy_files:
 
                 t.write(f"{G}Copying remote:{R} {self.c.server_name}@"
-                        f"{f['src']:<{max_src}}"
-                        f"\n{G}     --> local:{R} {f['dst']:<{max_dst}}")
+                        f"{cf['src']:<{max_src}}"
+                        f"\n{G}     --> local:{R} {cf['dst']:<{max_dst}}")
 
-                self.c.sftp.get(f["src"], f["dst"], callback=t.update_bar)
+                self.c.sftp.get(cf["src"], cf["dst"], callback=t.update_bar)
 
         lprnt("")
 
@@ -360,39 +243,7 @@ class Shutil(ShutilABC):
         remove_after: bool = False,
         quiet: Literal[True, False, "stats", "progress"] = False
     ):
-        """Upload directory tree to remote.
 
-        Local path must exist otherwise, exception is raised.
-
-        Parameters
-        ----------
-        local_path: "_SPATH"
-            path to directory which should be uploaded
-        remote_path: "_SPATH"
-            directory to copy to, must be full path!
-        remove_after: bool
-            remove local copy after directory is uploaded
-        include: _GLOBPAT
-            glob pattern of files to include in copy, can be used
-            simultaneously with exclude, default is None = no filtering
-        exclude: _GLOBPAT
-            glob pattern of files to exclude in copy, can be used
-            simultaneously with include, default is None = no filtering
-        quiet:  Literal[True, False, "stats", "progress"]
-            if `True` informative messages are suppresssed if `False` all is
-            printed, if `stats` all statistics except progressbar are
-            suppressed if `progress` only progressbar is suppressed
-
-        Warnings
-        --------
-        both paths must be full: <some_local_path>/my_directory ->
-        <some_remote_path>/my_directory
-
-        Raises
-        ------
-        FileNotFoundError
-            when local directory does not exist
-        """
         src = self.c._path2str(local_path)
         dst = self.c._path2str(remote_path)
 
@@ -409,7 +260,7 @@ class Shutil(ShutilABC):
         lprnt(f"{C}Building directory structure for upload to remote...\n")
 
         # create a list of directories and files to copy
-        for root, _, files in os.walk(src):
+        for root, _, files in os.walk(src, followlinks=True):
 
             lprnt(f"{G}Searching local directory:{R} {root}", up=1)
 
@@ -443,7 +294,8 @@ class Shutil(ShutilABC):
         # create directories on remote side to copy to
         lprnt(f"\n{C}Creating directory structure on remote side...")
         for d in dst_dirs:
-            self.c.os.makedirs(d, exist_ok=True, quiet=quiet)
+            self.c.os.makedirs(d, exist_ok=True,
+                               quiet=True if quiet else False)
 
         # copy
         lprnt(f"\n{C}Copying...{R}\n")
@@ -467,30 +319,3 @@ class Shutil(ShutilABC):
 
         if remove_after:
             shutil.rmtree(src)
-
-    @check_connections()
-    def _sftp_walk(self, remote_path: "_SPATH") -> "_WALK":
-        """Recursive directory listing."""
-        remote_path = self.c._path2str(remote_path)
-        path = remote_path
-        files = []
-        folders = []
-        for f in self.c.sftp.listdir_attr(remote_path):
-            # if is symlink get real files and check its stats
-            if S_ISLNK(f.st_mode):
-                s = self.c.os.stat(jn(remote_path, f.filename))
-                if S_ISDIR(s.st_mode):
-                    folders.append(f.filename)
-                else:
-                    files.append(f.filename)
-            elif S_ISDIR(f.st_mode):
-                folders.append(f.filename)
-            else:
-                files.append(f.filename)
-
-        yield path, folders, files
-
-        for folder in folders:
-            new_path = jn(remote_path, folder)
-            for x in self._sftp_walk(new_path):
-                yield x

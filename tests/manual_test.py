@@ -1,44 +1,89 @@
-from ssh_utilities import Connection, PIPE, DEVNULL
-from ssh_utilities.exceptions import CalledProcessError
-from pathlib import Path
+from ssh_utilities import Connection
+from ssh_utilities.multi_connection import MultiConnection
+
+mc = MultiConnection(["kohn"], quiet=True)
+for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
+    print(out)
+
+a = mc.to_dict()
+del mc
+
+with MultiConnection(["kohn"], quiet=True) as mc:
+    for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
+        print(out)
+
+mcl = MultiConnection.from_dict(a, quiet=True)
+k = mcl["kohn"]
+print("id", id(MultiConnection))
+print(k.os.isfile)
+print(k.os.isfile("/home/rynik/hw_config_Kohn.log"))
+#print(mcl["fock"].os.isfile("/home/rynik/hw_config_Kohn.log"))
+print("---------------")
+for o in mcl.os.isfile("/home/rynik/hw_config_Kohn.log"):
+    print(o)
 
 
-# PythonDecorators/decorator_with_arguments.py
-class decorator_with_arguments(object):
+print("..............................................................")
+with Connection("kohn", quiet=True, local=False) as c:
+    print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
 
-    def __new__(cls, decorated_function=None, **kwargs):
+    con = str(c)
 
-        self = super().__new__(cls)
-        self._init(**kwargs)
-
-        if not decorated_function:
-            return self
-        else:
-            return self.__call__(decorated_function)
-
-    def _init(self, arg1="default", arg2="default", arg3="default"):
-        self.arg1 = arg1
-        self.arg2 = arg2
-        self.arg3 = arg3
-
-    def __call__(self, decorated_function):
-
-        def wrapped_f(*args):
-            print("Decorator arguments:", self.arg1, self.arg2, self.arg3)
-            print("decorated_function arguments:", *args)
-            decorated_function(*args)
-
-        return wrapped_f
-
-@decorator_with_arguments(arg1=5)
-def sayHello(a1, a2, a3, a4):
-    print('sayHello arguments:', a1, a2, a3, a4)
-
-
-sayHello(1, 2, 3, 4)
+c = Connection.from_str(con, quiet=True)
+print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
 
 
 """
+A = TypeVar("A")
+B = TypeVar("B")
+T = TypeVar("T")
+
+
+class FunctorInstance(Generic[T]):
+    def __init__(
+        self, map: Callable[[Callable[[A], B], Kind1[T, A]], Kind1[T, B]]
+    ):
+        self._map = map
+
+    def map(self, x: Kind1[T, A]) -> Kind1[T, A]:
+        return self._map(f, x)
+
+
+f = FunctorInstance[List]()
+
+l: List[str] = ["a"]
+reveal_type(f.map(l))
+
+# h = HasValue[int].with_value(int)
+
+
+from typing import TypeVar, Generic, List
+
+Val = TypeVar("Val")
+
+class MyGeneric(Generic[Val]):
+    def __init__(self, a: Val): ...
+
+T = TypeVar("T")
+
+SingleG = MyGeneric[T]
+ListG = MyGeneric[List[T]]
+
+def listify_my_generic(g: SingleG[T]) -> ListG[T]:
+    ...
+
+
+listify_my_generic(MyGeneric(1))
+
+reveal_type(listify_my_generic(MyGeneric(1)))
+
+
+@kinded
+def to_str(arg: Kind1[T, int]) -> Kind1[T, str]:
+    ...
+
+reveal_type(to_str([1, 2]))
+
 with Connection("hartree") as c:
 
     try:

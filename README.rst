@@ -253,3 +253,4 @@ LGPL-2.1
 TODO
 ----
 - implement wrapper for pool of connections
+- show which methods are implemented

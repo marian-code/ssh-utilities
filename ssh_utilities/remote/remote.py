@@ -2,13 +2,15 @@
 
 import logging
 import os
+
 try:
     from contextlib import nullcontext
-except ImportError:
+except ImportError:  # for python 3.6
     from ..utils import NullContext as nullcontext  # type: ignore
+
 from pathlib import Path
 from threading import RLock
-from typing import TYPE_CHECKING, ContextManager, Optional, Union
+from typing import TYPE_CHECKING, ContextManager, Dict, Optional, Union
 
 import paramiko
 
@@ -23,87 +25,14 @@ if TYPE_CHECKING:
     from paramiko.client import SSHClient
     from paramiko.sftp_client import SFTPClient
 
+    from ..base import (_BUILTINS_REMOTE, _OS_REMOTE, _PATHLIB_REMOTE,
+                        _SHUTIL_REMOTE, _SUBPROCESS_REMOTE)
+
 __all__ = ["SSHConnection"]
 
 log = logging.getLogger(__name__)
 
 
-# ! this is not a viable way, too complex logic
-# use locking decorator instead
-# TODO share_connection could be implemented with dict
-# - must be indexable, need to remember which class uses which connection
-# - must store both sftp and connection
-# - must remove the element from the dataframe so no one can access it
-"""
-from threading import Condition, Lock
-
-
-class ConnectionHolder:
-
-    _connections = dict()
-    _lock = Lock()
-    _max_connections = 10
-
-    @classmethod
-    def get(cls, ip: str, instance_id):
-
-        with cls._lock:
-            if getattr(cls, f"{ip}:{instance_id}", None):
-                getattr(cls, f"{ip}:{instance_id}").wait()
-            conn = cls._connections[ip][iid].pop()
-            setattr(cls, f"{ip}:{instance_id}", conn["cond"])
-
-        pass
-
-    @classmethod
-    def put(cls, conn: dict):
-        pass
-
-    @classmethod
-    def new(cls, ip: str, instance_id: Optional[str]):
-        cls._lock.acquire()
-
-        if ip in cls._connections:
-
-            # None only when creating completely new class,
-            # is known when reconnecting
-            if not instance_id:
-                for iid in cls._conditions.values():
-                    if iid["count"] < cls._max_connections:
-                        # some id has free connections
-                        # just increment counter
-                        cls._connections[ip][idd]["count"] += 1
-                        return iid
-                else:
-                    # no id has free connections
-                    iid = cls._get_unique_instance_id()
-                    # TODO get connection somehow
-                    cls._connections[ip] = {iid: {"conn": None,
-                                                  "count": 1,
-                                                  "cond": Condition()}}
-                    return iid
-
-            else:
-                # only reopening downed connection
-                # TODO get connection somehow
-                cls._connections[ip][instance_id]["conn"] = None
-                return instance_id
-        else:
-            iid = cls._get_unique_instance_id()
-            # TODO get connection somehow
-            cls._connections[ip] = {iid: {"conn": None,
-                                          "count": 1,
-                                          "cond": Condition()}}
-
-        cls._lock.release()
-
-    @classmethod
-    def _get_unique_instance_id(cls):
-        raise NotImplementedError
-"""
-
-
-# TODO implement warapper for multiple connections
 class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
 
@@ -179,7 +108,7 @@ class SSHConnection(ConnectionABC):
         lprnt(msg)
         log.info(msg.replace(C, "").replace(R, ""))
 
-        msg = (f"{RED}When running an executale on server always make"
+        msg = (f"{RED}When running an executale on server always make "
                f"sure that full path is specified!!!\n")
 
         lprnt(msg)
@@ -225,7 +154,7 @@ class SSHConnection(ConnectionABC):
             return self._c
 
     @property
-    def builtins(self) -> Builtins:
+    def builtins(self) -> "_BUILTINS_REMOTE":
         """Inner class providing access to substitutions for python builtins.
 
         :type: .remote.Builtins
@@ -233,7 +162,7 @@ class SSHConnection(ConnectionABC):
         return self._builtins
 
     @property
-    def os(self) -> Os:
+    def os(self) -> "_OS_REMOTE":
         """Inner class providing access to substitutions for python os module.
 
         :type: .remote.Os
@@ -241,7 +170,7 @@ class SSHConnection(ConnectionABC):
         return self._os
 
     @property
-    def pathlib(self) -> Pathlib:
+    def pathlib(self) -> "_PATHLIB_REMOTE":
         """Inner class providing access to substitutions for pathlib module.
 
         :type: .remote.Pathlib
@@ -249,7 +178,7 @@ class SSHConnection(ConnectionABC):
         return self._pathlib
 
     @property
-    def shutil(self) -> Shutil:
+    def shutil(self) -> "_SHUTIL_REMOTE":
         """Inner class providing access to substitutions for shutil module.
 
         :type: .remote.Shutil
@@ -257,7 +186,7 @@ class SSHConnection(ConnectionABC):
         return self._shutil
 
     @property
-    def subprocess(self) -> Subprocess:
+    def subprocess(self) -> "_SUBPROCESS_REMOTE":
         """Inner class providing access to substitutions for subprocess module.
 
         :type: .remote.Subprocess
@@ -267,6 +196,11 @@ class SSHConnection(ConnectionABC):
     def __str__(self) -> str:
         return self.to_str("SSHConnection", self.server_name, self.address,
                            self.username, self.rsa_key_file, self.thread_safe)
+
+    def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
+        return self._to_dict("SSHConnection", self.server_name, self.address,
+                             self.username, self.rsa_key_file,
+                             self.thread_safe)
 
     @check_connections()
     def close(self, *, quiet: bool = True):
@@ -356,6 +290,7 @@ class SSHConnection(ConnectionABC):
                     try:
                         self._remote_home = self.subprocess.run(
                             ["echo $HOME"], suppress_out=True, quiet=True,
+                            encoding="utf-8",
                             check=True, capture_output=True).stdout.strip()
                     except CalledProcessError as e:
                         print(f"{RED}Cannot establish remote home, "

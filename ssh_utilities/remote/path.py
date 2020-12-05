@@ -234,6 +234,10 @@ class SSHPath(Path):
         ------
         FileNotFoundError
             if current path does not point to directory
+
+        Warnings
+        --------
+        This method follows symlinks by default
         """
         if not self.is_dir():
             raise FileNotFoundError(f"Directory {self} does not exist.")
@@ -245,7 +249,7 @@ class SSHPath(Path):
 
         pattern = glob2re(pattern)
 
-        for root, dirs, files in self.c.shutil._sftp_walk(self):
+        for root, dirs, files in self.c.os.walk(self, followlinks=True):
 
             for path in dirs + files:
                 path = join(root, path)
@@ -511,6 +515,10 @@ class SSHPath(Path):
         ------
         FileNotFoundError
             if current path does not point to directory
+
+        Warnings
+        --------
+        This method follows symlinks by default
         """
         return self.glob(f"**/{pattern}")
 
@@ -524,13 +532,15 @@ class SSHPath(Path):
         self.c.rmtree(self)
         self.replace(self.parent)
 
-    def symlink_to(self, target: "_SPATH"):  # type: ignore[override]
+    def symlink_to(self, target: "_SPATH", target_is_directory: bool = False):
         """Make this path a symlink pointing to the given path.
 
         Parameters
         ----------
         target : _SPATH
             target path to which symlink will point
+        target_is_directory: bool
+            this parameter is ignored
         """
         self.c.sftp.symlink(self._2str, fspath(target))
 
