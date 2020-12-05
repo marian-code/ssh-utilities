@@ -46,13 +46,15 @@ class Pesistence:
         self.__str__()
 
     def __deepcopy__(self, memodict: dict = {}):
+        """On deepcopy we create new instance as this is simpler and safer."""
         return MultiConnection.from_dict(self.to_dict())
 
     def __getstate__(self):
+        """Gets the state of object for pickling."""
         return self.to_dict()
 
     def __setstate__(self, state: dict):
-
+        """Initializes the object after load from pickle."""
         ssh_servers, share_connection, local, thread_safe = (
             self._parse_persistence_dict(state)
         )
@@ -63,6 +65,13 @@ class Pesistence:
 
     def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
                                                             int, None]]]]:
+        """Saves all the importatnt info from object to dictonary.
+
+        Returns
+        -------
+        Dict[int, Dict[str, Optional[Union[str, bool, int, None]]]]
+            dictionary representing the object
+        """
         conns = {}
         for i, (v, sc) in enumerate(zip(self._connections.values(),
                                         self._share_connection.values())):
@@ -75,7 +84,18 @@ class Pesistence:
     @staticmethod
     def _parse_persistence_dict(d: dict) -> Tuple[List[str], List[int],
                                                   List[bool], List[bool]]:
+        """Parses dictionary produced by `to_dict` method.
 
+        Parameters
+        ----------
+        d : dict
+            dictionary of values needed to reinitialize the class
+
+        Returns
+        -------
+        Tuple[List[str], List[int], List[bool], List[bool]]
+            Tuple of lists with parsed information
+        """
         share_connection = []
         ssh_servers = []
         local = []

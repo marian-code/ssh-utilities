@@ -5,8 +5,15 @@ mc = MultiConnection(["kohn"], quiet=True)
 for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
     print(out)
 
+for n in mc.os.name:
+    print(n)
+
+for p in mc.os.path.realpath("/home/rynik"):
+    print(p)
+
 a = mc.to_dict()
 del mc
+
 
 with MultiConnection(["kohn"], quiet=True) as mc:
     for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):

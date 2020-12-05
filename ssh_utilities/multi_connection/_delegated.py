@@ -48,9 +48,14 @@ class delegated:
         self._method_name = method_name
         self._parent_ref = parent_ref
         self._inner_class = inner_class
+        self._property = False
+
+    def is_property(self):
+        """Set this callabel to behave like a property."""
+        self._property = True
 
     def __call__(self, *args, **kwargs):
-        """Call the appropriate method on all connections asynchronouslly."""
+        """Call the appropriate method on all connections asynchronously."""
         iterables = [(c, *args, *kwargs)
                      for c in self._parent_ref.mc.values()]
         return self._parent_ref.mc.pool.map(self._call, *zip(*iterables))
@@ -58,9 +63,13 @@ class delegated:
     def _call(self, c: "_CONN", *args, **kwargs):
         """Make method calls for each of the connections."""
         method = getattr(getattr(c, self._inner_class), self._method_name)
-        return method(*args, **kwargs)
+        if self._property:
+            return method
+        else:
+            return method(*args, **kwargs)
 
 
+# ! properties
 # TODO what about abstract properties delegation?
 # TODO mayybe this is too deep magic? still not sure if we are returning
 # TODO actual class or class instance, this can have dnagendous consequences!
@@ -77,7 +86,7 @@ def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
     >>> method1[Connection1, Connection2]
     >>> method2[Connection1, Connection2]
 
-    The methods became classes and each 'method' holds reference to all
+    The methods become classes and each one holds reference to all
     open connections
 
     Parameters
@@ -96,8 +105,15 @@ def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
     for name in abc_parent.__abstractmethods__:
         if hasattr(abc_parent, name):
             inner_class = abc_parent.__name__.replace("ABC", "").lower()
-            setattr(abc_parent, name, delegated(name, abc_parent,
-                                                inner_class))
+            attr = getattr(abc_parent, name)
+            new_method = delegated(name, abc_parent, inner_class)
+            if isinstance(attr, property):
+                new_method.is_property()
+                new_method = property(new_method.__call__,
+                                      attr.__set__, attr.__delattr__)
+
+            setattr(abc_parent, name, new_method)
+
             implemented.add(name)
     abc_parent.__abstractmethods__ = frozenset(
         abc_parent.__abstractmethods__ - implemented
