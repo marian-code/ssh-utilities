@@ -60,8 +60,8 @@ class Pesistence:
         )
 
         self.__init__(ssh_servers, local, quiet=True,  # type: ignore
-                      thread_safe=thread_safe,
-                      share_connection=share_connection)
+                      thread_safe=thread_safe)
+                      # share_connection=share_connection)
 
     def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
                                                             int, None]]]]:
@@ -139,8 +139,8 @@ class Pesistence:
         )
 
         return cls(ssh_servers, local, quiet=quiet,  # type: ignore
-                   thread_safe=thread_safe,
-                   share_connection=share_connection)
+                   thread_safe=thread_safe)
+                   # share_connection=share_connection)
 
     @classmethod
     def from_str(cls, string: str, quiet: bool = False

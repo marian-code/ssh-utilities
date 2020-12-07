@@ -40,15 +40,18 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     Parameters
     ----------
     ssh_servers : Union[List[str], str]
-        [description]
+        list od ssh srevers to connect to
     local : Union[List[bool], bool], optional
-        [description], by default False
+        bool or list of bools specifying if the respective connection(s),
+        should be local or remote by default False
     quiet : bool, optional
-        [description], by default False
+        bool or a list of bools specifing if login messages should be printed,
+        on individula connections initialization by default False
     thread_safe : Union[List[bool], bool], optional
-        [description], by default False
+        bool or a list of bools specifying if respective connection(s) should,
+        be made thead safe or not by default False
     share_connection : Union[List[int], int], optional
-        [description], by default 1
+        Not implemented, by default 1
     """
 
     _builtins: "_BUILTINS_MULTI"
@@ -61,9 +64,9 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def __init__(self, ssh_servers: Union[List[str], str],
                  local: Union[List[bool], bool] = False, quiet: bool = False,
                  thread_safe: Union[List[bool], bool] = False) -> None:
-
-        # TODO implement share connection
         # share_connection: Union[List[int], int] = 1) -> None:
+
+        # TODO finish implementation
         share_connection: Union[List[int], int] = 1
 
         # TODO somehow adjust number of workers if connection are deleted or
@@ -98,7 +101,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def builtins(self) -> "_BUILTINS_MULTI":
         """Inner class providing access to substitutions for python builtins.
 
-        :type: .remote.Builtins
+        :type: .abc.Builtins
         """
         return self._builtins
 
@@ -106,7 +109,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def os(self) -> "_OS_MULTI":
         """Inner class providing access to substitutions for python os module.
 
-        :type: .remote.Os
+        :type: .abc.Os
         """
         return self._os
 
@@ -114,7 +117,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def pathlib(self) -> "_PATHLIB_MULTI":
         """Inner class providing access to substitutions for pathlib module.
 
-        :type: .remote.Pathlib
+        :type: .abc.Pathlib
         """
         return self._pathlib
 
@@ -122,7 +125,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def shutil(self) -> "_SHUTIL_MULTI":
         """Inner class providing access to substitutions for shutil module.
 
-        :type: .remote.Shutil
+        :type: .abc.Shutil
         """
         return self._shutil
 
@@ -130,7 +133,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def subprocess(self) -> "_SUBPROCESS_MULTI":
         """Inner class providing access to substitutions for subprocess module.
 
-        :type: .remote.Subprocess
+        :type: .abc.Subprocess
         """
         return self._subprocess
 

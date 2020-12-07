@@ -1,9 +1,10 @@
-"""module providing dictionary interface for multi_connection."""
+"""Module providing dictionary interface for multi_connection."""
 
 import logging
 from copy import copy
 from typing import (TYPE_CHECKING, Dict, ItemsView, KeysView, Optional, Tuple,
                     Union, ValuesView, TypeVar)
+from collections.abc import MutableMapping
 
 if TYPE_CHECKING:
     from ..local import LocalConnection
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-class DictInterface:
+class DictInterface(MutableMapping):
     """Class providing dictionary interface methods to MultiConnection.
 
     See also

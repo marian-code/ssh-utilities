@@ -30,8 +30,7 @@ Instantiating class provides a simple interface similar to factory
 .. code-block:: python
 
     >>> from ssh_utilities import MultiConnection
-    >>> MultiConnection(<server_names_list>, local=False, thread_safe=True,
-    >>>                 share_connection=False)
+    >>> MultiConnection(<server_names_list>, local=False, thread_safe=True)
     >>> <ssh_utilities.ssh_utilities.MultiConnection at 0x7efedff4fb38>
 
 ``MultiConnection`` class can also be used as a contextmanager.
@@ -40,13 +39,13 @@ Instantiating class provides a simple interface similar to factory
 
     >>> from ssh_utilities import MultiConnection
     >>> with MultiConnection(<server_names_list>, local=False,
-                             thread_safe=True, share_connection=False) as mc:
+                             thread_safe=True) as mc:
     >>>     mc.<some_attribute>
     >>>     ...
 
 .. note::
 
-    ``local``, ``thread_safe`` and ``share_connection`` arguments can also be
+    ``local`` and ``thread_safe`` arguments can also be
     lists with length corresponding to ``server_names`` each element in these
     lists will be used with corresponding connection otherwise the arguments
     will be same for all connections.
@@ -77,6 +76,10 @@ without parameters and than add individual connections one by one.
     >>> mc1 = MultiConnection(<[ssh_Servers_list]>)
     >>> mc2 = mc + mc1  # you can also join MultiConnection instances
     >>> mc2.update(mc1)  # or use dict interface
+
+.. warning::
+
+    You cannot add more connections under same key!
 
 
 Fully aupported dictionary interface also allows you to easilly access and
