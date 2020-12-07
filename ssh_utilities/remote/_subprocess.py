@@ -46,7 +46,7 @@ class Subprocess(SubprocessABC):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None, universal_newlines: bool = False
+            env: "_ENV" = None, universal_newlines: bool = False
             ) -> CompletedProcess:
 
         command: str

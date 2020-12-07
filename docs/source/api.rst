@@ -50,3 +50,8 @@ ssh_utilities.constants
 -----------------------
 .. automodule:: ssh_utilities.constants
    :members:
+
+ssh_utilities.typeshed
+----------------------
+.. automodule:: ssh_utilities.typeshed
+   :members:

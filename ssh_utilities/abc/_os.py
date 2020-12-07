@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Generic, FrozenSet, TypeVar
 
 if TYPE_CHECKING:
-    from ..typeshed import _SPATH
+    from ..typeshed import _SPATH, _ONERROR
 
 __all__ = ["OsPathABC", "OsABC"]
 
@@ -36,7 +36,7 @@ class OsPathABC(ABC):
 
         Parameters
         ----------
-        path : _SPATH
+        path : :const:`ssh_utilities.typeshed._SPATH`
             path to resolve
 
         Returns
@@ -59,7 +59,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to check
 
         Raises
@@ -75,7 +75,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to check
 
         Raises
@@ -94,7 +94,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to directory which should be created
         mode: int
             create directory with mode, default is 511
@@ -126,7 +126,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to directory which should be created
         mode: int
             create directory with mode, default is 511
@@ -150,7 +150,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             directory path
 
         Returns
@@ -176,7 +176,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: _SPATH
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to file whose stats are desired
         dir_fd: Any
             not implemented
@@ -201,7 +201,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
         Parameters
         ----------
-        path: _SPATH
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to file whose stats are desired
         dir_fd: Any
             not implemented in remote version
@@ -262,6 +262,29 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         raise NotImplementedError
 
     def walk(self, top: "_SPATH", topdown: bool = True,
-             onerror=None, followlinks: bool = False) -> _Os6:
-        """Recursive directory listing."""
+             onerror: "_ONERROR" = None, followlinks: bool = False) -> _Os6:
+        """Recursive directory listing.
+
+        Parameters
+        ----------
+        top : :const:`ssh_utilities.typeshed._SPATH`
+            directory to start from
+        topdown : bool, optional
+            if true or not specified, the triple for a directory is generated
+            before the triples for any of its subdirectories (directories are
+            generated top-down). This enables you to modify the subdirectories
+            list in place befor iteration continues. If topdown is False, the
+            triple for a directory is generated after the triples for all of
+            its subdirectories, by default True
+        onerror : :const:`ssh_utilities.typeshed._ONERROR`, optional
+            Callable acception one argument of type exception which decides
+            how to handle that exception, by default None
+        followlinks : bool, optional
+            follow symbolic links if true, by default False
+
+        Returns
+        -------
+        :const:`ssh_utilities.typeshed._WALK`
+            iterator of 3 tuples containing current dir, subdirs and files
+        """
         raise NotImplementedError

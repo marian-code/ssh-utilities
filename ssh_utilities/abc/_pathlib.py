@@ -32,7 +32,7 @@ class PathlibABC(ABC, Generic[_Pathlib1]):
 
         Parameters
         ----------
-        path: _SPATH
+        path: :const:`ssh_utilities.typeshed._SPATH`
             provide initial path
 
         Returns

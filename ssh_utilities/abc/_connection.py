@@ -101,7 +101,7 @@ class ConnectionABC(ABC):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             path to convert to string, if string is passed,
             then just returns it
 

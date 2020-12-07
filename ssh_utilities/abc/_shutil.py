@@ -27,9 +27,9 @@ class ShutilABC(ABC):
         ----------
         files: List[str]
             list of files to upload/download
-        remote_path: "_SPATH"
+        remote_path: :const:`ssh_utilities.typeshed._SPATH`
             path to remote directory with files
-        local_path: "_SPATH"
+        local_path: :const:`ssh_utilities.typeshed._SPATH`
             path to local directory with files
         direction: str
             get for download and put for upload
@@ -48,15 +48,15 @@ class ShutilABC(ABC):
 
         Parameters
         ----------
-        src: "_SPATH"
+        src: :const:`ssh_utilities.typeshed._SPATH`
             path to the file
-        dst: "_SPATH"
+        dst: :const:`ssh_utilities.typeshed._SPATH`
             path to copy into
-        direction: str
+        direction: :const:`ssh_utilities.typeshed._DIRECTION`
             'get' for download and 'put' for upload
         follow_symlinks: bool
             resolve symlinks when looking for file, by default True
-        callback: Callable[[float, float], Any]
+        callback: :const:`ssh_utilities.typeshed._CALLBACK`
             callback function that recives two arguments: amount done and total
             amount to be copied
         quiet: bool
@@ -81,15 +81,15 @@ class ShutilABC(ABC):
 
         Parameters
         ----------
-        src: "_SPATH"
+        src: :const:`ssh_utilities.typeshed._SPATH`
             path to the file
-        dst: "_SPATH"
+        dst: :const:`ssh_utilities.typeshed._SPATH`
             path to copy into
-        direction: str
+        direction: :const:`ssh_utilities.typeshed._DIRECTION`
             'get' for download and 'put' for upload
         follow_symlinks: bool
             resolve symlinks when looking for file, by default True
-        callback: Callable[[float, float], Any]
+        callback: :const:`ssh_utilities.typeshed._CALLBACK`
             callback function that recives two arguments: amount done and total
             amount to be copied
         quiet: bool
@@ -125,16 +125,16 @@ class ShutilABC(ABC):
 
         Parameters
         ----------
-        remote_path: "_SPATH"
+        remote_path: :const:`ssh_utilities.typeshed._SPATH`
             path to directory which should be downloaded
-        local_path: "_SPATH"
+        local_path: :const:`ssh_utilities.typeshed._SPATH`
             directory to copy to, must be full path!
         remove_after: bool
             remove remote copy after directory is uploaded
-        include: _GLOBPAT
+        include: :const:`ssh_utilities.typeshed._GLOBPAT`
             glob pattern of files to include in copy, can be used
             simultaneously with exclude, default is None = no filtering
-        exclude: _GLOBPAT
+        exclude: :const:`ssh_utilities.typeshed._GLOBPAT`
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
         quiet:  Literal[True, False, "stats", "progress"]
@@ -164,16 +164,16 @@ class ShutilABC(ABC):
 
         Parameters
         ----------
-        local_path: "_SPATH"
+        local_path: :const:`ssh_utilities.typeshed._SPATH`
             path to directory which should be uploaded
-        remote_path: "_SPATH"
+        remote_path: :const:`ssh_utilities.typeshed._SPATH`
             directory to copy to, must be full path!
         remove_after: bool
             remove local copy after directory is uploaded
-        include: _GLOBPAT
+        include: :const:`ssh_utilities.typeshed._GLOBPAT`
             glob pattern of files to include in copy, can be used
             simultaneously with exclude, default is None = no filtering
-        exclude: _GLOBPAT
+        exclude: :const:`ssh_utilities.typeshed._GLOBPAT`
             glob pattern of files to exclude in copy, can be used
             simultaneously with include, default is None = no filtering
         quiet:  Literal[True, False, "stats", "progress"]
@@ -200,7 +200,7 @@ class ShutilABC(ABC):
 
         Parameters
         ----------
-        path: "_SPATH"
+        path: :const:`ssh_utilities.typeshed._SPATH`
             directory to be recursively removed
         ignore_errors: bool
             if True only log warnings do not raise exception

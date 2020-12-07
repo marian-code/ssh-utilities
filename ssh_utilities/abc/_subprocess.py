@@ -33,14 +33,14 @@ class SubprocessABC(ABC, Generic[_Subprocess1]):
             cwd: "_SPATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
-            env: Optional["_ENV"] = None,
+            env: "_ENV" = None,
             universal_newlines: bool = False
             ) -> _Subprocess1:
         """Excecute command on remote, has simillar API to subprocess run.
 
         Parameters
         ----------
-        args : _CMD
+        args : :const:`ssh_utilities.typeshed._CMD`
             string, Path-like object or a list of strings. If it is a list it
             will be joined to string with whitespace delimiter.
         suppress_out : bool
@@ -53,7 +53,7 @@ class SubprocessABC(ABC, Generic[_Subprocess1]):
             number greater than 1 (>1) uses that specific buffer size. This
             applies ti underlying paramiko client as well as `stdin`, `stdout`
             and `stderr` PIPES, by default -1
-        executable : _SPATH, optional
+        executable : :const:`ssh_utilities.typeshed._SPATH`, optional
             [description], by default None
         input : Optional[str], optional
             [description], by default None
@@ -91,7 +91,7 @@ class SubprocessABC(ABC, Generic[_Subprocess1]):
             behaviour of `subprocess` module is not selected by
             `locale.getpreferredencoding(False)` but is always set to `utf-8`.
             By default None
-        env : Optional[_ENV], optional
+        env : :const:`ssh_utilities.typeshed._ENV`, optional
             optinal environment variables that will be merged into the existing
             environment. This is different to `subprocess` behaviour which
             creates new environment with only specified variables,
@@ -130,8 +130,6 @@ class SubprocessABC(ABC, Generic[_Subprocess1]):
             if `stdin`, `stdout` or `stderr` arguments are of wrong type
         TypeError
             if `args` argument is of wrong type
-        exception
-            [description]
         CalledProcessError
             if check is true and command exited with non-zero status
         TimeoutExpired

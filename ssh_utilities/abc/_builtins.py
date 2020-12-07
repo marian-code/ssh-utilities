@@ -35,7 +35,7 @@ class BuiltinsABC(ABC, Generic[_Builtins1]):
 
         Parameters
         ----------
-        filename: _SPATH
+        filename: :const:`ssh_utilities.typeshed._SPATH`
             path to file to be opened
         mode: str
             select mode to open file. Same as python open modes
