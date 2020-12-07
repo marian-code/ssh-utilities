@@ -229,11 +229,23 @@ The last possibility is to instantiate each module by itself
 
 .. code-block:: python
 
-
     >>> from ssh_utilities import Connection, Os, Subprocess
     >>> conn = Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> remote_os = Os(conn)
     >>> remote_subprocess = Subprocess(conn)
+
+ssh_utilities now contains ``MultiConnection`` container which cleverly
+manages multiple individual connections for you. You can carry out same
+command across multiple servers asynchronously and many more! Detailed
+information is in the docs.
+
+.. code-block:: python
+
+    >>> from ssh_utilities import MultiConnection
+    >>> with MultiConnection(<server_names_list>, local=False,
+                             thread_safe=True) as mc:
+    >>>     mc.<some_attribute>
+    >>>     ...
 
 
 Contributing
