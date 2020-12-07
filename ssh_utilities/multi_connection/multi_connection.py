@@ -1,7 +1,7 @@
 """The main module with toplevel Connection class.
 
 The connection class is the main public class that initializes local
-or remote connection classes as needed based on input arguments.
+or remote connection classes as needed abcd on input arguments.
 """
 
 import logging
@@ -9,8 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, SupportsFloat, Union
 
-from ..base import (BuiltinsABC, ConnectionABC, OsABC, PathlibABC, ShutilABC,
-                    SubprocessABC)
+from ..abc import (BuiltinsABC, ConnectionABC, OsABC, PathlibABC, ShutilABC,
+                   SubprocessABC)
 from ..connection import Connection
 from ..local import LocalConnection
 from ..remote import SSHConnection
@@ -19,8 +19,8 @@ from ._dict_interface import DictInterface
 from ._persistence import Pesistence
 
 if TYPE_CHECKING:
-    from ..base import (_BUILTINS_MULTI, _OS_MULTI, _PATHLIB_MULTI,
-                        _SHUTIL_MULTI, _SUBPROCESS_MULTI)
+    from ..abc import (_BUILTINS_MULTI, _OS_MULTI, _PATHLIB_MULTI,
+                       _SHUTIL_MULTI, _SUBPROCESS_MULTI)
 
     _CONN = Union[SSHConnection, LocalConnection]
 
@@ -60,11 +60,14 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
 
     def __init__(self, ssh_servers: Union[List[str], str],
                  local: Union[List[bool], bool] = False, quiet: bool = False,
-                 thread_safe: Union[List[bool], bool] = False,
-                 share_connection: Union[List[int], int] = 1) -> None:
+                 thread_safe: Union[List[bool], bool] = False) -> None:
+
+        # TODO implement share connection
+        # share_connection: Union[List[int], int] = 1) -> None:
+        share_connection: Union[List[int], int] = 1
 
         # TODO somehow adjust number of workers if connection are deleted or
-        # added
+        # TODO added
         self.pool = ThreadPoolExecutor(max_workers=None)
 
         if not isinstance(ssh_servers, list):
@@ -147,6 +150,13 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def __del__(self):
         self.close(quiet=True)
 
+    def __str__(self) -> str:
+        return Pesistence.__str__(self)
+
+    def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
+                                                            int, None]]]]:
+        return Pesistence.to_dict(self)
+
     # TODO will this propagate to the delegated classes?
     def __add__(self, other: Union["_CONN",
                                    "MultiConnection"]) -> "MultiConnection":
@@ -168,10 +178,3 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
                 level: str = "WARN"):
         ...
-
-    def __str__(self) -> str:
-        return Pesistence.__str__(self)
-
-    def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
-                                                            int, None]]]]:
-        return Pesistence.to_dict(self)

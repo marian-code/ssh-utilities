@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..base import PathlibABC
+from ..abc import PathlibABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH

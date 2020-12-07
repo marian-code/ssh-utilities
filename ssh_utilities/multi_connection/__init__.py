@@ -1,7 +1,7 @@
 """The main module with toplevel MultiConnection class.
 
 The connection class is the main public class that initializes local
-or remote connection arrays of classes as needed based on input arguments.
+or remote connection arrays of classes as needed abcd on input arguments.
 """
 
 from .multi_connection import MultiConnection

@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from ..base import ShutilABC
+from ..abc import ShutilABC
 from ..utils import context_timeit, file_filter
 
 if TYPE_CHECKING:

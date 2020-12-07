@@ -23,6 +23,12 @@ if TYPE_CHECKING:
     from ..remote.path import SSHPath
     _ATTRIBUTES = Union[SFTPAttributes, stat_result]
 
+    # Because python typing system does not support higher kinded types we must
+    # resort to this soulution of the problem and pass in all the prepared
+    # return types to the Generic class which is ugly and more error prone than
+    # would be ideal
+    # problem discussion: https://github.com/python/typing/issues/548
+    # potentially use returns in the future github.com/dry-python/returns
     # * multi types
     _BUILTINS_MULTI = BuiltinsABC[Iterator[Union[IO, SFTPFile]]]
     _OS_MULTI = OsABC[Iterator[bool], Iterator[List[str]],

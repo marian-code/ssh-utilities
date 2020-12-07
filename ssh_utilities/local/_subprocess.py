@@ -4,7 +4,7 @@ import logging
 import subprocess
 from typing import TYPE_CHECKING, Optional
 
-from ..base import SubprocessABC
+from ..abc import SubprocessABC
 from ..constants import C, R
 from ..utils import lprint
 

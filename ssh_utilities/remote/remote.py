@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ContextManager, Dict, Optional, Union
 
 import paramiko
 
-from ..base import ConnectionABC
+from ..abc import ConnectionABC
 from ..constants import RED, C, G, R, Y
 from ..exceptions import CalledProcessError, ConnectionError, SFTPOpenError
 from ..utils import lprint
@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from paramiko.client import SSHClient
     from paramiko.sftp_client import SFTPClient
 
-    from ..base import (_BUILTINS_REMOTE, _OS_REMOTE, _PATHLIB_REMOTE,
-                        _SHUTIL_REMOTE, _SUBPROCESS_REMOTE)
+    from ..abc import (_BUILTINS_REMOTE, _OS_REMOTE, _PATHLIB_REMOTE,
+                       _SHUTIL_REMOTE, _SUBPROCESS_REMOTE)
 
 __all__ = ["SSHConnection"]
 
@@ -195,7 +195,7 @@ class SSHConnection(ConnectionABC):
         return self._to_str("SSHConnection", self.server_name, self.address,
                             self.username, self.rsa_key_file, self.thread_safe)
 
-    def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
+    def to_dict(self) -> Dict[str, Optional[Union[str, bool, int]]]:
         return self._to_dict("SSHConnection", self.server_name, self.address,
                              self.username, self.rsa_key_file,
                              self.thread_safe)

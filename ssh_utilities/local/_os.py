@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
-from ..base import OsABC, OsPathABC
+from ..abc import OsABC, OsPathABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
-from ..base import OsABC, OsPathABC
+from ..abc import OsABC, OsPathABC
 from ..constants import G, R
 from ..exceptions import CalledProcessError, UnknownOsError
 from ..utils import lprint

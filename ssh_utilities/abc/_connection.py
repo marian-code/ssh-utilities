@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, Union
 
 # import stale to prevent circullar import
 from ssh_utilities import connection
+
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
     from ._builtins import BuiltinsABC
@@ -124,7 +125,8 @@ class ConnectionABC(ABC):
     @staticmethod
     def _to_dict(connection_name: str, host_name: str, address: Optional[str],
                  user_name: str, ssh_key: Optional[Union[Path, str]],
-                 thread_safe: bool) -> Dict[str, Optional[Union[str, bool]]]:
+                 thread_safe: bool
+                 ) -> Dict[str, Optional[Union[str, bool, int]]]:
 
         if ssh_key is None:
             key_path = ssh_key

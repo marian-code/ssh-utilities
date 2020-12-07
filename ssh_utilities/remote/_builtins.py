@@ -4,7 +4,7 @@ import logging
 from types import MethodType
 from typing import TYPE_CHECKING, Optional
 
-from ..base import BuiltinsABC
+from ..abc import BuiltinsABC
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:

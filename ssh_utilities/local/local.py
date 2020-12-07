@@ -7,7 +7,7 @@ import logging
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from ..base import ConnectionABC
+from ..abc import ConnectionABC
 from ..constants import G, Y
 from ..utils import lprint
 from . import Builtins, Os, Pathlib, Shutil, Subprocess
@@ -15,8 +15,8 @@ from . import Builtins, Os, Pathlib, Shutil, Subprocess
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..base import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
-                        _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
+    from ..abc import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
+                       _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
 
 __all__ = ["LocalConnection"]
 
@@ -94,7 +94,7 @@ class LocalConnection(ConnectionABC):
         return self._to_str("LocalConnection", self.server_name, None,
                             self.username, None, True)
 
-    def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
+    def to_dict(self) -> Dict[str, Optional[Union[str, bool, int]]]:
         return self._to_dict("LocalConnection", self.server_name, None,
                              self.username, None, True)
 

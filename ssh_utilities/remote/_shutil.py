@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List
 
 from typing_extensions import Literal
 
-from ..base import ShutilABC
+from ..abc import ShutilABC
 from ..constants import LG, C, G, R
 from ..utils import ProgressBar
 from ..utils import bytes_2_human_readable as b2h

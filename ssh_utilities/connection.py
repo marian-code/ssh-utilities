@@ -251,7 +251,7 @@ class Connection(metaclass=_ConnectionMeta):
                  ) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC._to_str`
+        String must be formated as defined by `abc.ConnectionABC._to_str`
         method.
 
         Parameters
@@ -279,7 +279,7 @@ class Connection(metaclass=_ConnectionMeta):
                   ) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC._to_str`
+        String must be formated as defined by `abc.ConnectionABC._to_str`
         method.
 
         Parameters
