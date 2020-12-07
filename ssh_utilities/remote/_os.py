@@ -37,7 +37,7 @@ class Os(OsABC):
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
-        self._path = OsPathRemote(connection)  # type: ignore
+        self._path = OsPathRemote(connection)
 
     @property
     def path(self) -> "OsPathRemote":

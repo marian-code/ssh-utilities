@@ -91,8 +91,8 @@ class LocalConnection(ConnectionABC):
         return self._subprocess
 
     def __str__(self) -> str:
-        return self.to_str("LocalConnection", self.server_name, None,
-                           self.username, None, True)
+        return self._to_str("LocalConnection", self.server_name, None,
+                            self.username, None, True)
 
     def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
         return self._to_dict("LocalConnection", self.server_name, None,

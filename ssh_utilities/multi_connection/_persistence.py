@@ -47,7 +47,7 @@ class Pesistence:
 
     def __deepcopy__(self, memodict: dict = {}):
         """On deepcopy we create new instance as this is simpler and safer."""
-        return MultiConnection.from_dict(self.to_dict())
+        return self.from_dict(self.to_dict())
 
     def __getstate__(self):
         """Gets the state of object for pickling."""
@@ -113,7 +113,7 @@ class Pesistence:
                   ) -> "MultiConnection":
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC.to_str`
+        String must be formated as defined by `base.ConnectionABC._to_str`
         method.
 
         Parameters
@@ -147,7 +147,7 @@ class Pesistence:
                  ) -> "MultiConnection":
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC.to_str`
+        String must be formated as defined by `base.ConnectionABC._to_str`
         method.
 
         Parameters

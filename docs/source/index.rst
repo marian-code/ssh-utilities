@@ -20,6 +20,7 @@ Projects home directory is on github:
    api
    usage_conn
    usage_path
+   usage_multi
    migration
 
 Indices and tables

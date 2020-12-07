@@ -1,18 +1,33 @@
 from ssh_utilities import Connection
 from ssh_utilities.multi_connection import MultiConnection
+from copy import deepcopy
+import pickle
+
+c = Connection.get("kohn", quiet=True, local=False)
+print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
+
+c1 = deepcopy(c)
+c2 = pickle.loads(pickle.dumps(c))
+print(c1.os.isfile("/home/rynik/hw_config_Kohn.log"))
+print(c2.os.isfile("/home/rynik/hw_config_Kohn.log"))
+
+print(id(c), id(c1), id(c2))
 
 mc = MultiConnection(["kohn"], quiet=True)
 for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
     print(out)
 
-for n in mc.os.name:
+mc1 = pickle.loads(pickle.dumps(mc))
+print(id(mc), id(mc1))
+
+for n in mc1.os.name:
     print(n)
 
-for p in mc.os.path.realpath("/home/rynik"):
-    print(p)
+for p in mc1.pathlib.Path("/home/rynik"):
+    print(p.is_dir())
 
 a = mc.to_dict()
-del mc
+mc.clear()
 
 
 with MultiConnection(["kohn"], quiet=True) as mc:

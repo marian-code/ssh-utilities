@@ -154,8 +154,11 @@ class Subprocess(SubprocessABC):
         if cwd:
             command = f"cd {self.c._path2str(cwd)} && {command}"
 
-        cp: CompletedProcess[str if encoding else bytes]  # type: ignore
-        cp = CompletedProcess(bytes_out=not encoding)
+        if encoding:
+            cp = CompletedProcess[str]("")
+        else:
+            cp = CompletedProcess[bytes](b"")  # type: ignore
+
         try:
             # create output object
             cp.args = args
@@ -181,7 +184,7 @@ class Subprocess(SubprocessABC):
                         if encoding:
                             data_dec = str(data, encoding, errors)
                             stdout_pipe.write(data_dec)  # type: ignore
-                            cp.stdout += data_dec  # type: ignore
+                            cp.stdout += data_dec
                         else:
                             stdout_pipe.write(data)
                             cp.stdout += data
@@ -191,7 +194,7 @@ class Subprocess(SubprocessABC):
                         if encoding:
                             data_dec = str(data, encoding, errors)
                             stderr_pipe.write(data_dec)  # type: ignore
-                            cp.stderr += data_dec  # type: ignore
+                            cp.stderr += data_dec
                         else:
                             stderr_pipe.write(data)
                             cp.stderr += data

@@ -19,12 +19,14 @@ import logging
 
 from .connection import Connection
 from .local import LocalConnection
+from .multi_connection import MultiConnection
 from .remote.path import SSHPath
 from .remote import SSHConnection, PIPE, STDOUT, DEVNULL
 from .constants import GET, PUT
 from .utils import config_parser
 
 __all__ = ["SSHConnection", "Connection", "LocalConnection", "SSHPath", "PIPE",
-           "STDOUT", "DEVNULL", "GET", "PUT", "config_parser"]
+           "STDOUT", "DEVNULL", "GET", "PUT", "config_parser",
+           "MultiConnection"]
 
 logging.getLogger(__name__)

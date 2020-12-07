@@ -36,19 +36,13 @@ class CompletedProcess(Generic[_CompletedProcess]):
     stdout: _CompletedProcess
     stderr: _CompletedProcess
 
-    def __init__(self, bytes_out: bool = False):
+    def __init__(self, initial: _CompletedProcess):
 
         self.args: "_CMD" = []
         self.returncode: Optional[int] = None
 
-        # TODO sort this out! maybe replace bytes_our arg with generic initial
-        # TODO value which will then set the return
-        if bytes_out:
-            self.stdout = b""
-            self.stderr = b""
-        else:
-            self.stdout = ""
-            self.stderr = ""
+        self.stdout = initial
+        self.stderr = initial
 
     def __str__(self):
         return (f"<CompletedProcess>(\n"
@@ -56,11 +50,11 @@ class CompletedProcess(Generic[_CompletedProcess]):
                 f"returncode: {self.returncode}\nargs: {self.args})")
 
     @property
-    def cmd(self):
+    def cmd(self) -> "_CMD":
         return self.args
 
     @property
-    def output(self):
+    def output(self) -> _CompletedProcess:
         return self.stdout
 
     def check_returncode(self):

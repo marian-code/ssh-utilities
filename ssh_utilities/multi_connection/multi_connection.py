@@ -34,6 +34,8 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
 
     All methods work exactly the same as for single connections, only now they
     return Generators instead of their respective values.
+    Can be used to prallelize connections or to share one ssh connection
+    between multiple classes
 
     Parameters
     ----------
@@ -47,9 +49,6 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
         [description], by default False
     share_connection : Union[List[int], int], optional
         [description], by default 1
-
-    - can be used to prallelize connections
-    - or to share one ssh connection between multiple classes
     """
 
     _builtins: "_BUILTINS_MULTI"

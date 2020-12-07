@@ -6,6 +6,8 @@ from os import fspath
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, Union
 
+# import stale to prevent circullar import
+from ssh_utilities import connection
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
     from ._builtins import BuiltinsABC
@@ -138,9 +140,9 @@ class ConnectionABC(ABC):
             "thread_safe": thread_safe
         }
 
-    def to_str(self, connection_name: str, host_name: str,
-               address: Optional[str], user_name: str,
-               ssh_key: Optional[Union[Path, str]], thread_safe: bool) -> str:
+    def _to_str(self, connection_name: str, host_name: str,
+                address: Optional[str], user_name: str,
+                ssh_key: Optional[Union[Path, str]], thread_safe: bool) -> str:
         """Aims to ease persistance, returns string representation of instance.
 
         With this method all data needed to initialize class are saved to sting
@@ -178,3 +180,18 @@ class ConnectionABC(ABC):
 
     def __del__(self):
         self.close(quiet=True)
+
+    def __deepcopy__(self, memodict: dict = {}):
+        """On deepcopy create new instance as this is simpler and safer."""
+        return connection.Connection.from_dict(self.to_dict(), quiet=True)
+
+    def __getstate__(self):
+        """Gets the state of object for pickling."""
+        return self.to_dict()
+
+    def __setstate__(self, state: dict):
+        """Initializes the object after load from pickle."""
+        self.__init__(state["address"], state["user_name"],  # type: ignore
+                      rsa_key_file=state["ssh_key"],
+                      server_name=state["server_name"],
+                      quiet=True, thread_safe=state["thread_safe"])

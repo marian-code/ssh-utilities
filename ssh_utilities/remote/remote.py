@@ -3,10 +3,8 @@
 import logging
 import os
 
-try:
-    from contextlib import nullcontext
-except ImportError:  # for python 3.6
-    from ..utils import NullContext as nullcontext  # type: ignore
+# because of python 3.6 we do not use contextlib
+from ..utils import NullContext as nullcontext
 
 from pathlib import Path
 from threading import RLock
@@ -194,8 +192,8 @@ class SSHConnection(ConnectionABC):
         return self._subprocess
 
     def __str__(self) -> str:
-        return self.to_str("SSHConnection", self.server_name, self.address,
-                           self.username, self.rsa_key_file, self.thread_safe)
+        return self._to_str("SSHConnection", self.server_name, self.address,
+                            self.username, self.rsa_key_file, self.thread_safe)
 
     def to_dict(self) -> Dict[str, Optional[Union[str, bool]]]:
         return self._to_dict("SSHConnection", self.server_name, self.address,

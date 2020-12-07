@@ -235,7 +235,7 @@ class Connection(metaclass=_ConnectionMeta):
 
         See also
         --------
-        :func: ssh_utilities.config_parser
+        :func:ssh_utilities.config_parser
         """
         if not isinstance(hosts, list):
             hosts = [hosts]
@@ -251,7 +251,7 @@ class Connection(metaclass=_ConnectionMeta):
                  ) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC.to_str`
+        String must be formated as defined by `base.ConnectionABC._to_str`
         method.
 
         Parameters
@@ -279,7 +279,7 @@ class Connection(metaclass=_ConnectionMeta):
                   ) -> Union[SSHConnection, LocalConnection]:
         """Initializes Connection from str.
 
-        String must be formated as defined by `base.ConnectionABC.to_str`
+        String must be formated as defined by `base.ConnectionABC._to_str`
         method.
 
         Parameters

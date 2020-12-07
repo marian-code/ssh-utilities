@@ -27,79 +27,14 @@ ssh_utilities.connection
 .. automodule:: ssh_utilities.connection
    :members:
 
-ssh_utilities.base
--------------------
-.. automodule:: ssh_utilities.base
-   :members:
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
 
-ssh_utilities.remote
---------------------
-.. automodule:: ssh_utilities.remote
-   :members:
-
-ssh_utilities.remote._builtins
-------------------------------
-.. automodule:: ssh_utilities.remote._builtins
-   :members:
-
-ssh_utilities.remote._os
-------------------------
-.. automodule:: ssh_utilities.remote._os
-   :members:
-
-ssh_utilities.remote._pathlib
------------------------------
-.. automodule:: ssh_utilities.remote._pathlib
-   :members:
-
-ssh_utilities.remote._shutil
-----------------------------
-.. automodule:: ssh_utilities.remote._shutil
-   :members:
-
-ssh_utilities.remote._subprocess
---------------------------------
-.. automodule:: ssh_utilities.remote._subprocess
-   :members:
-
-ssh_utilities.remote.path
--------------------------
-.. automodule:: ssh_utilities.remote.path
-   :members:
-
-ssh_utilities.remote._connection_wrapper
-----------------------------------------
-.. automodule:: ssh_utilities.remote._connection_wrapper
-   :members:
-
-ssh_utilities.local
--------------------
-.. automodule:: ssh_utilities.local
-   :members:
-
-ssh_utilities.local._builtins
------------------------------
-.. automodule:: ssh_utilities.local._builtins
-   :members:
-
-ssh_utilities.local._os
------------------------
-.. automodule:: ssh_utilities.local._os
-   :members:
-
-ssh_utilities.local._pathlib
-----------------------------
-.. automodule:: ssh_utilities.local._pathlib
-   :members:
-
-ssh_utilities.local._shutil
----------------------------
-.. automodule:: ssh_utilities.local._shutil
-   :members:
-
-ssh_utilities.local._subprocess
--------------------------------
-.. automodule:: ssh_utilities.local._subprocess
+   api/base
+   api/local
+   api/remote
+   api/multi
 
 ssh_utilities.utils
 -------------------

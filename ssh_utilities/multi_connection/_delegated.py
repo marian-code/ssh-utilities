@@ -69,10 +69,8 @@ class delegated:
             return method(*args, **kwargs)
 
 
-# ! properties
-# TODO what about abstract properties delegation?
-# TODO mayybe this is too deep magic? still not sure if we are returning
-# TODO actual class or class instance, this can have dnagendous consequences!
+# TODO maybe this is too deep magic? still not sure if we are returning
+# TODO actual class or class instance, this can have dangerous consequences!
 def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
     """Class implementing the inner classes of connection object.
 
@@ -80,9 +78,12 @@ def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
     This function is esentially a factory for the inner classes of connection.
 
     This makes the class hierarchy 'transposed' instead of this:
+
     >>> [Connection1.method1(), Connection2.method1()]
     >>> [Connection1.method2(), Connection2.method2()]
+
     we now essentialy have:
+
     >>> method1[Connection1, Connection2]
     >>> method2[Connection1, Connection2]
 
@@ -100,6 +101,8 @@ def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
     --------
     :class:`ssh_utilities.multi_conncection.MultiConnection`
     """
+    new_method: Union[property, delegated]
+
     implemented = set()
     abc_parent.mc = multi_connection  # type: ignore
     for name in abc_parent.__abstractmethods__:
