@@ -1,5 +1,5 @@
-Paramiko wrapper
-================
+ssh-utilities
+=============
 
 :Test Status:
 
@@ -39,49 +39,118 @@ Paramiko wrapper
     .. image:: https://img.shields.io/pypi/l/ssh-utilities
         :alt: PyPI - License
 
+.. |yes| unicode:: U+2705
+.. |no| unicode:: U+274C
+.. _builtins: https://docs.python.org/3/library/builtins.html
+.. _os: https://docs.python.org/3/library/os.html
+.. _os.path: https://docs.python.org/3/library/os.path.html
+.. _subprocess: https://docs.python.org/3/library/subprocess.html
+.. _shutil: https://docs.python.org/3/library/shutil.html
+.. _pathlib: https://docs.python.org/3/library/pathlib.html
+
+.. contents:: Table of contents
+    :local:
+    :depth: 2
+
+Introduction
+------------
 
 Simple paramiko wrapper that aims to facilitate easy remote file operations
-and command execution. The API vaguely follows python libraries:
-`os <https://docs.python.org/3/library/os.html>`_,
-`os.path <https://docs.python.org/3/library/os.path.html>`_,
-`subprocess <https://docs.python.org/3/library/subprocess.html>`_,
-`shutil <https://docs.python.org/3/library/shutil.html>`_,
-`pathlib <https://docs.python.org/3/library/pathlib.html>`_. Has also
-local variant that mimics the remote API on local machine. The connection is
-resilient to interruptions and thread safe. Everything is well documented by
-dostrings and typed.
+and command execution. The API vaguely follows python libraries: `builtins`_,
+`os`_, `os.path`_, `subprocess`_, `shutil`_, `pathlib`_, 
+
+
+This is not intended to be a full fledged python ssh client. Instead it focuses
+on smaller set of features which it trie to make as user-friendly as possible.
 
 This module should be ideally platform agnostic, but only connections from
 Windows and Linux(Debian, Ubuntu) to Linux(Debian, Ubuntu) have been tested
 so any other combinations are officially unsupported but should work.
 
-Installation
-------------
+Design goals and features
+-------------------------
 
-.. code-block:: bash
+- support python > 3.6
+- everything is typed for easy code understanding and superior type hints and
+  autocompletion
+- everything is properly documented
+- API is as consistent as possible with python modules and functions we are
+  trying to reimplement
+- connection can be made thread safe
+- try to be as platform agnostic as possible
+- accept both stings and Path objects in all methods that require some path as
+  an input
+- strong emphasis on usage of ssh key based authentication
 
-    pip install ssh_utilities
+List of inner classes and implemented methods
+---------------------------------------------
 
-Or if you want to install directly from source:
+ssh_utilities have three main connection classes:
+- ``SSHConnection``
+- ``LocalConnection``
+- ``MultiConnection``
 
-.. code-block:: bash
+Their inner classes with their methods are listed in the table below which
+summarizes the API. based on table you can do for instance:
 
-    git clone https://github.com/marian-code/ssh-utilities.git
-    cd ssh_utilities
-    pip install -e .
+ .. code-block:: python
 
-Use ``-e`` only to install in editable mode
+    >>> # this is OK
+    >>> SSHConnection.os.isfile(<somepath>)
+    >>> # this is not OK as it is marked in table as not implemented
+    >>> MultiConnection.os.path.realpath(<somepath>)
+    >>> # this is also not permitted as methods not mentioned in table are not
+    >>> # implemented in any class
+    >>> SSHConnection.os.getpid()
 
-If you encounter some import errors try installing from requirements.txt file:
-``pip install requirements.txt``
++---------------+---------------+-----------------+------------------+-----------------+
+| module        | method        | SSHConnection   | LocalConnection  | MultiConnection |
++===============+===============+=================+==================+=================+
+| `builtins`_   | open          | |yes|           | |yes|            | |yes|           |
++---------------+---------------+-----------------+------------------+-----------------+
+| `os`_         | isfile        | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | isdir         | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | makedirs      | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | mkdir         | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | listdir       | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | chdir         | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | stat          | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | lstat         | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | name          | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | walk          | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | path          | |yes|           | |yes|            | |no|            |
++---------------+---------------+-----------------+------------------+-----------------+
+| `os.path`_    | realpath      | |yes|           | |yes|            | |no|            |
++---------------+---------------+-----------------+------------------+-----------------+
+| `pathlib`_    | Path          | |yes|           | |yes|            | |yes|           |
++---------------+---------------+-----------------+------------------+-----------------+
+| `shutil`_     | copy          | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | copy2         | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | copyfile      | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | rmtree        | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | copy_files    | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | upload_tree   | |yes|           | |yes|            | |yes|           |
+|               +---------------+-----------------+------------------+-----------------+
+|               | download_tree | |yes|           | |yes|            | |yes|           |
++---------------+---------------+-----------------+------------------+-----------------+
+| `subprocess`_ | run           | |yes|           | |yes|            | |yes|           |
++---------------+---------------+-----------------+------------------+-----------------+
 
-Warning
--------
-
-There has been a recent mayor change in modules API betweeen versions 0.4.2
-and 0.5.0. Most methods of the connection classes have been moved a level
-deeper. See `migration from 0.4.x to 0.5.x <https://ssh-utilities.readthedocs.io/en/latest/migration.html>`_
-for details how to port to newer version
 
 API and documentation
 ---------------------
@@ -90,44 +159,21 @@ It is recommended that you have configured **rsa** keys with config file accordi
 to `openssh standard <https://www.ssh.com/ssh/config/>`_. For easy quickstart guide
 you can look at: https://www.cyberciti.biz/faq/create-ssh-config-file-on-linux-unix/
 
-API exposes three main connection classes one path manipulation class, python
+API exposes four main connection classes one path manipulation class, python
 module replacement classes, utility functions and constants:
 
 .. code-block:: python
 
-    from ssh_utilities import SSHConnection, Connection, LocalConnection
+    from ssh_utilities import SSHConnection, Connection, LocalConnection, MultiConnection
     from ssh_utilities import SSHPath
     from ssh_utilities import Builtins, Os, Pathlib, Shutil, Subprocess
     from ssh_utilities import config_parser
     from ssh_utilities import PIPE, STDOUT, DEVNULL, GET, PUT
 
 ``Connection`` is the a factory class that initializes ``SSHConnection`` or
-``LocalConnection`` classes based on input parameters.
-
-``SSHConnection`` is the remote connection class with API partly following that
-of python `os <https://docs.python.org/3/library/os.html>`_,
-`os.path library <https://docs.python.org/3/library/os.path.html>`_,
-`shutil library <https://docs.python.org/3/library/shutil.html>`_ and
-`subprocess library <https://docs.python.org/3/library/subprocess.html>`_
-`pathlib <https://docs.python.org/3/library/pathlib.html>`_
-
-``LocalConnection`` is included only for convenience purposes so same API as for
-``SSHConnection`` can be used for interacting with local machine
-
-``SSHPath`` is an object for remote path manipulation with same API as python: 
-`pathlib library <https://docs.python.org/3/library/pathlib.html>`_ 
-
-The ``SSHConnection`` and ``LocalConnection`` objects are both devided to few
-inner classes which correspond to python modules. For ``SSHConnection``
-these are:
-    
-    * ``SSHConnection.builtins``
-    * ``SSHConnection.os``
-    * ``SSHConnection.pathlib``
-    * ``SSHConnection.subprocess``
-    * ``SSHConnection.shutil``
-
-same applies to ``LocalConnection``
+``LocalConnection`` classes based on input parameters. ``MultiConnection`` is
+a container for convenient management of pool of connections.
+``SSHPath`` is an object for remote path manipulation. 
 
 All API documentation can be found at readthedocs:
 https://ssh-utilities.readthedocs.io/en/latest/
@@ -247,6 +293,25 @@ information is in the docs.
     >>>     mc.<some_attribute>
     >>>     ...
 
+Installation
+------------
+
+.. code-block:: bash
+
+    pip install ssh_utilities
+
+Or if you want to install directly from source:
+
+.. code-block:: bash
+
+    git clone https://github.com/marian-code/ssh-utilities.git
+    cd ssh_utilities
+    pip install -e .
+
+Use ``-e`` only to install in editable mode
+
+If you encounter some import errors try installing from requirements.txt file:
+``pip install -r requirements.txt``
 
 Contributing
 ------------
