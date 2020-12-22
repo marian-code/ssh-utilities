@@ -36,6 +36,9 @@ extensions = [
     "sphinx_rtd_theme",
     'sphinx.ext.autodoc',
     "sphinx.ext.napoleon",
+    'sphinx.ext.graphviz',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx_pyreverse'
 ]
 
 autodoc_default_options = {
@@ -53,6 +56,9 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# -- GraphViz configuration ----------------------------------
+graphviz_output_format = 'png'
 
 # -- Options for HTML output -------------------------------------------------
 

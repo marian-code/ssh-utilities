@@ -61,11 +61,12 @@ and command execution. The API vaguely follows python libraries: `builtins`_,
 
 
 This is not intended to be a full fledged python ssh client. Instead it focuses
-on smaller set of features which it trie to make as user-friendly as possible.
+on smaller set of features which it tries to make as user-friendly and familiar
+as possible.
 
 This module should be ideally platform agnostic, but only connections from
 Windows and Linux(Debian, Ubuntu) to Linux(Debian, Ubuntu) have been tested
-so any other combinations are officially unsupported but should work.
+so any other combinations are officially unsupported but should still work.
 
 Design goals and features
 -------------------------
@@ -86,12 +87,12 @@ List of inner classes and implemented methods
 ---------------------------------------------
 
 ssh_utilities have three main connection classes:
-- ``SSHConnection``
-- ``LocalConnection``
-- ``MultiConnection``
+  - ``SSHConnection``
+  - ``LocalConnection``
+  - ``MultiConnection``
 
 Their inner classes with their methods are listed in the table below which
-summarizes the API. based on table you can do for instance:
+summarizes the API. Based on table you can do for instance:
 
  .. code-block:: python
 
@@ -186,8 +187,7 @@ for more detailed usage examples please refer to
 `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
 ``Connection`` factory supports dict-like indexing by values that are in
-your **~/.ssh/config** file. It can be made thread safe by passing
-``thread_safe=True`` argument to the constructor
+your **~/.ssh/config** file.
 
 .. code-block:: python
 
@@ -196,7 +196,8 @@ your **~/.ssh/config** file. It can be made thread safe by passing
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 There is also a specific get method which is safer and with better typing
-support than dict-like indexing
+support than dict-like indexing. Connection can be made thread safe by passing
+``thread_safe=True`` argument to the constructor
 
 .. code-block:: python
 

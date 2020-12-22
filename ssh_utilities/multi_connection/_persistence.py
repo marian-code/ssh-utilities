@@ -9,7 +9,8 @@ Adds the ability to persist object using:
 
 import logging
 from json import dumps, loads
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import (TYPE_CHECKING, Deque, Dict, List, Optional, Tuple, Union,
+                    ValuesView)
 
 if TYPE_CHECKING:
     from ..local import LocalConnection
@@ -36,8 +37,7 @@ class Pesistence:
     :class:`ssh_utilities.multi_conncection.MultiConnection`
     """
 
-    _connections: Dict[str, "_CONN"]
-    _share_connection: Dict[str, int]
+    _connections: Dict[str, Deque["_CONN"]]
 
     def __str__(self) -> str:
         return dumps(self.to_dict())
@@ -55,13 +55,12 @@ class Pesistence:
 
     def __setstate__(self, state: dict):
         """Initializes the object after load from pickle."""
-        ssh_servers, share_connection, local, thread_safe = (
+        ssh_servers, local, thread_safe = (
             self._parse_persistence_dict(state)
         )
 
         self.__init__(ssh_servers, local, quiet=True,  # type: ignore
                       thread_safe=thread_safe)
-                      # share_connection=share_connection)
 
     def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
                                                             int, None]]]]:
@@ -73,10 +72,8 @@ class Pesistence:
             dictionary representing the object
         """
         conns = {}
-        for i, (v, sc) in enumerate(zip(self._connections.values(),
-                                        self._share_connection.values())):
+        for i, v in enumerate(self.values_all()):
             json = v.to_dict()
-            json["share_connection"] = sc
             conns[i] = json
 
         return conns
@@ -96,17 +93,15 @@ class Pesistence:
         Tuple[List[str], List[int], List[bool], List[bool]]
             Tuple of lists with parsed information
         """
-        share_connection = []
         ssh_servers = []
         local = []
         thread_safe = []
         for j in d.values():
-            share_connection.append(j.pop("share_connection"))
             ssh_servers.append(j.pop("server_name"))
             thread_safe.append(j.pop("thread_safe"))
             local.append(not bool(j.pop("address")))
 
-        return ssh_servers, share_connection, local, thread_safe
+        return ssh_servers, local, thread_safe
 
     @classmethod
     def from_dict(cls, json: dict, quiet: bool = False
@@ -134,13 +129,12 @@ class Pesistence:
         KeyError
             if required key is missing from string
         """
-        ssh_servers, share_connection, local, thread_safe = (
+        ssh_servers, local, thread_safe = (
             cls._parse_persistence_dict(json)
         )
 
         return cls(ssh_servers, local, quiet=quiet,  # type: ignore
                    thread_safe=thread_safe)
-                   # share_connection=share_connection)
 
     @classmethod
     def from_str(cls, string: str, quiet: bool = False
@@ -169,3 +163,7 @@ class Pesistence:
             if required key is missing from string
         """
         return cls.from_dict(loads(string), quiet=quiet)
+
+    def values_all(self) -> ValuesView["_CONN"]:
+        """Will be reimplemented by dict interface."""
+        pass

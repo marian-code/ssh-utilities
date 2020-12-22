@@ -1,6 +1,18 @@
 Connection usage
 ================
 
+local connection module graph
+-----------------------------
+
+.. uml:: ssh_utilities.local
+    :classes:
+
+remote connection module graph
+------------------------------
+
+.. uml:: ssh_utilities.remote
+    :classes:
+
 Instantiating connection
 ------------------------
 

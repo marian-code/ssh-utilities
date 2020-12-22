@@ -16,6 +16,8 @@ print(id(c), id(c1), id(c2))
 mc = MultiConnection(["kohn"], quiet=True)
 for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
     print(out)
+    mc.keys()
+    mc.values()
 
 mc1 = pickle.loads(pickle.dumps(mc))
 print(id(mc), id(mc1))

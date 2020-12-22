@@ -4,10 +4,11 @@ The connection class is the main public class that initializes local
 or remote connection classes as needed abcd on input arguments.
 """
 
+from collections import defaultdict, deque
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, SupportsFloat, Union
+from typing import Deque, TYPE_CHECKING, Dict, List, Optional, SupportsFloat, Union
 
 from ..abc import (BuiltinsABC, ConnectionABC, OsABC, PathlibABC, ShutilABC,
                    SubprocessABC)
@@ -34,8 +35,18 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
 
     All methods work exactly the same as for single connections, only now they
     return Generators instead of their respective values.
-    Can be used to prallelize connections or to share one ssh connection
-    between multiple classes
+    Can be used to prallelize connections or to share one ssh connection or
+    just to cleverly manage pool of connections.
+
+    Connection can be effectively made parallel by passig same key more times
+    to the constructor or by other methods. Namely `__add__`, `__setitem__`,
+    `update`. This means that in fact under each key a pool of connections can
+    be registered. These are organized in `collections.deque`.
+
+    The `MultiConnection` supports dict interface but with few differences as
+    more connections can be registered under one key. Basically you can think
+    of it as a distionary which allows duplicit keys. All the dict methods
+    work as expected. See expamples section or docs for more detailes.    
 
     Parameters
     ----------
@@ -50,8 +61,30 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     thread_safe : Union[List[bool], bool], optional
         bool or a list of bools specifying if respective connection(s) should,
         be made thead safe or not by default False
-    share_connection : Union[List[int], int], optional
-        Not implemented, by default 1
+
+    Examples
+    --------
+    Make connection parallel
+
+    >>> from ssh_utilities import MultiConnection
+    >>> # this will create two connection instances both connected to server1
+    >>> Multiconnection([server1, server1])
+
+    This results in MultiConnection with a pool of two connections to `server1`
+    registered under key `server1`
+
+    Dict intreface
+
+    >>> from ssh_utilities import MultiConnection
+    >>> mc = Multiconnection([server1, server1])
+    >>> # we always implement normal dict-like method which works as expected
+    >>> mc.get(server1)
+    >>> <SSHConnection instance connected to server1>
+    >>> # in each case there is always also a methos with `_all` suffix by
+    >>> # which you can acces the whole pool of connections registered under
+    >>> # the key
+    >>> mc_get_all(server1)
+    >>> <deque with two independent SSHConnections to server 1>
     """
 
     _builtins: "_BUILTINS_MULTI"
@@ -59,15 +92,11 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     _pathlib: "_PATHLIB_MULTI"
     _shutil: "_SHUTIL_MULTI"
     _subprocess: "_SUBPROCESS_MULTI"
-    _connections: Dict[str, "_CONN"]
+    _connections: Dict[str, Deque["_CONN"]]
 
     def __init__(self, ssh_servers: Union[List[str], str],
                  local: Union[List[bool], bool] = False, quiet: bool = False,
                  thread_safe: Union[List[bool], bool] = False) -> None:
-        # share_connection: Union[List[int], int] = 1) -> None:
-
-        # TODO finish implementation
-        share_connection: Union[List[int], int] = 1
 
         # TODO somehow adjust number of workers if connection are deleted or
         # TODO added
@@ -79,16 +108,12 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
             local = [local] * len(ssh_servers)
         if not isinstance(thread_safe, list):
             thread_safe = [thread_safe] * len(ssh_servers)
-        if not isinstance(share_connection, list):
-            share_connection = [share_connection] * len(ssh_servers)
 
-        self._share_connection = {}
-        self._connections = {}
-        for ss, l, ts, sc in zip(ssh_servers, local, thread_safe,
-                                 share_connection):
-            self._connections[ss] = Connection.get(ss, local=l, quiet=quiet,
-                                                   thread_safe=ts)
-            self._share_connection[ss] = sc
+        self._connections = defaultdict(deque)
+        for ss, l, ts in zip(ssh_servers, local, thread_safe):
+            self._connections[ss].append(
+                Connection.get(ss, local=l, quiet=quiet, thread_safe=ts)
+            )
 
         # init submodules
         self._builtins = Inner(BuiltinsABC, self)  # type: ignore
@@ -138,7 +163,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
         return self._subprocess
 
     def close(self, *, quiet: bool = True):
-        for c in self.values():
+        for c in self.values_all():
             c.close(quiet=quiet)
 
     get_available_hosts = Connection.get_available_hosts

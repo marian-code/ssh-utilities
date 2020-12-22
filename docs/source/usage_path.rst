@@ -1,6 +1,12 @@
 SSHPath usage
 =============
 
+pathlib module graph
+--------------------
+
+.. uml:: ssh_utilities.remote.path
+    :classes:
+
 Instantiating SSHPath
 ---------------------
 

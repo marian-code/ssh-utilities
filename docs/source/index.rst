@@ -22,6 +22,7 @@ Projects home directory is on github:
    usage_path
    usage_multi
    migration
+   hierarchy
 
 Indices and tables
 ==================

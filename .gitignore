@@ -2,6 +2,7 @@
 **/__pycache__/
 **/.vscode/
 **/.mypy_cache/
+**/uml_images/**
 build/
 dist/
 ssh_utilities.egg-info/
