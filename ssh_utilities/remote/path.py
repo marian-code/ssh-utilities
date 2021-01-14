@@ -1,15 +1,16 @@
 """Implements Path-like object for remote hosts."""
 
 import logging
-import re
 import stat
+from collections import deque
+from fnmatch import fnmatch
 from functools import wraps
 from os import fspath
-from os.path import join
 from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
-from typing import TYPE_CHECKING, Any, Callable, Generator, Optional, Union
+from typing import (TYPE_CHECKING, Any, Callable, Deque, Generator, Optional,
+                    Union)
 
-from ..utils import for_all_methods, glob2re
+from ..utils import for_all_methods
 
 if TYPE_CHECKING:
     from paramiko.sftp_attr import SFTPAttributes
@@ -113,7 +114,6 @@ class SSHPath(Path):
             else:
                 cls._flavour = PurePosixPath._flavour  # type: ignore
         except AttributeError as e:
-            print(e)
             log.exception(e)
 
         self = cls._from_parts(args, init=False)  # type: ignore
@@ -234,6 +234,8 @@ class SSHPath(Path):
         ------
         FileNotFoundError
             if current path does not point to directory
+        NotImplementedError
+            when non-relative pattern is passed in
 
         Warnings
         --------
@@ -241,23 +243,98 @@ class SSHPath(Path):
         """
         if not self.is_dir():
             raise FileNotFoundError(f"Directory {self} does not exist.")
+        if pattern.startswith("/"):
+            raise NotImplementedError("Non-relative patterns are unsupported")
 
-        if pattern.startswith("**"):
+        # first count shell pattern symbols if more than two are present,
+        # search must be recursive
+        pattern_count = sum([
+            pattern.count("*"),
+            pattern.count("?"),
+            min((pattern.count("["), pattern.count("]")))
+        ])
+
+        if pattern_count >= 2:
             recursive = True
         else:
             recursive = False
 
-        pattern = glob2re(pattern)
+        # split pattern to parts, so we can easily match at each subdir level
+        parts: Deque[str] = deque(SSHPath(self.c, pattern).parts)
 
+        # append to origin path that parts of pattern that do not contain any
+        # wildcards, so we search as minimal number of sub-directories as
+        # possible
+        while True:
+            p = parts.popleft()
+            if "*" in p or "?" in p or ("[" in p and "]" in p):
+                parts.appendleft(p)
+                break
+            else:
+                self /= p
+
+        # precompute number of origin path parts and pattern parts for speed
+        origin_parts = len(self.parts)
+        pattern_parts = len(parts) - 1
         for root, dirs, files in self.c.os.walk(self, followlinks=True):
 
-            for path in dirs + files:
-                path = join(root, path)
-                if re.search(pattern, f"/{path}", re.I):
-                    yield SSHPath(self.c, path)
+            # compute number of actual root path parts
+            root_parts = len(SSHPath(self.c, root).parts)
+            # the difference determines which path of pattern to use, this is
+            # because walk traverses directories "depth-first"
+            idx = root_parts - origin_parts
+
+            # if we do not have the last part we are interested only in
+            # directories because we need to get deeper in to the directory
+            # structure
+            if idx < pattern_parts:
+                pattern = parts[idx]
+
+                # now get directories that match the pattern and delete the
+                # others, tish takes advantage of list mutability - the next
+                # seach paths will be built by walk based on already filtered
+                # directories list
+                indices = []
+                for i, d in enumerate(dirs):
+                    if not fnmatch(d, pattern):
+                        indices.append(i)
+
+                for index in sorted(indices, reverse=True):
+                    del dirs[index]
+
+            elif idx >= pattern_parts:
+                pattern = parts[-1]
+                r = SSHPath(self.c, root)
+                for path in dirs + files:
+                    if fnmatch(path, pattern):
+                        yield r / path
 
             if not recursive:
                 break
+
+    def group(self) -> str:
+        """Return file group.
+
+        Returns
+        -------
+        str
+            string with group name
+
+        Raises
+        ------
+        NotImplementedError
+            when used on windows host
+        """
+        if self.c.os.name == "nt":
+            raise NotImplementedError("This is implemented only for posix "
+                                      "type systems")
+        else:
+            cmd = ["stat", "-c", "'%G'", str(self)]
+            group = self.c.subprocess.run(cmd, suppress_out=True, quiet=True,
+                                          capture_output=True,
+                                          encoding="utf-8").stdout
+
+            return group
 
     def is_dir(self) -> bool:
         """Check if path points to directory.
@@ -404,6 +481,30 @@ class SSHPath(Path):
         self.c.builtins.open(self, mode=mode, bufsize=buffering,
                              encoding=encoding)
 
+    def owner(self):
+        """Return file owner.
+
+        Returns
+        -------
+        str
+            string with owner name
+
+        Raises
+        ------
+        NotImplementedError
+            when used on windows host
+        """
+        if self.c.os.name == "nt":
+            raise NotImplementedError("This is implemented only for posix "
+                                      "type systems")
+        else:
+            cmd = ["getent", "passwd", self.stat().st_uid, "|", "cut", "-d:", "-f1"]
+            owner = self.c.subprocess.run(cmd, suppress_out=True, quiet=True,
+                                          capture_output=True,
+                                          encoding="utf-8").stdout
+
+            return owner
+
     def read_bytes(self) -> bytes:
         """Read contents of a file as bytes.
 
@@ -541,6 +642,10 @@ class SSHPath(Path):
             target path to which symlink will point
         target_is_directory: bool
             this parameter is ignored
+
+        Warnings
+        --------
+        `target_is_directory` parameter is ignored
         """
         self.c.sftp.symlink(self._2str, fspath(target))
 
@@ -632,13 +737,7 @@ class SSHPath(Path):
             f.write(data)
 
     # ! NOT IMPLEMENTED
-    def group(self):
-        raise NotImplementedError
-
     def link_to(self, target):
-        raise NotImplementedError
-
-    def owner(self):
         raise NotImplementedError
 
     def is_mount(self):
