@@ -112,11 +112,15 @@ class ConnectionABC(ABC):
         """
         if isinstance(path, Path):  # (Path, SSHPath)):
             p = fspath(path)
-            return p if not p.endswith("/") else p[:-1]
         elif isinstance(path, str):
-            return path if not path.endswith("/") else path[:-1]
+            p = path
         else:
             raise FileNotFoundError(f"{path} is not a valid path")
+
+        if p.endswith("/") and len(p) > 1:
+            return p[:-1]
+        else:
+            return p
 
     @abstractmethod
     def to_dict(self):

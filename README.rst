@@ -39,6 +39,7 @@ ssh-utilities
     .. image:: https://img.shields.io/pypi/l/ssh-utilities
         :alt: PyPI - License
 
+
 .. |yes| unicode:: U+2705
 .. |no| unicode:: U+274C
 .. _builtins: https://docs.python.org/3/library/builtins.html
@@ -332,3 +333,4 @@ TODO
 ----
 - implement wrapper for pool of connections
 - show which methods are implemented
+- SSHPath root and anchor attributes incorectlly return '.' instead of '/' 
