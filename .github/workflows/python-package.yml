@@ -50,6 +50,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         curl ifconfig.me
+        printenv
         ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
         cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
     - name: Setup ssh on mac os

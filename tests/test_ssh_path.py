@@ -19,6 +19,7 @@ from unittest import TestCase, main
 from ssh_utilities import Connection
 import getpass
 import socket
+import subprocess
 
 logging.basicConfig(stream=sys.stderr)
 log = logging.getLogger(__name__)
@@ -59,7 +60,10 @@ class TestSSHPath(TestCase):
         #else:
         #    c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
         #                        ssh_password="12345678", server_name="test")
-        localhost = get_ip()
+        # localhost = get_ip()
+        localhost = subprocess.run(["curl", "ifconfig.me"],
+                                   capture_output=True,
+                                   encoding="utf-8").stdout.strip()
         user = getpass.getuser()
         Connection.add_hosts({
             "user": self.user,
