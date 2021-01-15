@@ -62,7 +62,7 @@ class TestSSHPath(TestCase):
         #                        ssh_password="12345678", server_name="test")
         # localhost = get_ip()
         localhost = subprocess.run(["curl", "ifconfig.me"],
-                                   capture_output=True,
+                                   stdout=subprocess.PIPE,  # python 3.6
                                    encoding="utf-8").stdout.strip()
         user = getpass.getuser()
         Connection.add_hosts({
