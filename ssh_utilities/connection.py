@@ -244,7 +244,7 @@ class Connection(metaclass=_ConnectionMeta):
             if not isinstance(h["identityfile"], list):
                 h["identityfile"] = [h["identityfile"]]
 
-        cls.available_hosts.update({h: h["hostname"] for h in hosts})
+        cls.available_hosts.update({h["hostname"]: h for h in hosts})
 
     @classmethod
     def from_str(cls, string: str, quiet: bool = False
