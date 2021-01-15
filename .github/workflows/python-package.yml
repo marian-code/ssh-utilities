@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         include:
         - os: macos-latest
           TARGET: x86_64-apple-darwin
@@ -31,7 +31,7 @@ jobs:
           TARGET: x86_64-unknown-linux-musl
           COMPILER: gcc
           LINKER: gcc
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -61,7 +61,6 @@ jobs:
       run: |
         coveralls
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_REPO_TOKEN: nUScGS6NOilMzRJdc38wYg1tcmf4xV4L9
         COVERALLS_PARALLEL: true
   coveralls:
@@ -76,7 +75,6 @@ jobs:
         pip install --upgrade coveralls
         coveralls --finish
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COVERALLS_REPO_TOKEN: nUScGS6NOilMzRJdc38wYg1tcmf4xV4L9
   deploy:
     runs-on: ubuntu-latest
