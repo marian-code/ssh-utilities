@@ -52,25 +52,24 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         coverage run -m unittest discover
-    - name: Submit to coveralls
-      run: |
-        coveralls
-      env:
-        GITHUB_TOKEN: secrets.GITHUB_TOKEN
-        COVERALLS_PARALLEL: true
-  coveralls:
-    runs-on: ubuntu-latest
+    - name: Coveralls Parallel
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        flag-name: run-${{ matrix.test_number }}
+        parallel: true
+
+  finish:
     needs:
     - build
     if: success()
-    container: python:3-slim
+    runs-on: ubuntu-latest
     steps:
-    - name: Indicate completion to coveralls.io
-      run: |
-        pip install --upgrade coveralls
-        coveralls --finish
-      env:
-        GITHUB_TOKEN: secrets.GITHUB_TOKEN
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true
   deploy:
     runs-on: ubuntu-latest
     needs:
