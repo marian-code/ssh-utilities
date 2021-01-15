@@ -22,7 +22,10 @@ logging.basicConfig(stream=sys.stderr)
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-CI = os.environ.get("TRAVIS", False)
+CI_T = os.environ.get("TRAVIS", False)
+CI_G = os.environ.get("CI", False)  # github actions
+
+CI = any((CI_T, CI_G))
 
 
 class TestSSHPath(TestCase):
@@ -32,16 +35,12 @@ class TestSSHPath(TestCase):
 
         self.user = os.environ.get("USER", "rynik")
         self.home = os.environ.get("HOME", Path.home())
-
-        if CI:
-            self.os = os.environ.get("TRAVIS_OS_NAME", "linux")
-        else:
-            self.os = os.name
+        self.os = os.name
 
         # SSH to self, must have and localhost entry in config file and
         # correcponding keys present, also sshd must be installed and running
         if self.user == "rynik":
-            c = Connection.get("localhost", local=False)
+            c = Connection.get("kohn", local=False)
         # travis config file must change user password to desired
         else:
             c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
