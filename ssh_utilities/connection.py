@@ -243,8 +243,8 @@ class Connection(metaclass=_ConnectionMeta):
         for h in hosts:
             if not isinstance(h["identityfile"], list):
                 h["identityfile"] = [h["identityfile"]]
-            h["identityfile"] = os.path.abspath(
-                os.path.expanduser(h["identityfile"])
+            h["identityfile"][0] = os.path.abspath(
+                os.path.expanduser(h["identityfile"][0])
             )
 
         cls.available_hosts.update({h["hostname"]: h for h in hosts})
