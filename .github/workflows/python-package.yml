@@ -52,6 +52,8 @@ jobs:
     - name: Install ssh-utilities
       run: |
         - pwd
+        - cd /home/runner/work/ssh-utilities/ssh-utilities
+        - pwd
         - pip install .
   coveralls:
     runs-on: ubuntu-latest
