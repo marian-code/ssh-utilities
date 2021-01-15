@@ -62,7 +62,7 @@ class TestSSHPath(TestCase):
         localhost = get_ip()
         user = getpass.getuser()
         Connection.add_hosts({
-            "user": user,
+            "user": self.user,
             "hostname": localhost,
             "identityfile": "~/.ssh/id_rsa"
         })
