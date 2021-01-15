@@ -60,7 +60,6 @@ jobs:
       run: |
         pip install .
     - name: test with unittest and collect coverage data
-      if: matrix.os == 'ubuntu-latest'
       run: |
         coverage run -m unittest discover
     - name: Submit to coveralls

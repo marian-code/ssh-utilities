@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest import TestCase, main
 
 from ssh_utilities import Connection
+import getpass
 
 logging.basicConfig(stream=sys.stderr)
 log = logging.getLogger(__name__)
@@ -45,6 +46,13 @@ class TestSSHPath(TestCase):
         #else:
         #    c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
         #                        ssh_password="12345678", server_name="test")
+        user = getpass.getuser()
+        Connection.add_hosts({
+            "user": user,
+            "hostname": "localhost",
+            "identityfile": "~/.ssh/id_rsa"
+        })
+        print(Connection.available_hosts)
         c = Connection.get("localhost", local=False)
 
         self.p = c.pathlib.Path("/tmp")
