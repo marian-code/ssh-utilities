@@ -39,12 +39,13 @@ class TestSSHPath(TestCase):
 
         # SSH to self, must have and localhost entry in config file and
         # correcponding keys present, also sshd must be installed and running
-        if self.user == "rynik":
-            c = Connection.get("kohn", local=False)
+        #if self.user == "rynik":
+        #    c = Connection.get("kohn", local=False)
         # travis config file must change user password to desired
-        else:
-            c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
-                                ssh_password="12345678", server_name="test")
+        #else:
+        #    c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
+        #                        ssh_password="12345678", server_name="test")
+        c = Connection.get("localhost", local=False)
 
         self.p = c.pathlib.Path("/tmp")
 
