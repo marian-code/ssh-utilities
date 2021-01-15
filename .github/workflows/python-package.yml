@@ -58,6 +58,11 @@ jobs:
         github-token: ${{ secrets.github_token }}
         flag-name: run-${{ matrix.test_number }}
         parallel: true
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      with:
+        sudo: false
+      timeout-minutes: 15
 
   coveralls:
     needs:
