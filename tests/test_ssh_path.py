@@ -18,6 +18,7 @@ from unittest import TestCase, main
 
 from ssh_utilities import Connection
 import getpass
+import socket
 
 logging.basicConfig(stream=sys.stderr)
 log = logging.getLogger(__name__)
@@ -34,6 +35,18 @@ class TestSSHPath(TestCase):
 
     def setUp(self):
 
+        def get_ip():
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                # doesn't even have to be reachable
+                s.connect(('10.255.255.255', 1))
+                IP = s.getsockname()[0]
+            except Exception:
+                IP = '127.0.0.1'
+            finally:
+                s.close()
+            return IP
+
         self.user = os.environ.get("USER", "rynik")
         self.home = os.environ.get("HOME", Path.home())
         self.os = os.name
@@ -46,14 +59,15 @@ class TestSSHPath(TestCase):
         #else:
         #    c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
         #                        ssh_password="12345678", server_name="test")
+        localhost = get_ip()
         user = getpass.getuser()
         Connection.add_hosts({
             "user": user,
-            "hostname": "localhost",
+            "hostname": localhost,
             "identityfile": "~/.ssh/id_rsa"
         })
         print(Connection.available_hosts)
-        c = Connection.get("localhost", local=False)
+        c = Connection.get(localhost, local=False)
 
         self.p = c.pathlib.Path("/tmp")
 
