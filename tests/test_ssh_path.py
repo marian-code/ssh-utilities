@@ -11,12 +11,10 @@ CI system proves rather difficult.
 """
 
 import logging
-from ssh_utilities.constants import CONFIG_PATH
-import sys
-from unittest import TestCase, main
 import os
+import sys
 from pathlib import Path
-import subprocess
+from unittest import TestCase, main
 
 from ssh_utilities import Connection
 

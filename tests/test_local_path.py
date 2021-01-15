@@ -7,10 +7,10 @@ CI system proves rather difficult.
 """
 
 import logging
-import sys
-from unittest import TestCase, main
 import os
+import sys
 from pathlib import Path
+from unittest import TestCase, main
 
 from ssh_utilities import Connection
 

@@ -10,6 +10,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Generic, Optional, Sequence,
 from paramiko.config import SSHConfig
 from tqdm import tqdm
 from tqdm.utils import _term_move_up
+from fnmatch import translate
 
 from .exceptions import CalledProcessError
 
@@ -17,8 +18,8 @@ if TYPE_CHECKING:
     from .typeshed import _CMD
 
 __all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
-           "lprint", "for_all_methods", "glob2re", "file_filter",
-           "config_parser", "context_timeit", "NullContext"]
+           "lprint", "for_all_methods", "file_filter", "config_parser",
+           "context_timeit", "NullContext"]
 
 
 _CompletedProcess = TypeVar("_CompletedProcess", str, bytes)
@@ -253,14 +254,14 @@ class file_filter:
     def __init__(self, include: Optional[str], exclude: Optional[str]) -> None:
 
         if include and exclude:
-            self._inc = re.compile(glob2re(include))
-            self._exc = re.compile(glob2re(exclude))
+            self._inc = re.compile(translate(include))
+            self._exc = re.compile(translate(exclude))
             self.match = self._match_both
         elif include and not exclude:
-            self._inc = re.compile(glob2re(include))
+            self._inc = re.compile(translate(include))
             self.match = self._match_inc
         elif not include and exclude:
-            self._exc = re.compile(glob2re(exclude))
+            self._exc = re.compile(translate(exclude))
             self.match = self._match_exc
         elif not include and not exclude:
             self.match = self._match_none
@@ -287,52 +288,6 @@ class file_filter:
         return self.match(filename)
 
 
-def glob2re(patern):  # NOSONAR
-    """Translate a shell PATTERN to a regular expression.
-
-    There is no way to quote meta-characters.
-
-    Parameters
-    ----------
-    patern: str
-        shell glob pattern
-
-    References
-    ----------
-    https://stackoverflow.com/questions/27726545/python-glob-but-against-a-list-of-strings-rather-than-the-filesystem
-    """
-    i, n = 0, len(patern)
-    res = ''
-    while i < n:
-        c = patern[i]
-        i += 1
-        if c == '*':
-            res = res + '.*'
-        elif c == '?':
-            res = res + '.'
-        elif c == '[':
-            j = i
-            if j < n and patern[j] == '!':
-                j += 1
-            if j < n and patern[j] == ']':
-                j += 1
-            while j < n and patern[j] != ']':
-                j += 1
-            if j >= n:
-                res += '\\['
-            else:
-                stuff = patern[i:j].replace('\\', '\\\\')
-                i = j + 1
-                if stuff[0] == '!':
-                    stuff = '^' + stuff[1:]
-                elif stuff[0] == '^':
-                    stuff = '\\' + stuff
-                res = '%s[%s]' % (res, stuff)
-        else:
-            res = res + re.escape(c)
-    return '(?ms)' + res + '\Z'  # noqa
-
-
 def config_parser(config_path: Union["Path", str]) -> SSHConfig:
     """Parses ssh config file.
 
@@ -350,7 +305,10 @@ def config_parser(config_path: Union["Path", str]) -> SSHConfig:
         config_path = Path(config_path).expanduser()
 
     config = SSHConfig()
-    config.parse(config_path.open())
+    try:
+        config.parse(config_path.open())
+    except FileNotFoundError:
+        pass
 
     return config
 
