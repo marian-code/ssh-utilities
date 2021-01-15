@@ -51,7 +51,7 @@ jobs:
         echo "${USER}:12345678" | sudo chpasswd
     - name: Install ssh-utilities
       run: |
-        - pip3 install .
+        - pip install .
   coveralls:
     runs-on: ubuntu-latest
     needs:
