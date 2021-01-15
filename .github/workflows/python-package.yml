@@ -51,10 +51,10 @@ jobs:
         echo "${USER}:12345678" | sudo chpasswd
     - name: Install ssh-utilities
       run: |
-        - pwd
-        - cd /home/runner/work/ssh-utilities/ssh-utilities
-        - pwd
-        - pip install .
+        pwd
+        cd /home/runner/work/ssh-utilities/ssh-utilities
+        pwd
+        pip install .
   coveralls:
     runs-on: ubuntu-latest
     needs:
