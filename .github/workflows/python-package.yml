@@ -86,6 +86,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     runs-on: ubuntu-latest
+    container: python:3-slim
     needs:
     - build
     - coveralls
@@ -98,6 +99,7 @@ jobs:
       run: |
         ls -l
         pwd
+        python --version
         python setup.py sdist bdist_wheel
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@master
