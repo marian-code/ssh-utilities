@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """SSH ulitities setup script."""
 
 from pathlib import Path
