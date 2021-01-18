@@ -62,7 +62,6 @@ jobs:
         pip install .
     - name: test with unittest and collect coverage data
       run: |
-        pwd
         coverage run -m unittest discover
     - name: Submit to coveralls
       run: |
@@ -81,7 +80,6 @@ jobs:
       run: |
         pip install --upgrade coveralls
         coveralls --finish
-        pwd
         echo "ref #${{ github.ref }}"
         echo "ref #${{ github.event_name }}"
       env:
@@ -98,6 +96,9 @@ jobs:
     - name: Build package
       run: |
         pwd
+        ls -l
+        cd ..
+        ls -l
         python setup.py sdist bdist_wheel
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@master
