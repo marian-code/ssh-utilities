@@ -91,14 +91,13 @@ jobs:
     - coveralls
     if: success() && github.ref == 'refs/heads/release' && github.event_name == 'push'
     steps:
+    - uses: actions/checkout@v2
     - name: Install dependencies
       run: pip install wheel
     - name: Build package
       run: |
+        ls -l
         pwd
-        ls -l
-        cd ..
-        ls -l
         python setup.py sdist bdist_wheel
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@master
