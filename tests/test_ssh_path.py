@@ -54,24 +54,23 @@ class TestSSHPath(TestCase):
 
         # SSH to self, must have and localhost entry in config file and
         # correcponding keys present, also sshd must be installed and running
-        #if self.user == "rynik":
-        #    c = Connection.get("kohn", local=False)
-        # travis config file must change user password to desired
-        #else:
-        #    c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
-        #                        ssh_password="12345678", server_name="test")
+        if self.user == "rynik":
+            c = Connection.get("kohn", local=False)
+        # travis/git config file must change user password to desired
+        else:
+            c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
+                                ssh_password="12345678", server_name="test")
         # localhost = get_ip()
-        localhost = subprocess.run(["curl", "ifconfig.me"],
-                                   stdout=subprocess.PIPE,  # python 3.6
-                                   encoding="utf-8").stdout.strip()
-        user = getpass.getuser()
-        Connection.add_hosts({
-            "user": self.user,
-            "hostname": localhost,
-            "identityfile": "~/.ssh/id_rsa"
-        })
-        print(Connection.available_hosts)
-        c = Connection.get(localhost, local=False)
+        # localhost = subprocess.run(["curl", "ifconfig.me"],
+        #                            stdout=subprocess.PIPE,  # python 3.6
+        #                            encoding="utf-8").stdout.strip()
+        # Connection.add_hosts({
+        #     "user": self.user,
+        #     "hostname": localhost,
+        #     "identityfile": "~/.ssh/id_rsa"
+        # })
+        # print(Connection.available_hosts)
+        # c = Connection.get(localhost, local=False)
 
         self.p = c.pathlib.Path("/tmp")
 

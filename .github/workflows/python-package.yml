@@ -20,12 +20,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os:
+        #- macos-latest
+        - ubuntu-latest
         include:
-        - os: macos-latest
-          TARGET: x86_64-apple-darwin
-          COMPILER: clang
-          LINKER: clang
+        #- os: macos-latest
+        #  TARGET: x86_64-apple-darwin
+        #  COMPILER: clang
+        #  LINKER: clang
 
         - os: ubuntu-latest
           TARGET: x86_64-unknown-linux-musl
@@ -49,15 +51,12 @@ jobs:
     - name: Setup ssh on linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        curl ifconfig.me
-        printenv
-        ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
-        cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-    - name: Setup ssh on mac os
-      if: matrix.os == 'macos-latest'
-      run: |
-        ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
-        cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+        echo "${USER}:12345678" | sudo chpasswd
+    #- name: Setup ssh for mac os or linux
+    #  run: |
+    #    curl ifconfig.me
+    #    ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+    #og    cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
     - name: Install ssh-utilities
       run: |
         pip install .
