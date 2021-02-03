@@ -360,12 +360,12 @@ class Connection(metaclass=_ConnectionMeta):
         """
         if not ssh_server:
             return LocalConnection(ssh_server, ssh_username,
-                                   rsa_key_file=ssh_key_file,
+                                   pkey_file=ssh_key_file,
                                    server_name=server_name, quiet=quiet)
         else:
             if ssh_key_file:
                 c = SSHConnection(ssh_server, ssh_username,
-                                  rsa_key_file=ssh_key_file, line_rewrite=True,
+                                  pkey_file=ssh_key_file, line_rewrite=True,
                                   server_name=server_name, quiet=quiet,
                                   thread_safe=thread_safe)
             else:

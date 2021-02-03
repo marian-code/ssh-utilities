@@ -198,6 +198,6 @@ class ConnectionABC(ABC):
     def __setstate__(self, state: dict):
         """Initializes the object after load from pickle."""
         self.__init__(state["address"], state["user_name"],  # type: ignore
-                      rsa_key_file=state["ssh_key"],
+                      pkey_file=state["ssh_key"],
                       server_name=state["server_name"],
                       quiet=True, thread_safe=state["thread_safe"])

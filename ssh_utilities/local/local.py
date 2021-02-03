@@ -28,7 +28,7 @@ class LocalConnection(ConnectionABC):
 
     def __init__(self, address: Optional[str], username: str,
                  password: Optional[str] = None,
-                 rsa_key_file: Optional[Union[str, "Path"]] = None,
+                 pkey_file: Optional[Union[str, "Path"]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
                  quiet: bool = False, thread_safe: bool = False) -> None:
 
@@ -36,7 +36,7 @@ class LocalConnection(ConnectionABC):
         self.password = password
         self.address = address
         self.username = username
-        self.rsa_key_file = rsa_key_file
+        self.pkey_file = pkey_file
 
         self.server_name = server_name if server_name else gethostname()
         self.server_name = self.server_name.upper()

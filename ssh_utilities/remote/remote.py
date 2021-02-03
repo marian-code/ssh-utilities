@@ -30,6 +30,13 @@ __all__ = ["SSHConnection"]
 
 log = logging.getLogger(__name__)
 
+_KEYS = (
+    paramiko.RSAKey,
+    paramiko.Ed25519Key,
+    paramiko.DSSKey,
+    paramiko.ECDSAKey
+)
+
 
 class SSHConnection(ConnectionABC):
     """Self keeping ssh connection, to execute commands and file operations.
@@ -42,7 +49,7 @@ class SSHConnection(ConnectionABC):
         server login
     password: Optional[str]
         server password for login, by default RSA keys is used
-    rsa_key_file: Optional[Union[str, Path]]
+    pkey_file: Optional[Union[str, Path]]
         path to rsa key file
     line_rewrite: bool
         rewrite lines in output when copying instead of normal mode when lines
@@ -59,7 +66,7 @@ class SSHConnection(ConnectionABC):
 
     Warnings
     --------
-    At least one of (password, rsa_key_file) must be specified, if both are,
+    At least one of (password, pkey_file) must be specified, if both are,
     RSA key will be used
 
     thread_safe parameter is not implemented yet!!!
@@ -75,7 +82,7 @@ class SSHConnection(ConnectionABC):
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
-                 rsa_key_file: Optional[Union[str, Path]] = None,
+                 pkey_file: Optional[Union[str, Path]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
                  quiet: bool = False, thread_safe: bool = False) -> None:
 
@@ -92,8 +99,8 @@ class SSHConnection(ConnectionABC):
         lprint.line_rewrite = line_rewrite
         lprnt = lprint(quiet)
 
-        if rsa_key_file:
-            msg = f"Will login with private RSA key located in {rsa_key_file}"
+        if pkey_file:
+            msg = f"Will login with private RSA key located in {pkey_file}"
             lprnt(msg)
             log.info(msg)
         else:
@@ -122,16 +129,21 @@ class SSHConnection(ConnectionABC):
         self.password = password
         self.address = address
         self.username = username
-        self.rsa_key_file = rsa_key_file
+        self.pkey_file = pkey_file
 
         # paramiko connection
-        if rsa_key_file:
-            self.rsa_key = paramiko.RSAKey.from_private_key_file(
-                self._path2str(rsa_key_file))
+        if pkey_file:
+            for key in _KEYS:
+                try:
+                    self.pkey = key.from_private_key_file(
+                        self._path2str(pkey_file)
+                    )
+                except paramiko.SSHException:
+                    log.info(f"could not parse key with {key.__name__}")
         elif password:
-            self.rsa_key = None
+            self.pkey = None
         else:
-            raise RuntimeError("Must input password or path to rsa_key")
+            raise RuntimeError("Must input password or path to pkey")
 
         self._c = paramiko.client.SSHClient()
         self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
@@ -193,11 +205,11 @@ class SSHConnection(ConnectionABC):
 
     def __str__(self) -> str:
         return self._to_str("SSHConnection", self.server_name, self.address,
-                            self.username, self.rsa_key_file, self.thread_safe)
+                            self.username, self.pkey_file, self.thread_safe)
 
     def to_dict(self) -> Dict[str, Optional[Union[str, bool, int]]]:
         return self._to_dict("SSHConnection", self.server_name, self.address,
-                             self.username, self.rsa_key_file,
+                             self.username, self.pkey_file,
                              self.thread_safe)
 
     @check_connections()
@@ -234,10 +246,10 @@ class SSHConnection(ConnectionABC):
 
         with self.__lock:
             try:
-                if self.rsa_key:
+                if self.pkey:
                     # connect with public key
                     self.c.connect(self.address, username=self.username,
-                                   pkey=self.rsa_key)
+                                   pkey=self.pkey)
                 else:
                     # if password was passed try to connect with it
                     self.c.connect(self.address, username=self.username,
