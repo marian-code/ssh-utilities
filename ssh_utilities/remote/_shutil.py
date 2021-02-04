@@ -187,6 +187,8 @@ class Shutil(ShutilABC):
 
             # record directories that need to be created on local side
             directory = root.replace(src, "")
+            if directory.startswith("/"):
+                directory = directory.replace("/", "")
             dst_dirs.append(jn(dst, directory))
 
             for f in files:
@@ -229,7 +231,14 @@ class Shutil(ShutilABC):
                         f"{cf['src']:<{max_src}}"
                         f"\n{G}     --> local:{R} {cf['dst']:<{max_dst}}")
 
-                self.c.sftp.get(cf["src"], cf["dst"], callback=t.update_bar)
+                try:
+                    self.c.sftp.get(cf["src"], cf["dst"],
+                                    callback=t.update_bar)
+                except IOError as e:
+                    raise IOError(
+                        f"The file {cf['src']} could not be copied to "
+                        f"{cf['dst']}. This is probably due to permission "
+                        f"error: {e}")
 
         lprnt("")
 
@@ -270,6 +279,8 @@ class Shutil(ShutilABC):
 
             # record directories that need to be created on remote side
             directory = root.replace(src, "")
+            if directory.startswith("/"):
+                directory = directory.replace("/", "")
             dst_dirs.append(jn(dst, directory))
 
             for f in files:
@@ -313,7 +324,14 @@ class Shutil(ShutilABC):
                         f"{G}   --> remote:{R} {self.c.server_name}@"
                         f"{cf['dst']:<{max_dst}}")
 
-                self.c.sftp.put(cf["src"], cf["dst"], callback=t.update_bar)
+                try:
+                    self.c.sftp.put(cf["src"], cf["dst"],
+                                    callback=t.update_bar)
+                except IOError as e:
+                    raise IOError(
+                        f"The file {cf['src']} could not be copied to "
+                        f"{cf['dst']}. This is probably due to permission "
+                        f"error: {e}")
 
         lprnt("")
 
