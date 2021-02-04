@@ -74,6 +74,8 @@ class Os(OsABC):
         if self.isdir(path) and not exist_ok:
             raise FileExistsError(f"Directory already exists: "
                                   f"{self.c.server_name}@{path}")
+        elif self.isdir(path) and exist_ok:
+            return
 
         lprint(quiet)(f"{G}Creating directory:{R} "
                       f"{self.c.server_name}@{path}")
@@ -84,7 +86,8 @@ class Os(OsABC):
             except Exception as e:
                 raise FileNotFoundError(f"Error in creating directory: "
                                         f"{self.c.server_name}@{path}, "
-                                        f"probably parent does not exist.")
+                                        f"probably parent does not exist."
+                                        f"\n{e}")
 
         to_make = []
         actual = path
