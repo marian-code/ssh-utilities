@@ -43,25 +43,24 @@ class Os(OsABC):
     def path(self) -> "OsPathRemote":
         return self._path
 
-    @check_connections()
+    @check_connections(exclude_exceptions=IOError)
     def isfile(self, path: "_SPATH") -> bool:
+        # have to call without decorators, otherwise FileNotFoundError
+        # does not propagate
+        unwrap = self.stat.__wrapped__
         try:
-            return S_ISREG(self.c.sftp.stat(self.c._path2str(path)).st_mode)
-        except IOError:
+            return S_ISREG(unwrap(self, self.c._path2str(path)).st_mode)
+        except FileNotFoundError:
             return False
 
-    @check_connections()
+    @check_connections(exclude_exceptions=IOError)
     def isdir(self, path: "_SPATH") -> bool:
-
-        _path = self.c._path2str(path)
+        # have to call without decorators, otherwise FileNotFoundError
+        # does not propagate
+        unwrap = self.stat.__wrapped__
         try:
-            s = self.c.sftp.stat(_path)
-
-            if S_ISLNK(s.st_mode):
-                s = self.c.sftp.stat(self.c.sftp.readlink(_path))
-
-            return S_ISDIR(s.st_mode)
-        except IOError:
+            return S_ISDIR(unwrap(self, self.c._path2str(path)).st_mode)
+        except FileNotFoundError:
             return False
 
     @check_connections(exclude_exceptions=(FileExistsError, FileNotFoundError,
@@ -93,6 +92,7 @@ class Os(OsABC):
         actual = path
 
         while True:
+            # TODO this is not platform agnostic!
             actual = os.path.dirname(actual)
             if not self.isdir(actual):
                 to_make.append(actual)
@@ -172,17 +172,19 @@ class Os(OsABC):
     def stat(self, path: "_SPATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> "SFTPAttributes":
 
-        spath = self.c._path2str(path)
-        stat = self.c.sftp.stat(spath)
+        try:
+            spath = self.c._path2str(path)
+            stat = self.c.sftp.stat(spath)
 
-        # TODO do we need this? can links be chained?
-        while True:
-            if follow_symlinks and S_ISLNK(stat.st_mode):
-                spath = self.c.sftp.readlink(spath)
-                stat = self.c.sftp.stat(spath)
-            else:
-                break
-
+            # TODO do we need this? can links be chained?
+            while True:
+                if follow_symlinks and S_ISLNK(stat.st_mode):
+                    spath = self.c.sftp.readlink(spath)
+                    stat = self.c.sftp.stat(spath)
+                else:
+                    break
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"exception in stat: {e}, {path}")
         return stat
 
     def lstat(self, path: "_SPATH", *, dir_fd=None) -> "SFTPAttributes":

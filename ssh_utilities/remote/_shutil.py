@@ -280,7 +280,7 @@ class Shutil(ShutilABC):
             # record directories that need to be created on remote side
             directory = root.replace(src, "")
             if directory.startswith("/"):
-                directory = directory.replace("/", "")
+                directory = directory.replace("/", "", 1)
             dst_dirs.append(jn(dst, directory))
 
             for f in files:
