@@ -332,6 +332,6 @@ LGPL-2.1
 
 TODO
 ----
-- implement wrapper for pool of connections
 - show which methods are implemented
 - SSHPath root and anchor attributes incorectlly return '.' instead of '/' 
+- in some situation threadsafe object can cause deadlocks notable cases are: upload_tree/download_tree
