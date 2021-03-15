@@ -128,7 +128,7 @@ class Shutil(ShutilABC):
 
     copy2 = copy
 
-    @check_connections(exclude_exceptions=FileNotFoundError)
+    @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
 
@@ -171,7 +171,7 @@ class Shutil(ShutilABC):
             raise FileNotFoundError(f"{remote_path} you are trying to download"
                                     f"from does not exist")
 
-        lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
+        lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
         allow_file = file_filter(include, exclude)
 
         copy_files: List["_COPY_FILES"] = []
@@ -223,7 +223,7 @@ class Shutil(ShutilABC):
         max_src = max([len(c["src"]) for c in copy_files])
         max_dst = max([len(c["dst"]) for c in copy_files])
 
-        q = True if quiet or quiet == "progress" else False
+        q = True if quiet in (True, "progress") else False
         with ProgressBar(total=total, quiet=q) as t:
             for cf in copy_files:
 
@@ -260,7 +260,7 @@ class Shutil(ShutilABC):
             raise FileNotFoundError(f"{local_path} you are trying to upload "
                                     f"does not exist")
 
-        lprnt = lprint(quiet=True if quiet or quiet == "stats" else False)
+        lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
         allow_file = file_filter(include, exclude)
 
         copy_files: List["_COPY_FILES"] = []
@@ -316,7 +316,7 @@ class Shutil(ShutilABC):
         max_src = max([len(c["src"]) for c in copy_files])
         max_dst = max([len(c["dst"]) for c in copy_files])
 
-        q = True if quiet or quiet == "progress" else False
+        q = True if quiet in (True, "progress") else False
         with ProgressBar(total=total, quiet=q) as t:
             for cf in copy_files:
 

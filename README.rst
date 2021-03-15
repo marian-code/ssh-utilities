@@ -7,8 +7,9 @@ ssh-utilities
         :target: https://ssh-utilities.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-    .. image:: https://travis-ci.com/marian-code/ssh-utilities.svg?branch=master
-        :target: https://travis-ci.com/marian-code/ssh-utilities
+    .. image:: https://github.com/marian-code/ssh-utilities/actions/workflows/python-package.yml/badge.svg?branch=release
+        :target: https://github.com/marian-code/ssh-utilities/actions
+        :alt: build
 
     .. image:: https://coveralls.io/repos/github/marian-code/ssh-utilities/badge.svg?branch=master
         :target: https://coveralls.io/github/marian-code/ssh-utilities?branch=master
