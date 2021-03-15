@@ -9,7 +9,7 @@ from pathlib import Path
 from subprocess import DEVNULL, PIPE, STDOUT
 from typing import TYPE_CHECKING, Optional, TextIO, Union
 
-from ..abc import SubprocessABC
+from ..abstract import SubprocessABC
 from ..constants import C, R, Y
 from ..exceptions import CalledProcessError, TimeoutExpired
 from ..utils import CompletedProcess, lprint

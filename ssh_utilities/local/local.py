@@ -7,7 +7,7 @@ import logging
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from ..abc import ConnectionABC
+from ..abstract import ConnectionABC
 from ..constants import G, Y
 from ..utils import lprint
 from . import Builtins, Os, Pathlib, Shutil, Subprocess
@@ -15,7 +15,7 @@ from . import Builtins, Os, Pathlib, Shutil, Subprocess
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..abc import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
+    from ..abstract import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
                        _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
 
 __all__ = ["LocalConnection"]

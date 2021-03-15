@@ -7,7 +7,7 @@ import logging
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from ..abc import (BuiltinsABC, ConnectionABC, OsABC, OsPathABC,
+    from ..abstract import (BuiltinsABC, ConnectionABC, OsABC, OsPathABC,
                        PathlibABC, ShutilABC, SubprocessABC)
     from ..local import LocalConnection
     from ..remote import SSHConnection

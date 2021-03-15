@@ -31,7 +31,7 @@ ssh_utilities.connection
    :maxdepth: 2
    :caption: Contents:
 
-   api/abc
+   api/abstract
    api/local
    api/remote
    api/multi

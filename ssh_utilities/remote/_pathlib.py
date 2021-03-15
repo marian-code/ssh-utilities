@@ -3,7 +3,7 @@
 import logging
 from typing import TYPE_CHECKING
 
-from ..abc import PathlibABC
+from ..abstract import PathlibABC
 from ._connection_wrapper import check_connections
 from .path import SSHPath
 

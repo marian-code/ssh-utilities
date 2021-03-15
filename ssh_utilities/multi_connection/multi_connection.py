@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Deque, TYPE_CHECKING, Dict, List, Optional, SupportsFloat, Union
 
-from ..abc import (BuiltinsABC, ConnectionABC, OsABC, PathlibABC, ShutilABC,
+from ..abstract import (BuiltinsABC, ConnectionABC, OsABC, PathlibABC, ShutilABC,
                    SubprocessABC)
 from ..connection import Connection
 from ..local import LocalConnection
@@ -20,7 +20,7 @@ from ._dict_interface import DictInterface
 from ._persistence import Pesistence
 
 if TYPE_CHECKING:
-    from ..abc import (_BUILTINS_MULTI, _OS_MULTI, _PATHLIB_MULTI,
+    from ..abstract import (_BUILTINS_MULTI, _OS_MULTI, _PATHLIB_MULTI,
                        _SHUTIL_MULTI, _SUBPROCESS_MULTI)
 
     _CONN = Union[SSHConnection, LocalConnection]

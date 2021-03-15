@@ -3,7 +3,7 @@
 import logging
 from typing import IO, TYPE_CHECKING, Optional
 
-from ..abc import BuiltinsABC
+from ..abstract import BuiltinsABC
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
