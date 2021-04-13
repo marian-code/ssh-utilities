@@ -107,6 +107,10 @@ class _TqdmWrapper(tqdm):
 
         self._last_transfered = 0
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        return super().__exit__(exc_type, exc_value, traceback)
+
     def update_bar(self, transfered: int, total_file_size: int):
         part = transfered - self._last_transfered
         if part < 0:

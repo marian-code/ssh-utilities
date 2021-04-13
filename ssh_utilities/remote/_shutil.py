@@ -138,23 +138,33 @@ class Shutil(ShutilABC):
         with context_timeit(quiet):
             lprint(quiet)(f"{G}Recursively removing dir:{R} {sn}@{path}")
 
-            try:
-                for root, _, files in self.c.os.walk(path, followlinks=True):
-                    for f in files:
-                        f = jn(root, f)
-                        lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
-                        if self.c.os.isfile(f):
+            for root, _, files in self.c.os.walk(path, followlinks=True):
+                for f in files:
+                    f = jn(root, f)
+                    lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
+                    if self.c.os.isfile(f):
+                        try:
                             self.c.sftp.remove(f)
-                    if self.c.os.isdir(root):
+                        except (FileNotFoundError, OSError) as e:
+                            if ignore_errors:
+                                log.warning("Directory does not exist")
+                            else:
+                                raise FileNotFoundError(e)
+                if self.c.os.isdir(root):
+                    try:
                         self.c.sftp.rmdir(root)
+                    except (FileNotFoundError, OSError) as e:
+                        if ignore_errors:
+                            log.warning("Directory does not exist")
+                        else:
+                            raise FileNotFoundError(e)
 
-                if self.c.os.isdir(path):
-                    self.c.sftp.rmdir(path)
-            except FileNotFoundError as e:
-                if ignore_errors:
-                    log.warning("Directory does not exist")
-                else:
-                    raise FileNotFoundError(e)
+            if self.c.os.isdir(path):
+                self.c.sftp.rmdir(path)
+
+           
+                
+            
 
     @check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(
@@ -243,7 +253,7 @@ class Shutil(ShutilABC):
         lprnt("")
 
         if remove_after:
-            self.rmtree(src)
+            self.rmtree(src, quiet=q)
 
     @check_connections(exclude_exceptions=FileNotFoundError)
     def upload_tree(
@@ -336,4 +346,4 @@ class Shutil(ShutilABC):
         lprnt("")
 
         if remove_after:
-            shutil.rmtree(src)
+            shutil.rmtree(src, quiet=q)

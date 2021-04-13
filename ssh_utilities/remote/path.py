@@ -254,19 +254,15 @@ class SSHPath(Path):
             min((pattern.count("["), pattern.count("]")))
         ])
 
-        log.debug(f"pattern {pattern}")
         if pattern_count >= 2:
             recursive = True
         else:
             recursive = False
 
-        log.debug(f"recursive: {recursive}")
-
         # split pattern to parts, so we can easily match at each subdir level
         parts: Deque[str] = deque(SSHPath(self.c, pattern).parts)
-        log.debug(f"parts: {parts}")
 
-        # append to origin path parts of pattern that do not contain any
+        # append to origin path that parts of pattern that do not contain any
         # wildcards, so we search as minimal number of sub-directories as
         # possible
         while True:
@@ -288,18 +284,14 @@ class SSHPath(Path):
             # because walk traverses directories "depth-first"
             idx = root_parts - origin_parts
 
-            log.debug(f"root parts: {root_parts}, idx {idx}")
-
             # if we do not have the last part we are interested only in
             # directories because we need to get deeper in to the directory
             # structure
             if idx < pattern_parts:
                 pattern = parts[idx]
 
-                log.debug(f"actual level pattern: {pattern}")
-
                 # now get directories that match the pattern and delete the
-                # others, this takes advantage of list mutability - the next
+                # others, tish takes advantage of list mutability - the next
                 # seach paths will be built by walk based on already filtered
                 # directories list
                 indices = []
@@ -310,15 +302,10 @@ class SSHPath(Path):
                 for index in sorted(indices, reverse=True):
                     del dirs[index]
 
-                log.debug(f"actual dirs: {dirs}")
-
             elif idx >= pattern_parts:
-                log.debug("now yielding the lasp path part")
                 pattern = parts[-1]
-                log.debug(f"end pattern {pattern}")
                 r = SSHPath(self.c, root)
                 for path in dirs + files:
-                    log.debug(f"path {path}")
                     if fnmatch(path, pattern):
                         yield r / path
 
