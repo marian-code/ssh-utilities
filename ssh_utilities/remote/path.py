@@ -262,6 +262,19 @@ class SSHPath(Path):
         # split pattern to parts, so we can easily match at each subdir level
         parts: Deque[str] = deque(SSHPath(self.c, pattern).parts)
 
+        # if we have only one glob symbol thus the search is not recursive, but this
+        # symbol is nested deeper in the the path (not in the last part) we must switch
+        # to recursive, otherwise the search will end prematurely
+        if not recursive:
+            pattern_count = sum([
+                parts[-1].count("*"),
+                parts[-1].count("?"),
+                min((parts[-1].count("["), parts[-1].count("]")))
+            ])
+
+            if pattern_count == 0:
+                recursive = True
+
         # append to origin path that parts of pattern that do not contain any
         # wildcards, so we search as minimal number of sub-directories as
         # possible
@@ -291,7 +304,7 @@ class SSHPath(Path):
                 pattern = parts[idx]
 
                 # now get directories that match the pattern and delete the
-                # others, tish takes advantage of list mutability - the next
+                # others, this takes advantage of list mutability - the next
                 # seach paths will be built by walk based on already filtered
                 # directories list
                 indices = []
