@@ -90,11 +90,15 @@ class Subprocess(SubprocessABC):
             raise NotImplementedError
         elif isinstance(stdin, int):
             stdin_pipe = os.fdopen(stdin, encoding=encoding, errors=errors)
-        elif isinstance(stdin, TextIOBase):
-            # if TextIOBase do nothing, we are set
-            pass
+        elif hasattr(stdin, "write"):
+            stdin_pipe = stdin
         else:
-            raise TypeError("stdin argument is of unsupported type")
+            raise TypeError(
+                f"stdin argument is of unsupported type. You have passed in "
+                f"{type(stdin)}. The allowed types are: None, DEVNULL, PIPE, "
+                f"integer file descriptor or a stream-like object supporting "
+                f"write"
+            )
 
         if not stdout:
             stdout_pipe = sys.stdout
@@ -107,10 +111,15 @@ class Subprocess(SubprocessABC):
                 stdout_pipe = BytesIO()
         elif isinstance(stdout, int):
             stdout_pipe = os.fdopen(stdout, encoding=encoding, errors=errors)
-        elif isinstance(stdout, TextIOBase):
+        elif hasattr(stdout, "write"):
             stdout_pipe = stdout
         else:
-            raise TypeError("stdout argument is of unsupported type")
+            raise TypeError(
+                f"stdout argument is of unsupported type. You have passed in "
+                f"{type(stdout)}. The allowed types are: None, DEVNULL, PIPE, "
+                f"integer file descriptor or a stream-like object supporting "
+                f"write"
+            )
 
         if not stderr:
             stderr_pipe = sys.stderr
@@ -125,10 +134,15 @@ class Subprocess(SubprocessABC):
             stderr_pipe = os.fdopen(stderr, encoding=encoding, errors=errors)
         elif stderr == STDOUT:
             stderr_pipe = stdout_pipe
-        elif isinstance(stderr, TextIOBase):
+        elif hasattr(stderr, "write"):
             stderr_pipe = stderr
         else:
-            raise TypeError("stderr argument is of unsupported type")
+            raise TypeError(
+                f"stderr argument is of unsupported type. You have passed in "
+                f"{type(stderr)}. The allowed types are: None, DEVNULL, PIPE, "
+                f"integer file descriptor or a stream-like object supporting "
+                f"write"
+            )
 
         if isinstance(args, list):
             if isinstance(args[0], Path):

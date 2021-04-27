@@ -115,12 +115,15 @@ class Shutil(ShutilABC):
              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
              quiet: bool = True):
 
+        dst = self.c._path2str(dst)
+        src = self.c._path2str(src)
+
         if direction == "get":
-            if os.path.isdir(self.c._path2str(dst)):
-                dst = jn(dst, os.path.basename(self.c._path2str(src)))
+            if os.path.isdir(dst):
+                dst = jn(dst, os.path.basename(src))
 
         elif direction == "put" and self.c.os.isdir(dst):
-            dst = jn(dst, os.path.basename(self.c._path2str(src)))
+            dst = jn(dst, os.path.basename(src))
 
         self.copyfile(src, dst, direction=direction,
                       follow_symlinks=follow_symlinks, callback=callback,
