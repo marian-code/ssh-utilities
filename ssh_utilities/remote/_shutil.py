@@ -165,10 +165,6 @@ class Shutil(ShutilABC):
             if self.c.os.isdir(path):
                 self.c.sftp.rmdir(path)
 
-           
-                
-            
-
     @check_connections(exclude_exceptions=FileNotFoundError)
     def download_tree(
         self, remote_path: "_SPATH", local_path: "_SPATH",
@@ -201,7 +197,7 @@ class Shutil(ShutilABC):
             # record directories that need to be created on local side
             directory = root.replace(src, "")
             if directory.startswith("/"):
-                directory = directory.replace("/", "")
+                directory = directory.replace("/", "", 1)
             dst_dirs.append(jn(dst, directory))
 
             for f in files:
