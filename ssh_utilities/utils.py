@@ -3,14 +3,16 @@
 import re
 import time
 from contextlib import contextmanager
+from fnmatch import translate
+from functools import wraps
 from pathlib import Path
+from warnings import warn
 from typing import (TYPE_CHECKING, Any, Callable, Generic, Optional, Sequence,
                     TypeVar, Union)
 
 from paramiko.config import SSHConfig
 from tqdm import tqdm
 from tqdm.utils import _term_move_up
-from fnmatch import translate
 
 from .exceptions import CalledProcessError
 
@@ -399,10 +401,32 @@ class NullContext:
         """Replacement for arbitrrary context that does nothing."""
         pass
 
-# \033[<L>;<C>H # Move the cursor to line L, column C
-# \033[<N>A     # Move the cursor up N lines
-# \033[<N>B     # Move the cursor down N lines
-# \033[<N>C     # Move the cursor forward N columns
-# \033[<N>D     # Move the cursor backward N columns
-# \033[2J       # Clear the screen, move to (0,0)
-# \033[K        # Erase to end of line
+
+def deprecation_warning(replacement: str, additional_msg: str = "") -> Callable:
+    """Wrap callable and show deprecation warning before execution.
+
+    Parameters
+    ----------
+    replacement : str
+        suggested replacement callable for the one that emits warning
+    additional_msg : str, optional
+        additionaly message to display at the end
+
+    Returns
+    -------
+    Callable
+        same callable as passed in only now it emits deprecation warning.
+    """
+
+    def decorator(function: Callable) -> Callable:
+
+        @wraps
+        def warn_decorator(*args, **kwargs):
+
+            warn(f"{function.__name__} is deprecated and will be removed/made private in "
+                f"future release. Please use {replacement} instead. {}")
+
+            return function(*args, **kwargs)
+
+        return warn_decorator
+    return decorator

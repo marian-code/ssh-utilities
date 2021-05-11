@@ -1,9 +1,12 @@
 """Template module for all shutil classes."""
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, FrozenSet, List
+from typing import IO, Optional, TYPE_CHECKING, FrozenSet, List, Union, overload
+
+from typing_extensions import Literal
 
 if TYPE_CHECKING:
+    from paramiko.sftp_file import SFTPFile
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
 
 __all__ = ["ShutilABC"]
@@ -16,6 +19,34 @@ class ShutilABC(ABC):
 
     __name__: str
     __abstractmethods__: FrozenSet[str]
+
+    @overload
+    @abstractmethod
+    def copyfileobj(self, fsrc: "SFTPFile", fdst: IO, *,
+                    direction: Literal["get"], length: Optional[int] = None):
+        ...
+    @overload
+    @abstractmethod
+    def copyfileobj(self, fsrc: IO, fdst: "SFTPFile", *,
+                    direction: Literal["put"], length: Optional[int] = None):
+        ...
+    @abstractmethod
+    def copyfileobj(self, fsrc: Union[IO, "SFTPFile"], fdst: Union[IO, "SFTPFile"], *,
+                    direction: "_DIRECTION", length: Optional[int] = None):
+        """Copy the contents of one file-like object to another.
+
+        Parameters
+        ----------
+        fsrc : Union[IO, SFTPFile]
+            source file-like object must be local/remote based on direction parameter
+        fdst : Union[IO, SFTPFile]
+            source file-like object must be local/remote based on direction parameter
+        direction : _DIRECTION
+            either 'put' or 'get'
+        length : int, optional
+            [description], by default -1
+        """
+        raise NotImplementedError        
 
     @abstractmethod
     def copy_files(self, files: List[str], remote_path: "_SPATH",

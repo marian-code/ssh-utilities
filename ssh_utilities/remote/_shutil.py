@@ -4,18 +4,19 @@ import logging
 import os
 import shutil
 from os.path import join as jn
-from typing import TYPE_CHECKING, List
+from typing import IO, TYPE_CHECKING, List, Optional, Union
 
 from typing_extensions import Literal
 
 from ..abstract import ShutilABC
 from ..constants import LG, C, G, R
-from ..utils import ProgressBar
+from ..utils import ProgressBar, deprecation_warning
 from ..utils import bytes_2_human_readable as b2h
 from ..utils import context_timeit, file_filter, lprint
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
+    from paramiko.sftp_file import SFTPFile
     from typing_extensions import TypedDict
 
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
@@ -41,6 +42,29 @@ class Shutil(ShutilABC):
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
 
+    @check_connections
+    def copyfileobj(self, fsrc: Union[IO, "SFTPFile"], fdst: Union[IO, "SFTPFile"], *,
+                    direction: "_DIRECTION", length: Optional[int] = None):
+
+        # faster but any errors will be thrown only at file close
+        if isinstance(fsrc, SFTPFile):
+            fsrc.set_pipelined(True)
+        if isinstance(fdst, SFTPFile):
+            fdst.set_pipelined(True)
+
+        if length is None:
+            length = 32768
+
+        if length < 0:
+            fdst.write(fsrc.read())
+        else:
+            while True:
+                data = fsrc.read(length)
+                fdst.write(data)
+                if len(data) == 0:
+                    break
+
+    @deprecation_warning("copyfile", "With for-loop you can archieve the same effect")
     @check_connections(exclude_exceptions=ValueError)
     def copy_files(self, files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", *, direction: "_DIRECTION",

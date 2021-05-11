@@ -3,10 +3,10 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, IO, Optional
 
 from ..abstract import ShutilABC
-from ..utils import context_timeit, file_filter
+from ..utils import context_timeit, deprecation_warning, file_filter
 
 if TYPE_CHECKING:
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
@@ -29,6 +29,16 @@ class Shutil(ShutilABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
+    @staticmethod
+    def copyfileobj(fsrc: IO, fdst: IO, *, direction: "_DIRECTION",
+                    length: Optional[int] = None):
+
+        if length:
+            shutil.copyfileobj(fsrc, fdst, length)
+        else:
+            shutil.copyfileobj(fsrc, fdst)
+
+    @deprecation_warning("copyfile", "With for-loop you can archieve the same effect")
     @staticmethod
     def copy_files(files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", *, direction: "_DIRECTION",
