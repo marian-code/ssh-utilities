@@ -88,3 +88,6 @@ class OsPathLocal(OsPathABC):
 
     def realpath(self, path: "_SPATH") -> str:
         return os.path.realpath(self.c._path2str(path))
+
+    def getsize(self, path: "_SPATH") -> int:
+        return os.path.getsize(self.c._path2str(path))

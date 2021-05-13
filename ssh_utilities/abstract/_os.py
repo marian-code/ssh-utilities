@@ -46,6 +46,26 @@ class OsPathABC(ABC):
         """
         raise NotImplementedError
 
+    def getsize(self, path: "_SPATH") -> int:
+        """Return the size of path in bytes.
+
+        Parameters
+        ----------
+        path : _SPATH
+            path to file/directory
+
+        Returns
+        -------
+        int
+            size in bytes
+
+        Raises
+        ------
+        OsError
+            if the file does not exist or is inaccessible
+        """
+        raise NotImplementedError
+
 
 class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
     """`os` module drop-in replacement base."""

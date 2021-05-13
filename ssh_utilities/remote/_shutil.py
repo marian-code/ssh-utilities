@@ -43,8 +43,8 @@ class Shutil(ShutilABC):
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
 
-    def ignore_paterns(self, *paterns: Sequence[str]
-                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+    def ignore_patterns(self, *paterns: Sequence[str]
+                        ) -> Callable[[Any, Sequence[str]], Set[str]]:
         return file_filter(None, exclude=paterns)
 
     @check_connections

@@ -30,8 +30,8 @@ class Shutil(ShutilABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
-    def ignore_paterns(self, *paterns: Sequence[str]
-                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+    def ignore_patterns(self, *paterns: Sequence[str]
+                        ) -> Callable[[Any, Sequence[str]], Set[str]]:
         return shutil.ignore_patterns(*paterns)
 
     @staticmethod

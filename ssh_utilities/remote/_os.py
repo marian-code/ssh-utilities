@@ -246,3 +246,12 @@ class OsPathRemote(OsPathABC):
                 break
 
         return spath
+
+    def getsize(self, path: "_SPATH") -> int:
+        
+        size = self.c.os.stat(path).st_size
+        
+        if size:
+            return size
+        else:
+            raise OSError(f"Could not get size of file: {path}")

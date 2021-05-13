@@ -23,8 +23,8 @@ class ShutilABC(ABC):
     __abstractmethods__: FrozenSet[str]
 
     @abstractmethod
-    def ignore_paterns(self, *paterns: Sequence[str]
-                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+    def ignore_patterns(self, *paterns: Sequence[str]
+                        ) -> Callable[[Any, Sequence[str]], Set[str]]:
         """Creates a callable for shutil.copytree function to ignore files.
 
         Parameters
