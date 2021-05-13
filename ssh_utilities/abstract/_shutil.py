@@ -1,12 +1,14 @@
 """Template module for all shutil classes."""
 import logging
 from abc import ABC, abstractmethod
-from typing import IO, Optional, TYPE_CHECKING, FrozenSet, List, Union, overload
+from typing import (IO, TYPE_CHECKING, Any, Callable, FrozenSet, List,
+                    Optional, Sequence, Set, Union, overload)
 
 from typing_extensions import Literal
 
 if TYPE_CHECKING:
     from paramiko.sftp_file import SFTPFile
+
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
 
 __all__ = ["ShutilABC"]
@@ -20,6 +22,24 @@ class ShutilABC(ABC):
     __name__: str
     __abstractmethods__: FrozenSet[str]
 
+    @abstractmethod
+    def ignore_paterns(self, *paterns: Sequence[str]
+                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+        """Creates a callable for shutil.copytree function to ignore files.
+
+        Parameters
+        ----------
+        *patterns: Sequence[str]
+            a list of glob patterns that will ne used to exclude files
+
+        Returns
+        -------
+        Callable[[Any, Sequence[str]], Set[str]]
+            Callable the filters files, when called with a list of strings
+            returns a subset that matches one oth the exclude patterns
+        """
+        raise NotImplementedError
+
     @overload
     @abstractmethod
     def copyfileobj(self, fsrc: "SFTPFile", fdst: IO, *,
@@ -31,8 +51,9 @@ class ShutilABC(ABC):
                     direction: Literal["put"], length: Optional[int] = None):
         ...
     @abstractmethod
-    def copyfileobj(self, fsrc: Union[IO, "SFTPFile"], fdst: Union[IO, "SFTPFile"], *,
-                    direction: "_DIRECTION", length: Optional[int] = None):
+    def copyfileobj(self, fsrc: Union[IO, "SFTPFile"],
+                    fdst: Union[IO, "SFTPFile"], *, direction: "_DIRECTION",
+                    length: Optional[int] = None):
         """Copy the contents of one file-like object to another.
 
         Parameters

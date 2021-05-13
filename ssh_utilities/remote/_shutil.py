@@ -4,15 +4,16 @@ import logging
 import os
 import shutil
 from os.path import join as jn
-from typing import IO, TYPE_CHECKING, List, Optional, Union
+from typing import (IO, TYPE_CHECKING, Any, Callable, List, NoReturn, Optional,
+                    Sequence, Set, Union)
 
 from typing_extensions import Literal
 
 from ..abstract import ShutilABC
 from ..constants import LG, C, G, R
-from ..utils import ProgressBar, deprecation_warning
+from ..utils import ProgressBar
 from ..utils import bytes_2_human_readable as b2h
-from ..utils import context_timeit, file_filter, lprint
+from ..utils import context_timeit, deprecation_warning, file_filter, lprint
 from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
@@ -42,6 +43,10 @@ class Shutil(ShutilABC):
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
 
+    def ignore_paterns(self, *paterns: Sequence[str]
+                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+        return file_filter(None, exclude=paterns)
+
     @check_connections
     def copyfileobj(self, fsrc: Union[IO, "SFTPFile"], fdst: Union[IO, "SFTPFile"], *,
                     direction: "_DIRECTION", length: Optional[int] = None):
@@ -64,7 +69,8 @@ class Shutil(ShutilABC):
                 if len(data) == 0:
                     break
 
-    @deprecation_warning("copyfile", "With for-loop you can archieve the same effect")
+    @deprecation_warning("copyfile",
+                         "With for-loop you can archieve the same effect")
     @check_connections(exclude_exceptions=ValueError)
     def copy_files(self, files: List[str], remote_path: "_SPATH",
                    local_path: "_SPATH", *, direction: "_DIRECTION",
@@ -155,6 +161,13 @@ class Shutil(ShutilABC):
 
     copy2 = copy
 
+    def copytree(self, src: "_SPATH", dst: "_SPATH", symlinks: bool = False,
+                 ignore: Optional[Callable[["_SPATH"], bool]] = None,
+                 copy_function: Callable[["_SPATH", "_SPATH", bool], NoReturn] = "copy2",
+                 ignore_dangling_symlinks: bool = False,
+                 dirs_exist_ok: bool = False):
+        raise NotImplementedError
+
     @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
                quiet: bool = True):
@@ -205,7 +218,7 @@ class Shutil(ShutilABC):
                                     f"from does not exist")
 
         lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
-        allow_file = file_filter(include, exclude)
+        ignore_files = file_filter(include, exclude)
 
         copy_files: List["_COPY_FILES"] = []
         dst_dirs = []
@@ -224,16 +237,26 @@ class Shutil(ShutilABC):
                 directory = directory.replace("/", "", 1)
             dst_dirs.append(jn(dst, directory))
 
+            skip_files = ignore_files("", files)
+
             for f in files:
                 dst_file = jn(dst, directory, f)
 
-                if not allow_file(dst_file):
+                if f in skip_files:
                     continue
+                
+                if quiet:
+                    size = 0
+                else:
+                    # TODO implement getsize !!
+                    size = self.c.os.lstat(jn(root, f)).st_size
+                    if size is None:
+                        size = 0
 
                 copy_files.append({
                     "dst": dst_file,
                     "src": jn(root, f),
-                    "size": self.c.os.lstat(jn(root, f)).st_size
+                    "size": size
                 })
 
         # file number and size statistics
@@ -294,7 +317,7 @@ class Shutil(ShutilABC):
                                     f"does not exist")
 
         lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
-        allow_file = file_filter(include, exclude)
+        ignore_files = file_filter(include, exclude)
 
         copy_files: List["_COPY_FILES"] = []
         dst_dirs = []
@@ -316,16 +339,25 @@ class Shutil(ShutilABC):
                 directory = directory.replace("/", "", 1)
             dst_dirs.append(jn(dst, directory))
 
+            skip_files = ignore_files("", files)
+
             for f in files:
                 dst_file = jn(dst, directory, f)
 
-                if not allow_file(dst_file):
+                if f in skip_files:
                     continue
+
+                if quiet:
+                    size = 0
+                else:
+                    size = os.path.getsize(jn(root, f))
+                    if size is None:
+                        size = 0
 
                 copy_files.append({
                     "dst": dst_file,
                     "src": jn(root, f),
-                    "size": os.path.getsize(jn(root, f))
+                    "size": size
                 })
 
         # file number and size statistics

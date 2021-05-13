@@ -1,14 +1,13 @@
 """Helper function and classes for ssh_utilities module."""
 
-import re
+import fnmatch
 import time
 from contextlib import contextmanager
-from fnmatch import translate
 from functools import wraps
 from pathlib import Path
-from warnings import warn
 from typing import (TYPE_CHECKING, Any, Callable, Generic, Optional, Sequence,
-                    TypeVar, Union)
+                    Set, TypeVar, Union)
+from warnings import warn
 
 from paramiko.config import SSHConfig
 from tqdm import tqdm
@@ -17,7 +16,7 @@ from tqdm.utils import _term_move_up
 from .exceptions import CalledProcessError
 
 if TYPE_CHECKING:
-    from .typeshed import _CMD
+    from .typeshed import _CMD, _SPATH
 
 __all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
            "lprint", "for_all_methods", "file_filter", "config_parser",
@@ -257,41 +256,50 @@ class file_filter:
         patttern if files to exclude
     """
 
-    def __init__(self, include: Optional[str], exclude: Optional[str]) -> None:
+    def __init__(self, include: Optional[Union[str, Sequence[str]]],
+                 exclude: Optional[Union[str, Sequence[str]]]) -> None:
+
+        if isinstance(include, str):
+            include = [include]
+        if isinstance(exclude, str):
+            exclude = [exclude]
+
+        self._inc_pattern = include
+        self._exc_pattern = exclude
 
         if include and exclude:
-            self._inc = re.compile(translate(include))
-            self._exc = re.compile(translate(exclude))
             self.match = self._match_both
         elif include and not exclude:
-            self._inc = re.compile(translate(include))
             self.match = self._match_inc
         elif not include and exclude:
-            self._exc = re.compile(translate(exclude))
             self.match = self._match_exc
         elif not include and not exclude:
             self.match = self._match_none
 
-    def _match_none(self, filename: str) -> bool:
-        return True
+    def _match_none(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
+        return set(filenames)
 
-    def _match_inc(self, filename: str) -> bool:
-        if not self._inc.search(filename):
-            return False
-        else:
-            return True
+    def _match_inc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
+        
+        files = []
+        for pattern in self._inc_pattern:
+            files.extend(fnmatch.filter(filenames, pattern))
 
-    def _match_exc(self, filename: str) -> bool:
-        if self._exc.search(filename):
-            return False
-        else:
-            return True
+        return set([f for f in filenames if f not in files])
 
-    def _match_both(self, filename: str) -> bool:
-        return self._match_exc(filename) and self._match_inc(filename)
+    def _match_exc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
 
-    def __call__(self, filename: str) -> bool:
-        return self.match(filename)
+        files = []
+        for pattern in self._exc_pattern:
+            files.extend(fnmatch.filter(filenames, pattern))
+
+        return set(files)
+
+    def _match_both(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
+        return self._match_exc(path, filenames).union(self._match_inc(path, filenames))
+
+    def __call__(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
+        return self.match(path, filenames)
 
 
 def config_parser(config_path: Union["Path", str]) -> SSHConfig:
@@ -423,8 +431,9 @@ def deprecation_warning(replacement: str, additional_msg: str = "") -> Callable:
         @wraps
         def warn_decorator(*args, **kwargs):
 
-            warn(f"{function.__name__} is deprecated and will be removed/made private in "
-                f"future release. Please use {replacement} instead. {}")
+            warn(f"{function.__name__} is deprecated and will be removed/made "
+                 f"private in future release. Please use {replacement} "
+                 f"instead. {additional_msg}")
 
             return function(*args, **kwargs)
 

@@ -3,7 +3,8 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, List, IO, Optional
+from typing import (IO, TYPE_CHECKING, Any, Callable, List, Optional, Sequence,
+                    Set)
 
 from ..abstract import ShutilABC
 from ..utils import context_timeit, deprecation_warning, file_filter
@@ -28,6 +29,10 @@ class Shutil(ShutilABC):
 
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
+
+    def ignore_paterns(self, *paterns: Sequence[str]
+                       ) -> Callable[[Any, Sequence[str]], Set[str]]:
+        return shutil.ignore_patterns(*paterns)
 
     @staticmethod
     def copyfileobj(fsrc: IO, fdst: IO, *, direction: "_DIRECTION",
@@ -83,10 +88,10 @@ class Shutil(ShutilABC):
                       remove_after: bool = True, quiet: bool = False):
 
         def _cpy(src: str, dst: str):
-            if allow_file(src):
+            if src not in ignore_files("", src):
                 shutil.copy2(src, dst)
 
-        allow_file = file_filter(include, exclude)
+        ignore_files = file_filter(include, exclude)
 
         remote_path = self.c._path2str(remote_path)
         local_path = self.c._path2str(local_path)
