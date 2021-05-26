@@ -202,7 +202,8 @@ class Shutil(ShutilABC):
             if self.c.os.isdir(path):
                 self.c.sftp.rmdir(path)
 
-    @check_connections(exclude_exceptions=FileNotFoundError)
+    # TODO collect errors and raise at the end
+    @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def download_tree(
         self, remote_path: "_SPATH", local_path: "_SPATH",
         include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
@@ -301,7 +302,7 @@ class Shutil(ShutilABC):
         if remove_after:
             self.rmtree(src, quiet=q)
 
-    @check_connections(exclude_exceptions=FileNotFoundError)
+    @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def upload_tree(
         self, local_path: "_SPATH", remote_path: "_SPATH",
         include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,

@@ -277,7 +277,7 @@ class file_filter:
             self.match = self._match_none
 
     def _match_none(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
-        return set(filenames)
+        return set()
 
     def _match_inc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
         
