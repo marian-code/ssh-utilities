@@ -55,7 +55,7 @@ class TestSSHPath(TestCase):
         # SSH to self, must have and localhost entry in config file and
         # correcponding keys present, also sshd must be installed and running
         if self.user == "rynik":
-            c = Connection.get("kohn", local=False)
+            c = Connection("kohn", local=False)
         # travis/git config file must change user password to desired
         else:
             c = Connection.open(self.user, "127.0.0.1", ssh_key_file=None,
@@ -70,7 +70,7 @@ class TestSSHPath(TestCase):
         #     "identityfile": "~/.ssh/id_rsa"
         # })
         # print(Connection.available_hosts)
-        # c = Connection.get(localhost, local=False)
+        # c = Connection(localhost, local=False)
 
         self.p = c.pathlib.Path("/tmp")
 

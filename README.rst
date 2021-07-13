@@ -201,14 +201,14 @@ your **~/.ssh/config** file.
     >>> Connection[<server_name>]
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
-There is also a specific get method which is safer and with better typing
+Class can also be normally instantiated which is safer and with better typing
 support than dict-like indexing. Connection can be made thread safe by passing
 ``thread_safe=True`` argument to the constructor
 
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -254,7 +254,7 @@ connection
 .. code-block:: python
 
     >>> from ssh_utilities import Connection, SSHPath
-    >>> conn = Connection.get(<server_name>)
+    >>> conn = Connection(<server_name>)
     >>> sshpath = SSHPath(conn, <some_path>)
 
 The replacements for parts of python standard lib can be used as inner classes
@@ -274,7 +274,7 @@ that when connection is closed it will stop working!
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> conn = Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> conn = Connection(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> remote_os =conn.os
     >>> remote_subprocess = conn.subprocess
 
@@ -283,7 +283,7 @@ The last possibility is to instantiate each module by itself
 .. code-block:: python
 
     >>> from ssh_utilities import Connection, Os, Subprocess
-    >>> conn = Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> conn = Connection(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> remote_os = Os(conn)
     >>> remote_subprocess = Subprocess(conn)
 

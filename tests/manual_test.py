@@ -3,14 +3,14 @@ from ssh_utilities.multi_connection import MultiConnection
 from copy import deepcopy
 import pickle
 
-c = Connection.get("kohn", quiet=True, local=False)
+c = Connection("kohn", quiet=True, local=False)
 
 pat = "home/rynik/Raid/dizertacka/train_Si/ge_DPMD/train/gen?/train[0-9]/ge_all_*.pb"
 
 print(list(c.pathlib.Path("/").glob(pat)))
 
 """
-c = Connection.get("kohn", quiet=True, local=False)
+c = Connection("kohn", quiet=True, local=False)
 print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
 
 c1 = deepcopy(c)

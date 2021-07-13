@@ -168,8 +168,6 @@ class check_connections:
                       f"username:   {instance.username}\n"
                       f"ssh class:  {type(instance.c)}\n"
                       f"sftp class: {type(instance.sftp)}")
-        if instance._sftp_open:
-            log.exception(f"remote home: {instance.remote_home}")
 
         return success
 

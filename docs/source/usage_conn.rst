@@ -42,7 +42,7 @@ support than dict-like indexing
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection.get(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -96,7 +96,7 @@ and ofcourse corresponding identity file has to be present too.
     >>> from ssh_utilities.exceptions import CalledProcessError
     >>> from pathlib import Path
     >>> 
-    >>> c = Connection.get("my_ssh_server")
+    >>> c = Connection("my_ssh_server")
     >>> Will login with private RSA key located in /home/current_user/.ssh/id_rsa_my_ssh_server
     >>> Connecting to server: ssh_user@xxx.xxx.xxx.xxx (my_ssh_server)
 
@@ -238,7 +238,7 @@ submodule:
     >>> # for the capital startinf letter
     >>> from ssh_utilities import Os, Connection
     >>>
-    >>> c = Connection.get("some-host")
+    >>> c = Connection("some-host")
     >>>
     >>> # now define remote version of os module, it must be tied to a
     >>> # connection object 

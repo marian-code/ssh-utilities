@@ -7,6 +7,7 @@ or remote connection classes as needed based on input arguments.
 import getpass
 import logging
 import os
+import warnings
 from json import loads
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
@@ -58,11 +59,7 @@ class _ConnectionMeta(type):
         return type.__new__(cls, classname, bases, dictionary)
 
     def __getitem__(cls, key: str) -> Union[SSHConnection, LocalConnection]:
-        return cls.get(key, local=False, quiet=False, thread_safe=False)
-
-    def get(cls, *args, **kwargs) -> Union[SSHConnection, LocalConnection]:
-        """Overriden in class that inherits this metaclass."""
-        ...
+        return cls(key, local=False, quiet=False, thread_safe=False)
 
 
 class Connection(metaclass=_ConnectionMeta):
@@ -75,8 +72,6 @@ class Connection(metaclass=_ConnectionMeta):
 
     This is a factory class so calling any of the initializer classmethods
     returns initialized SSHConnection or LocalConnection based on arguments.
-
-    All methods belong to class so this object should not be instantiated.
 
     Upon import this class automatically reads ssh configuration file in:
     ~/.ssh/config if it is present. The class is then indexable by keys in
@@ -92,7 +87,7 @@ class Connection(metaclass=_ConnectionMeta):
     support than dict-like indexing
 
     >>> from ssh_utilities import Connection
-    >>> Connection.get(<server_name>)
+    >>> Connection(<server_name>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
     Class can be also used as a context manager.
@@ -119,58 +114,22 @@ class Connection(metaclass=_ConnectionMeta):
                                <server_name>, <thread_safe>):
     """
 
-    def __init__(self, ssh_server: str, local: bool = False,
-                 quiet: bool = False, thread_safe: bool = False) -> None:
-        self._connection = self.get(ssh_server, local=local, quiet=quiet,
-                                    thread_safe=thread_safe)
-
-    def __enter__(self) -> Union[SSHConnection, LocalConnection]:
-        return self._connection
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self._connection.close(quiet=True)
-
-    @classmethod
-    def get_available_hosts(cls) -> List[str]:
-        """List all elegible hosts for connection from ~/.ssh/config.
-
-        Returns
-        -------
-        List[str]
-            list of available hosts
-        """
-        available = []
-        for host, credentials in cls.available_hosts.items():
-            if host == "*":
-                continue
-            elif not (credentials.get("user", None) and
-                      credentials.get("hostname", None)):
-                continue
-            else:
-                available.append(host)
-
-        return available
-
     @overload
-    @classmethod
-    def get(cls, ssh_server: str, local: Literal[False], quiet: bool,
+    def __new__(cls, ssh_server: str, local: Literal[False], quiet: bool,
             thread_safe: bool) -> SSHConnection:
         ...
 
     @overload
-    @classmethod
-    def get(cls, ssh_server: str, local: Literal[True], quiet: bool,
+    def __new__(cls, ssh_server: str, local: Literal[True], quiet: bool,
             thread_safe: bool) -> LocalConnection:
         ...
 
     @overload
-    @classmethod
-    def get(cls, ssh_server: str, local: bool, quiet: bool,
+    def __new__(cls, ssh_server: str, local: bool, quiet: bool,
             thread_safe: bool) -> Union[SSHConnection, LocalConnection]:
         ...
 
-    @classmethod
-    def get(cls, ssh_server: str, local: bool = False, quiet: bool = False,
+    def __new__(cls, ssh_server: str, local: bool = False, quiet: bool = False,
             thread_safe: bool = False):
         """Get Connection based on one of names defined in .ssh/config file.
 
@@ -218,6 +177,35 @@ class Connection(metaclass=_ConnectionMeta):
                 raise KeyError(f"{RED}missing key in config dictionary for "
                                f"{ssh_server}: {R}{e}")
 
+    @classmethod
+    def get_available_hosts(cls) -> List[str]:
+        """List all elegible hosts for connection from ~/.ssh/config.
+
+        Returns
+        -------
+        List[str]
+            list of available hosts
+        """
+        available = []
+        for host, credentials in cls.available_hosts.items():
+            if host == "*":
+                continue
+            elif not (credentials.get("user", None) and
+                      credentials.get("hostname", None)):
+                continue
+            else:
+                available.append(host)
+
+        return available
+       
+    @classmethod
+    def get(cls, *args, **kwargs):
+        warnings.warn(
+            "Usage of 'get'/'get_connection' method is deprecated. "
+            "Instantiate the object normally instead.",
+            category=DeprecationWarning,
+            stacklevel=2
+        )
     get_connection = get
 
     @classmethod

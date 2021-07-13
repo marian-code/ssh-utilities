@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from json import dumps
 from os import fspath
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, Union
+from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, Union, TypeVar
 
 # import stale to prevent circullar import
 from ssh_utilities import connection
@@ -16,6 +16,12 @@ if TYPE_CHECKING:
     from ._pathlib import PathlibABC
     from ._shutil import ShutilABC
     from ._subprocess import SubprocessABC
+    from ..remote import SSHConnection
+    from ..local import LocalConnection
+    from ..multi_connection import MultiConnection
+
+    CONN_TYPE = TypeVar("CONN_TYPE", LocalConnection, SSHConnection, MultiConnection)
+
 
 __all__ = ["ConnectionABC"]
 
@@ -201,3 +207,9 @@ class ConnectionABC(ABC):
                       pkey_file=state["ssh_key"],
                       server_name=state["server_name"],
                       quiet=True, thread_safe=state["thread_safe"])
+
+    def __enter__(self: "CONN_TYPE") -> "CONN_TYPE":
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close(quiet=True)

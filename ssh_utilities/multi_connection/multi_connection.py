@@ -80,10 +80,10 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     >>> # we always implement normal dict-like method which works as expected
     >>> mc.get(server1)
     >>> <SSHConnection instance connected to server1>
-    >>> # in each case there is always also a methos with `_all` suffix by
+    >>> # in each case there is always also a method with `_all` suffix by
     >>> # which you can acces the whole pool of connections registered under
     >>> # the key
-    >>> mc_get_all(server1)
+    >>> mc.get_all(server1)
     >>> <deque with two independent SSHConnections to server 1>
     """
 
@@ -112,7 +112,7 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
         self._connections = defaultdict(deque)
         for ss, l, ts in zip(ssh_servers, local, thread_safe):
             self._connections[ss].append(
-                Connection.get(ss, local=l, quiet=quiet, thread_safe=ts)
+                Connection(ss, local=l, quiet=quiet, thread_safe=ts)
             )
 
         # init submodules
@@ -168,12 +168,6 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
 
     get_available_hosts = Connection.get_available_hosts
     add_hosts = Connection.add_hosts
-
-    def __enter__(self) -> "MultiConnection":
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.close(quiet=True)
 
     def __del__(self):
         self.close(quiet=True)

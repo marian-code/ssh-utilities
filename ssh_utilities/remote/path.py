@@ -158,7 +158,7 @@ class SSHPath(Path):
         """
         if not self.c._sftp_open:
             self.c.sftp
-        return SSHPath(self.c, self.c.remote_home)
+        return SSHPath(self.c, self.c._remote_home)
 
     def stat(self) -> "SFTPAttributes":
         """Get file or directory statistics, resolve symlinks alog the way.

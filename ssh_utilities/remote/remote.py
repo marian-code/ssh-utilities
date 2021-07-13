@@ -269,13 +269,6 @@ class SSHConnection(ConnectionABC):
                         authentication_attempts=authentication_attempts
                     )
 
-    @property
-    def remote_home(self) -> str:
-        if not self._remote_home:
-            self.sftp
-
-        return self._remote_home
-
     @property  # type: ignore
     @check_connections()
     def sftp(self) -> "SFTPClient":
