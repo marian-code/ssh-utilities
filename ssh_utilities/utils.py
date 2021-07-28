@@ -280,7 +280,7 @@ class file_filter:
         return set()
 
     def _match_inc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
-        
+
         files = []
         for pattern in self._inc_pattern:
             files.extend(fnmatch.filter(filenames, pattern))

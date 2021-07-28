@@ -241,11 +241,11 @@ class Shutil(ShutilABC):
             skip_files = ignore_files("", files)
 
             for f in files:
-                dst_file = jn(dst, directory, f)
-
                 if f in skip_files:
                     continue
-                
+
+                dst_file = jn(dst, directory, f)
+
                 if quiet:
                     size = 0
                 else:
@@ -281,6 +281,9 @@ class Shutil(ShutilABC):
         max_dst = max([len(c["dst"]) for c in copy_files])
 
         q = True if quiet in (True, "progress") else False
+        # move additional row because progressbar moves one up by default
+        if not q:
+            print("\n")
         with ProgressBar(total=total, quiet=q) as t:
             for cf in copy_files:
 
@@ -343,10 +346,10 @@ class Shutil(ShutilABC):
             skip_files = ignore_files("", files)
 
             for f in files:
-                dst_file = jn(dst, directory, f)
-
                 if f in skip_files:
                     continue
+
+                dst_file = jn(dst, directory, f)
 
                 if quiet:
                     size = 0
@@ -383,6 +386,9 @@ class Shutil(ShutilABC):
         max_dst = max([len(c["dst"]) for c in copy_files])
 
         q = True if quiet in (True, "progress") else False
+        # move additional row because progressbar moves one up by default
+        if not q:
+            print("\n")
         with ProgressBar(total=total, quiet=q) as t:
             for cf in copy_files:
 

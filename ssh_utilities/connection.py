@@ -7,7 +7,6 @@ or remote connection classes as needed based on input arguments.
 import getpass
 import logging
 import os
-import warnings
 from json import loads
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
@@ -200,11 +199,9 @@ class Connection(metaclass=_ConnectionMeta):
        
     @classmethod
     def get(cls, *args, **kwargs):
-        warnings.warn(
+        raise AttributeError(
             "Usage of 'get'/'get_connection' method is deprecated. "
             "Instantiate the object normally instead.",
-            category=DeprecationWarning,
-            stacklevel=2
         )
     get_connection = get
 
