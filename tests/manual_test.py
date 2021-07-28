@@ -142,7 +142,7 @@ with Connection("hartree") as c:
 
 s = shelve.open("test_shelve", writeback=True)
 
-c = Connection.get_connection("fock")
+c = Connection("fock")
 c.isfile("/home/rynik")
 
 s["c"] = c
@@ -189,7 +189,7 @@ for i in range(100000):
 
 print(f"queue time = {perf_counter() - t:.6f}")
 
-c = Connection.get_connection("fock")
+c = Connection("fock")
 c.sftp
 p = c.Path("/home/rynik")
 

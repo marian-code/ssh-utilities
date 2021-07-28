@@ -24,7 +24,7 @@ methods that would return value for individual connection now return iterator
 of these individual values.
 
 Instantiating class provides a simple interface similar to factory
-``Connection.get`` method. It relies on the keys present in your
+``Connection`` class. It relies on the keys present in your
 ``~/.ssh.config`` file or ones added through ``add_hosts`` method
 
 .. note::
@@ -72,7 +72,7 @@ without parameters and than add individual connections one by one.
     >>> from ssh_utilities import MultiConnection, Connection
     >>> mc = MultiConnection([])  # ssh_servers argument must be empty list
     >>>
-    >>> c1 = Connection.get(<ssh_server>)
+    >>> c1 = Connection(<ssh_server>)
     >>> mc += c1  # or mc = mc + c1
     >>>
     >>> c2 = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>,
