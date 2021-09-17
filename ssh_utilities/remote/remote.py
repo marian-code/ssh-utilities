@@ -66,8 +66,8 @@ class SSHConnection(ConnectionABC):
 
     Warnings
     --------
-    At least one of (password, pkey_file) must be specified, if both are,
-    RSA key will be used
+    At least one of (password, pkey_file, allow_agent) must be specified, priority used is
+    SSH-Agent -> RSA Key -> password
 
     thread_safe parameter is not implemented yet!!!
 
@@ -84,7 +84,8 @@ class SSHConnection(ConnectionABC):
                  password: Optional[str] = None,
                  pkey_file: Optional[Union[str, Path]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
-                 quiet: bool = False, thread_safe: bool = False) -> None:
+                 quiet: bool = False, thread_safe: bool = False,
+                 allow_agent: Optional[bool] = False) -> None:
 
         log.info(f"Connection object will {'' if thread_safe else 'not'} be "
                  f"thread safe")
@@ -99,6 +100,10 @@ class SSHConnection(ConnectionABC):
         lprint.line_rewrite = line_rewrite
         lprnt = lprint(quiet)
 
+        if allow_agent:
+            msg = f"Will login with ssh-agent"
+            lprnt(msg)
+            log.info(msg)
         if pkey_file:
             msg = f"Will login with private RSA key located in {pkey_file}"
             lprnt(msg)
@@ -130,9 +135,13 @@ class SSHConnection(ConnectionABC):
         self.address = address
         self.username = username
         self.pkey_file = pkey_file
+        self.allow_agent = allow_agent
 
         # paramiko connection
-        if pkey_file:
+        if allow_agent:
+            self.pkey = None
+            self.password = None
+        elif pkey_file:
             for key in _KEYS:
                 try:
                     self.pkey = key.from_private_key_file(
@@ -246,6 +255,9 @@ class SSHConnection(ConnectionABC):
 
         with self.__lock:
             try:
+                if self.allow_agent:
+                    # connect using ssh-agent
+                    self.c.connect(self.address, username=self.username, allow_agent=True)
                 if self.pkey:
                     # connect with public key
                     self.c.connect(self.address, username=self.username,
