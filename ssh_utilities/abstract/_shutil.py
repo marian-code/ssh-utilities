@@ -4,7 +4,10 @@ from abc import ABC, abstractmethod
 from typing import (IO, TYPE_CHECKING, Any, Callable, FrozenSet, List,
                     Optional, Sequence, Set, Union, overload)
 
-from typing_extensions import Literal
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 if TYPE_CHECKING:
     from paramiko.sftp_file import SFTPFile

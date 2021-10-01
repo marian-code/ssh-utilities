@@ -11,7 +11,10 @@ from json import loads
 from socket import gethostname
 from typing import TYPE_CHECKING, Dict, List, Optional, Union, overload
 
-from typing_extensions import Literal
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 from .constants import CONFIG_PATH, RED, R
 from .local import LocalConnection
@@ -21,7 +24,10 @@ from .utils import config_parser
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typing_extensions import TypedDict
+    try:
+        from typing import TypedDict  # type: ignore - python >= 3.8
+    except ImportError:
+        from typing_extensions import TypedDict  # python < 3.8
 
     _HOSTS = TypedDict("_HOSTS", {"user": str, "hostname": str,
                                   "identityfile": Union[str, List[str]]})

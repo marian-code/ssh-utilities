@@ -5,7 +5,10 @@ import os
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 from typing import TYPE_CHECKING, List
 
-from typing_extensions import Literal
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 from ..abstract import OsABC, OsPathABC
 from ..constants import G, R

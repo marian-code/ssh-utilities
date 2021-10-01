@@ -3,7 +3,10 @@
 from typing import (IO, TYPE_CHECKING, Any, Callable, Iterator, List, Mapping,
                     Optional, Sequence, Tuple, Union, Type)
 
-from typing_extensions import Literal
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -28,7 +31,7 @@ _ENV = Optional[Union[Mapping[bytes, _TXT], Mapping[str, _TXT]]]
 _GLOBPAT = Optional[str]
 #: accepted path types by ssh_utilities - str, Path or SSHPath
 _SPATH = Union[str, "Path", "SSHPath"]
-#: aliac for file send direction - put or get
+#: alias for file send direction - put or get
 _DIRECTION = Literal["get", "put"]
 #: copy callback function - callable that accepts two floats first reperesents
 #: done part and second total amount

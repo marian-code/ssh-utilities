@@ -7,7 +7,10 @@ from os.path import join as jn
 from typing import (IO, TYPE_CHECKING, Any, Callable, List, NoReturn, Optional,
                     Sequence, Set, Union)
 
-from typing_extensions import Literal
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 from ..abstract import ShutilABC
 from ..constants import LG, C, G, R
@@ -18,7 +21,11 @@ from ._connection_wrapper import check_connections
 
 if TYPE_CHECKING:
     from paramiko.sftp_file import SFTPFile
-    from typing_extensions import TypedDict
+
+    try:
+        from typing import TypedDict  # type: ignore - python >= 3.8
+    except ImportError:
+        from typing_extensions import TypedDict  # python < 3.8
 
     from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
     from .remote import SSHConnection

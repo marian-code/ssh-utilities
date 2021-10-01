@@ -4,7 +4,11 @@ import logging
 from pathlib import Path
 
 from colorama import Fore, init
-from typing_extensions import Literal
+
+try:
+    from typing import Literal  # type: ignore - python >= 3.8
+except ImportError:
+    from typing_extensions import Literal  # python < 3.8
 
 __all__ = ["G", "LG", "R", "RED", "C", "Y", "CONFIG_PATH", "GET", "PUT"]
 

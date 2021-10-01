@@ -282,7 +282,7 @@ class file_filter:
     def _match_inc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
 
         files = []
-        for pattern in self._inc_pattern:
+        for pattern in self._inc_pattern:  # type: ignore
             files.extend(fnmatch.filter(filenames, pattern))
 
         return set([f for f in filenames if f not in files])
@@ -290,7 +290,7 @@ class file_filter:
     def _match_exc(self, path: "_SPATH", filenames: Sequence[str]) -> Set[str]:
 
         files = []
-        for pattern in self._exc_pattern:
+        for pattern in self._exc_pattern:  # type: ignore
             files.extend(fnmatch.filter(filenames, pattern))
 
         return set(files)
