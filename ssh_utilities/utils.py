@@ -5,8 +5,8 @@ import time
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import (TYPE_CHECKING, Any, Callable, Generic, Optional, Sequence,
-                    Set, TypeVar, Union)
+from typing import (TYPE_CHECKING, Any, Callable, Generic, List, Optional,
+                    Sequence, Set, TypeVar, Union)
 from warnings import warn
 
 from paramiko.config import SSHConfig
@@ -16,11 +16,12 @@ from tqdm.utils import _term_move_up
 from .exceptions import CalledProcessError
 
 if TYPE_CHECKING:
+    from .remote.path import SSHPath
     from .typeshed import _CMD, _SPATH
 
 __all__ = ["ProgressBar", "bytes_2_human_readable", "CompletedProcess",
            "lprint", "for_all_methods", "file_filter", "config_parser",
-           "context_timeit", "NullContext"]
+           "context_timeit", "NullContext", "path_wildcard_expand"]
 
 
 _CompletedProcess = TypeVar("_CompletedProcess", str, bytes)
@@ -439,3 +440,17 @@ def deprecation_warning(replacement: str, additional_msg: str = "") -> Callable:
 
         return warn_decorator
     return decorator
+
+
+def path_wildcard_expand(*paths: "SSHPath") -> List["SSHPath"]:
+
+    files = []
+
+    for remote_path in paths:
+        remote_pattern = str(remote_path.relative_to(remote_path.root))
+        remote_root = remote_path.connection.pathlib.Path(remote_path.root)
+        remote_files = list(remote_root.glob(remote_pattern))
+        files.extend(remote_files)
+
+    return files
+        

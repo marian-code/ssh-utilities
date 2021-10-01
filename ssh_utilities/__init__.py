@@ -23,10 +23,10 @@ from .multi_connection import MultiConnection
 from .remote.path import SSHPath
 from .remote import SSHConnection, PIPE, STDOUT, DEVNULL
 from .constants import GET, PUT
-from .utils import config_parser
+from .utils import config_parser, path_wildcard_expand
 
 __all__ = ["SSHConnection", "Connection", "LocalConnection", "SSHPath", "PIPE",
            "STDOUT", "DEVNULL", "GET", "PUT", "config_parser",
-           "MultiConnection"]
+           "MultiConnection", "path_wildcard_expand"]
 
 logging.getLogger(__name__)
