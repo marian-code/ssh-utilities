@@ -33,17 +33,18 @@ class Builtins(BuiltinsABC):
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
 
+    # TODO newline is not implemented
     @check_connections(exclude_exceptions=FileNotFoundError)
-    def open(self, filename: "_SPATH", mode: str = "r",
-             encoding: Optional[str] = None,
-             bufsize: int = -1, errors: Optional[str] = None
+    def open(self, filename: "_SPATH", mode: str = "r", buffering: int = -1,
+             encoding: Optional[str] = None, errors: Optional[str] = None,
+             newline: Optional[str] = None
              ) -> "SFTPFile":
 
         path = self.c._path2str(filename)
         encoding = encoding if encoding else "utf-8"
-        errors = errors if errors else "strict"
+        str_errors = errors if errors else "strict"
 
-        if not self.c.os.isfile(path) and "r" in mode:
+        if not self.c.os.path.isfile(path) and "r" in mode:
             raise FileNotFoundError(f"Cannot open {path} for reading, "
                                     f"it does not exist.")
 
@@ -51,13 +52,13 @@ class Builtins(BuiltinsABC):
             data = self.paramiko_read(size=size)
 
             if isinstance(data, bytes) and "b" not in mode and encoding:
-                data = data.decode(encoding=encoding, errors=errors)
+                data = data.decode(encoding=encoding, errors=str_errors)
 
             return data
 
         # open file
         try:
-            file_obj = self.c.sftp.open(path, mode=mode, bufsize=bufsize)
+            file_obj = self.c.sftp.open(path, mode=mode, bufsize=buffering)
         except IOError as e:
             log.exception(f"Error while opening file {filename}: {e}")
             raise e

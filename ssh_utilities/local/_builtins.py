@@ -29,11 +29,12 @@ class Builtins(BuiltinsABC):
         self.c = connection
 
     @staticmethod
-    def open(filename: "_SPATH", mode: str = "r",
-             encoding: Optional[str] = None,
-             bufsize: int = -1, errors: Optional[str] = None
+    def open(filename: "_SPATH", mode: str = "r", buffering: int = -1,
+             encoding: Optional[str] = None, errors: Optional[str] = None,
+             newline: Optional[str] = None
              ) -> IO:
         encoding = encoding if encoding else "utf-8"
         errors = errors if errors else "strict"
 
-        return open(filename, mode, encoding=encoding, errors=errors)
+        return open(filename, mode, encoding=encoding, errors=errors,
+                    buffering=buffering, newline=newline)

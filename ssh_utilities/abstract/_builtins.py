@@ -25,9 +25,9 @@ class BuiltinsABC(ABC, Generic[_Builtins1]):
     __abstractmethods__: FrozenSet[str]
 
     @abstractmethod
-    def open(self, filename: "_SPATH", mode: str = "r",
-             encoding: Optional[str] = None,
-             bufsize: int = -1, errors: Optional[str] = None
+    def open(self, filename: "_SPATH", mode: str = "r", buffering: int = -1,
+             encoding: Optional[str] = None, errors: Optional[str] = None,
+             newline: Optional[str] = None
              ) -> _Builtins1:
         """Opens remote file, works as python open function.
 
@@ -41,7 +41,7 @@ class BuiltinsABC(ABC, Generic[_Builtins1]):
             select mode to open file. Same as python open modes
         encoding: Optional[str]
             encoding type to decode file bytes stream
-        bufsize: int
+        buffering: int
             buffer size, 0 turns off buffering, 1 uses line buffering, and any
             number greater than 1 (>1) uses that specific buffer size
         errors: Optional[str]
@@ -49,6 +49,8 @@ class BuiltinsABC(ABC, Generic[_Builtins1]):
             handled, see builtin function
             `open <https://docs.python.org/3/library/functions.html#open>`_
             documentation for more details
+        newline: Optional[str]
+            this parameter is not used in ssh implementation
 
         Raises
         ------
