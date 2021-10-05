@@ -40,13 +40,14 @@ class Os(OsABC):
     def path(self) -> "OsPathLocal":
         return self._path
 
-    @staticmethod
-    def isfile(path: "_SPATH") -> bool:
-        return os.path.isfile(path)
+    def scandir(self, path: "_SPATH"):
+        return os.scandir(self.c._path2str(path))
 
-    @staticmethod
-    def isdir(path: "_SPATH") -> bool:
-        return os.path.isdir(path)
+    def rename(self, src: "_SPATH", dst: "_SPATH", *,
+               src_dir_fd: Optional[int] = None,
+               dst_dir_fd: Optional[int] = None):
+        os.rename(self.c._path2str(src), self.c._path2str(dst),
+                  src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
 
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
                  parents: bool = True, quiet: bool = True):
@@ -80,8 +81,6 @@ class Os(OsABC):
 
         return self._osname
 
-    osname = name
-
 
 class OsPathLocal(OsPathABC):
     """Drop in replacement for `os.path` module."""
@@ -89,8 +88,21 @@ class OsPathLocal(OsPathABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
+    def isfile(self, path: "_SPATH") -> bool:
+        return os.path.isfile(self.c._path2str(path))
+
+    def isdir(self, path: "_SPATH") -> bool:
+        return os.path.isdir(self.c._path2str(path))
+
+    def islink(self, path: "_SPATH") -> bool:
+        return os.path.islink(self.c._path2str(path))
+
     def realpath(self, path: "_SPATH") -> str:
         return os.path.realpath(self.c._path2str(path))
 
     def getsize(self, path: "_SPATH") -> int:
         return os.path.getsize(self.c._path2str(path))
+
+    def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
+        return os.path.join(self.c._path2str(path),
+                            *[self.c._path2str(p) for p in paths])

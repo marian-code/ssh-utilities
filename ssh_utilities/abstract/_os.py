@@ -1,12 +1,14 @@
 """Template module for all os classes."""
+
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, FrozenSet, TypeVar
+from typing import TYPE_CHECKING, FrozenSet, Generic, Optional, TypeVar
 
 if TYPE_CHECKING:
-    from ..typeshed import _SPATH, _ONERROR
+    from ..typeshed import _ONERROR, _SPATH
+    from . import _ATTRIBUTES
 
-__all__ = ["OsPathABC", "OsABC"]
+__all__ = ["OsPathABC", "OsABC", "DirEntryABC"]
 
 logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ logging.getLogger(__name__)
 # return types
 # problem discussion: https://github.com/python/typing/issues/548
 # potentially use returns in the future github.com/dry-python/returns
-_Os1 = TypeVar("_Os1")  # bool
+_Os1 = TypeVar("_Os1")  # "_SCANDIR"
 _Os2 = TypeVar("_Os2")  # List[str]
 _Os3 = TypeVar("_Os3")  # "_ATTRIBUTES"
 _Os4 = TypeVar("_Os4")  # Literal["nt", "posix", "java"]
@@ -23,11 +25,165 @@ _Os5 = TypeVar("_Os5")  # OsPathABC
 _Os6 = TypeVar("_Os6")  # "_WALK"
 
 
+class DirEntryABC(ABC):
+    """Object representation of directory or a file yielded by `scandir()`.
+
+    Has subset of `Path` object methods.
+    """
+
+    @abstractmethod
+    def inode(self) -> int:
+        """Return the inode number of the entry.
+
+        Returns
+        -------
+        int
+            inode number
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_dir(self, *, follow_symlinks: bool = True) -> bool:
+        """Return True if this entry is a directory.
+
+        Parameters
+        ----------
+        follow_symlinks : bool, optional
+            if we method should follow and resolve symlinks, by default False
+
+        Returns
+        -------
+        bool
+            True if path points to a directory.
+
+        Warnings
+        --------
+        follow_symlinks is `False` by default in the remote implementation,
+        contrary to the implementation in python os library!
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_file(self, *, follow_symlinks: bool = True) -> bool:
+        """Return True if this entry is a file.
+
+        Parameters
+        ----------
+        follow_symlinks : bool, optional
+            if we method should follow and resolve symlinks, by default False
+
+        Returns
+        -------
+        bool
+            True if path points to a file.
+
+        Warnings
+        --------
+        follow_symlinks is `False` by default in the remote implementation,
+        contrary to the implementation in python os library!
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_symlink(self) -> bool:
+        """Return True if this entry is a symlink.
+
+        Returns
+        -------
+        bool
+            true if targer is symlink
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stat(self, *, follow_symlinks: bool = True) -> "_ATTRIBUTES":
+        """Return `SFTPAttributes` object similar to `os.stat`.
+
+        Parameters
+        ----------
+        follow_symlinks : bool, optional
+            if we method should follow and resolve symlinks, by default False
+
+        Returns
+        -------
+        SFTPAttributes
+            attributes object for the entry.
+
+        Warnings
+        --------
+        follow_symlinks is `False` by default in the remote implementation,
+        contrary to the implementation in python os library!
+        """
+        raise NotImplementedError
+
+
 class OsPathABC(ABC):
     """`os.path` module drop-in replacement base."""
 
     __name__: str
     __abstractmethods__: FrozenSet[str]
+
+    @abstractmethod
+    def isfile(self, path: "_SPATH") -> bool:
+        """Check if path points to a file.
+
+        Parameters
+        ----------
+        path: :const:`ssh_utilities.typeshed._SPATH`
+            path to check
+
+        Returns
+        -------
+        bool
+            check result
+
+        Raises
+        ------
+        IOError
+            if file could not be accessed
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def isdir(self, path: "_SPATH") -> bool:
+        """Check if path points to directory.
+
+        Parameters
+        ----------
+        path: :const:`ssh_utilities.typeshed._SPATH`
+            path to check
+
+        Returns
+        -------
+        bool
+            check result
+
+        Raises
+        ------
+        IOError
+            if dir could not be accessed
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def islink(self, path: "_SPATH") -> bool:
+        """Check if path points to symbolic link.
+
+        Parameters
+        ----------
+        path: :const:`ssh_utilities.typeshed._SPATH`
+            path to check
+
+        Returns
+        -------
+        bool
+            check result
+
+        Raises
+        ------
+        IOError
+            if dir could not be accessed
+        """
 
     def realpath(self, path: "_SPATH") -> str:
         """Return the canonical path of the specified filename.
@@ -51,7 +207,7 @@ class OsPathABC(ABC):
 
         Parameters
         ----------
-        path : _SPATH
+        path : :const:`ssh_utilities.typeshed._SPATH`
             path to file/directory
 
         Returns
@@ -66,6 +222,36 @@ class OsPathABC(ABC):
         """
         raise NotImplementedError
 
+    def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
+        """Join one or more path components intelligently.
+
+        The return value is the concatenation of path and any members of
+        *paths with exactly one directory separator following each non-empty
+        part except the last, meaning that the result will only end
+        in a separator if the last part is empty. If a component is
+        an absolute path, all previous components are thrown away and
+        joining continues from the absolute path component. On Windows,
+        the drive letter is not reset when an absolute path component
+        (e.g., 'foo') is encountered. If a component contains a drive letter,
+        all previous components are thrown away and the drive letter is reset.
+        Note that since there is a current directory for each drive,
+        os.path.join("c:", "foo") represents a path relative to the current
+        directory on drive C: (c:foo), not c:/foo.
+
+        Parameters
+        ----------
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            the starting path part
+        *paths : :const:`ssh_utilities.typeshed._SPATH`
+            path parts to join to the first one
+
+        Returns
+        -------
+        str
+            joined path parts
+        """
+        raise NotImplementedError
+
 
 class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
     """`os` module drop-in replacement base."""
@@ -74,36 +260,44 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
     __abstractmethods__: FrozenSet[str]
 
     @abstractmethod
-    def isfile(self, path: "_SPATH") -> _Os1:
-        """Check if path points to a file.
+    def scandir(self, path: "_SPATH") -> _Os1:
+        """Return an iterator of os.DirEntry objects.
+
+        These correspond to the entries in the directory given by path.
 
         Parameters
         ----------
-        path: :const:`ssh_utilities.typeshed._SPATH`
-            path to check
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            root path directory to scan
 
-        Raises
-        ------
-        IOError
-            if file could not be accessed
+        Returns
+        -------
+        :const:`ssh_utilities.abstract._SCANDIR`
+            scandir iterator.
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def isdir(self, path: "_SPATH") -> _Os1:
-        """Check if path points to directory.
+    def rename(self, src: "_SPATH", dst: "_SPATH", *,
+               src_dir_fd: Optional[int] = None,
+               dst_dir_fd: Optional[int] = None):
+        """Rename the file or directory src to dst.
 
         Parameters
         ----------
-        path: :const:`ssh_utilities.typeshed._SPATH`
-            path to check
+        src : :const:`ssh_utilities.typeshed._SPATH`
+            source file or directory
+        dst : :const:`ssh_utilities.typeshed._SPATH`
+            destination file or directory
+        src_dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+        dst_dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
 
         Raises
         ------
-        IOError
-            if dir could not be accessed
+        OsError
+            If dst exists, the operation will fail with an OSError,
         """
-        raise NotImplementedError
 
     @abstractmethod
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
@@ -269,8 +463,6 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         """
         raise NotImplementedError
 
-    osname = name
-
     @property  # type: ignore
     @abstractmethod
     def path(self) -> _Os5:
@@ -281,6 +473,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
     def path(self, path: _Os5):
         raise NotImplementedError
 
+    @abstractmethod
     def walk(self, top: "_SPATH", topdown: bool = True,
              onerror: "_ONERROR" = None, followlinks: bool = False) -> _Os6:
         """Recursive directory listing.
