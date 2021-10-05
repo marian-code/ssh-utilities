@@ -85,6 +85,11 @@ Design goals and features
   an input
 - strong emphasis on usage of ssh key based authentication
 
+.. warning:: 
+
+   from version v0.8.x to 0.9.x there is a change in the API some methods have
+   been moved from `os`_ submodule to `os.path`_ submodule
+
 List of inner classes and implemented methods
 ---------------------------------------------
 
@@ -99,7 +104,7 @@ summarizes the API. Based on table you can do for instance:
  .. code-block:: python
 
     >>> # this is OK
-    >>> SSHConnection.os.isfile(<somepath>)
+    >>> SSHConnection.os.path.isfile(<somepath>)
     >>> # this is not OK as it is marked in table as not implemented
     >>> MultiConnection.os.path.realpath(<somepath>)
     >>> # this is also not permitted as methods not mentioned in table are not
@@ -111,9 +116,9 @@ summarizes the API. Based on table you can do for instance:
 +===============+=================+=================+==================+=================+
 | `builtins`_   | open            | |yes|           | |yes|            | |yes|           |
 +---------------+-----------------+-----------------+------------------+-----------------+
-| `os`_         | isfile          | |yes|           | |yes|            | |yes|           |
+| `os`_         | scandir         | |yes|           | |yes|            | |yes|           |
 |               +-----------------+-----------------+------------------+-----------------+
-|               | isdir           | |yes|           | |yes|            | |yes|           |
+|               | rename          | |yes|           | |yes|            | |yes|           |
 |               +-----------------+-----------------+------------------+-----------------+
 |               | makedirs        | |yes|           | |yes|            | |yes|           |
 |               +-----------------+-----------------+------------------+-----------------+
@@ -135,7 +140,15 @@ summarizes the API. Based on table you can do for instance:
 +---------------+-----------------+-----------------+------------------+-----------------+
 | `os.path`_    | realpath        | |yes|           | |yes|            | |no|            |
 |               +-----------------+-----------------+------------------+-----------------+
+|               | isdir           | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
+|               | isfile          | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
+|               | islink          | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
 |               | getsize         | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
+|               | join            | |yes|           | |yes|            | |no|            |
 +---------------+-----------------+-----------------+------------------+-----------------+
 | `pathlib`_    | Path            | |yes|           | |yes|            | |yes|           |
 +---------------+-----------------+-----------------+------------------+-----------------+
@@ -264,7 +277,7 @@ of ``SSHConnection`` or ``LocalConnection``:
 
     >>> from ssh_utilities import Connection
     >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
-    >>>     conn.os.isfile(<path_to_some_file>)
+    >>>     conn.os.path.isfile(<path_to_some_file>)
     >>>     conn.subprocess.run(*args, **kwargs)
     >>>     # and so on for other modules
 

@@ -198,7 +198,7 @@ This part describes how to use os-like methods in ``ssh-utilities``
 
 .. code-block:: python
 
-    >>> c.os.isfile("/home/ssh_user/.bashrc")
+    >>> c.os.path.isfile("/home/ssh_user/.bashrc")
     >>> True
     >>>
     >>> c.os.name()
@@ -245,7 +245,7 @@ submodule:
     >>> os = Os(c)
     >>>
     >>> # now use it!
-    >>> os.isfile(<somefile>)
+    >>> os.path.isfile(<somefile>)
     >>> os.stat(<somefile>)
-    >>> os.isdir(<somefile>)
+    >>> os.path.isdir(<somefile>)
     >>> ...

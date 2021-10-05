@@ -316,7 +316,7 @@ that return now return iterators. A trivial example would be:
 
     >>> from ssh_utilities import MultiConnection
     >>> mc = MultiConnection(<[server_1, server_2]>)
-    >>> for is_f in mc.os.isfile(<path>):
+    >>> for is_f in mc.os.path.isfile(<path>):
     >>>     print(is_f)
     >>>
     >>> True  # output for server_1
@@ -343,7 +343,7 @@ dispatcher as it would not make sense. Consider this example:
     >>>
     >>> # this will open 2 independent connections both to server_1
     >>> mc = MultiConnection(<[server_1, server_1]>)
-    >>> for is_f in mc.os.isfile(<path>):
+    >>> for is_f in mc.os.path.isfile(<path>):
     >>>     print(is_f)
     >>>
     >>> True  # output for server_1 

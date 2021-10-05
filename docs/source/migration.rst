@@ -36,7 +36,7 @@ In version >0.5.x the same is archieved by:
 
     >>> from ssh_utilities import Connection
     >>> with Connection(<server_name>) as conn:
-    >>>     conn.os.isfile(<somefile>)
+    >>>     conn.os.path.isfile(<somefile>)
     >>>     conn.subprocess.run(...)
     >>>     conn.pathlib.Path(...)
 
