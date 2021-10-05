@@ -3,7 +3,6 @@
 import logging
 import os
 import shutil
-from os.path import join as jn
 from typing import (IO, TYPE_CHECKING, Any, Callable, List, NoReturn, Optional,
                     Sequence, Set, Union)
 
@@ -86,11 +85,11 @@ class Shutil(ShutilABC):
         with context_timeit(quiet):
             for f in files:
                 if direction == "get":
-                    src = jn(self.c._path2str(remote_path), f)
-                    dst = jn(self.c._path2str(local_path), f)
+                    src = self.c.os.path.join(self.c._path2str(remote_path), f)
+                    dst = self.c.os.path.join(self.c._path2str(local_path), f)
                 elif direction == "put":
-                    dst = jn(self.c._path2str(remote_path), f)
-                    src = jn(self.c._path2str(local_path), f)
+                    dst = self.c.os.path.join(self.c._path2str(remote_path), f)
+                    src = self.c.os.path.join(self.c._path2str(local_path), f)
                 else:
                     raise ValueError(f"{direction} is not valid direction. "
                                      f"Choose 'put' or 'get'")
@@ -112,21 +111,23 @@ class Shutil(ShutilABC):
         callback = callback if callback else _dummy_callback
 
         lprnt = lprint(quiet=quiet)
+        src_str = self.c._path2str(src)
+        dst_str = self.c._path2str(dst)
 
         if direction == "get":
             lprnt(f"{G}Copying from remote:{R} {self.c.server_name}@{src}{LG}"
                   f"\n-->           local:{R} {dst}")
 
-            if os.path.isdir(self.c._path2str(dst)):
+            if os.path.isdir(dst_str):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
 
             if follow_symlinks:
-                src = self.c.os.path.realpath(src)
-                dst = os.path.realpath(dst)
+                src_str = self.c.os.path.realpath(src_str)
+                dst_str = os.path.realpath(dst_str)
 
             try:
-                self.c.sftp.get(src, dst, callback)
+                self.c.sftp.get(src_str, dst_str, callback)
             except IOError as e:
                 raise FileNotFoundError(f"File you are trying to get "
                                         f"does not exist: {e}")
@@ -135,15 +136,15 @@ class Shutil(ShutilABC):
             lprnt(f"{G}Copying from local:{R} {src}\n"
                   f"{LG} -->       remote: {self.c.server_name}@{dst}")
 
-            if self.c.os.isdir(dst):
+            if self.c.os.path.isdir(dst_str):
                 raise IsADirectoryError("dst argument must be full path "
                                         "not a directory")
 
             if follow_symlinks:
-                src = os.path.realpath(src)
-                dst = self.c.os.path.realpath(dst)
+                src_str = os.path.realpath(src_str)
+                dst_str = self.c.os.path.realpath(dst_str)
 
-            self.c.sftp.put(src, dst, callback)
+            self.c.sftp.put(src_str, dst_str, callback)
         else:
             raise ValueError(f"{direction} is not valid direction. "
                              f"Choose 'put' or 'get'")
@@ -157,10 +158,10 @@ class Shutil(ShutilABC):
 
         if direction == "get":
             if os.path.isdir(dst):
-                dst = jn(dst, os.path.basename(src))
+                dst = self.c.os.path.join(dst, os.path.basename(src))
 
-        elif direction == "put" and self.c.os.isdir(dst):
-            dst = jn(dst, os.path.basename(src))
+        elif direction == "put" and self.c.os.path.isdir(dst):
+            dst = self.c.os.path.join(dst, os.path.basename(src))
 
         self.copyfile(src, dst, direction=direction,
                       follow_symlinks=follow_symlinks, callback=callback,
@@ -187,9 +188,9 @@ class Shutil(ShutilABC):
 
             for root, _, files in self.c.os.walk(path, followlinks=True):
                 for f in files:
-                    f = jn(root, f)
+                    f = self.c.os.path.join(root, f)
                     lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
-                    if self.c.os.isfile(f):
+                    if self.c.os.path.isfile(f):
                         try:
                             self.c.sftp.remove(f)
                         except (FileNotFoundError, OSError) as e:
@@ -197,7 +198,7 @@ class Shutil(ShutilABC):
                                 log.warning("Directory does not exist")
                             else:
                                 raise FileNotFoundError(e)
-                if self.c.os.isdir(root):
+                if self.c.os.path.isdir(root):
                     try:
                         self.c.sftp.rmdir(root)
                     except (FileNotFoundError, OSError) as e:
@@ -206,7 +207,7 @@ class Shutil(ShutilABC):
                         else:
                             raise FileNotFoundError(e)
 
-            if self.c.os.isdir(path):
+            if self.c.os.path.isdir(path):
                 self.c.sftp.rmdir(path)
 
     # TODO collect errors and raise at the end
@@ -221,7 +222,7 @@ class Shutil(ShutilABC):
         dst = self.c._path2str(local_path)
         src = self.c._path2str(remote_path)
 
-        if not self.c.os.isdir(remote_path):
+        if not self.c.os.path.isdir(remote_path):
             raise FileNotFoundError(f"{remote_path} you are trying to download"
                                     f"from does not exist")
 
@@ -243,7 +244,7 @@ class Shutil(ShutilABC):
             directory = root.replace(src, "")
             if directory.startswith("/"):
                 directory = directory.replace("/", "", 1)
-            dst_dirs.append(jn(dst, directory))
+            dst_dirs.append(self.c.os.path.join(dst, directory))
 
             skip_files = ignore_files("", files)
 
@@ -251,19 +252,19 @@ class Shutil(ShutilABC):
                 if f in skip_files:
                     continue
 
-                dst_file = jn(dst, directory, f)
+                dst_file = self.c.os.path.join(dst, directory, f)
 
                 if quiet:
                     size = 0
                 else:
                     # TODO implement getsize !!
-                    size = self.c.os.lstat(jn(root, f)).st_size
+                    size = self.c.os.lstat(self.c.os.path.join(root, f)).st_size
                     if size is None:
                         size = 0
 
                 copy_files.append({
                     "dst": dst_file,
-                    "src": jn(root, f),
+                    "src": self.c.os.path.join(root, f),
                     "size": size
                 })
 
@@ -348,7 +349,7 @@ class Shutil(ShutilABC):
             directory = root.replace(src, "")
             if directory.startswith("/"):
                 directory = directory.replace("/", "", 1)
-            dst_dirs.append(jn(dst, directory))
+            dst_dirs.append(self.c.os.path.join(dst, directory))
 
             skip_files = ignore_files("", files)
 
@@ -356,18 +357,18 @@ class Shutil(ShutilABC):
                 if f in skip_files:
                     continue
 
-                dst_file = jn(dst, directory, f)
+                dst_file = self.c.os.path.join(dst, directory, f)
 
                 if quiet:
                     size = 0
                 else:
-                    size = os.path.getsize(jn(root, f))
+                    size = os.path.getsize(self.c.os.path.join(root, f))
                     if size is None:
                         size = 0
 
                 copy_files.append({
                     "dst": dst_file,
-                    "src": jn(root, f),
+                    "src": self.c.os.path.join(root, f),
                     "size": size
                 })
 
@@ -415,4 +416,4 @@ class Shutil(ShutilABC):
         lprnt("")
 
         if remove_after:
-            shutil.rmtree(src, quiet=q)
+            shutil.rmtree(src)
