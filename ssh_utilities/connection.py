@@ -121,21 +121,21 @@ class Connection(metaclass=_ConnectionMeta):
 
     @overload
     def __new__(cls, ssh_server: str, local: Literal[False], quiet: bool,
-            thread_safe: bool) -> SSHConnection:
+                thread_safe: bool) -> SSHConnection:
         ...
 
     @overload
     def __new__(cls, ssh_server: str, local: Literal[True], quiet: bool,
-            thread_safe: bool) -> LocalConnection:
+                thread_safe: bool) -> LocalConnection:
         ...
 
     @overload
     def __new__(cls, ssh_server: str, local: bool, quiet: bool,
-            thread_safe: bool) -> Union[SSHConnection, LocalConnection]:
+                thread_safe: bool) -> Union[SSHConnection, LocalConnection]:
         ...
 
     def __new__(cls, ssh_server: str, local: bool = False, quiet: bool = False,
-            thread_safe: bool = False):
+                thread_safe: bool = False):
         """Get Connection based on one of names defined in .ssh/config file.
 
         If name of local PC is passed initilize LocalConnection
@@ -202,7 +202,7 @@ class Connection(metaclass=_ConnectionMeta):
                 available.append(host)
 
         return available
-       
+
     @classmethod
     def get(cls, *args, **kwargs):
         raise AttributeError(
