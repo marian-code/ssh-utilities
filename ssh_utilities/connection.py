@@ -299,7 +299,8 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             thread_safe: bool = False) -> LocalConnection:
+             thread_safe: bool = False,
+             ssh_allow_agent: bool = False) -> LocalConnection:
         ...
 
     @overload
@@ -308,7 +309,8 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             thread_safe: bool = False) -> SSHConnection:
+             thread_safe: bool = False,
+             ssh_allow_agent: bool = False) -> SSHConnection:
         ...
 
     @staticmethod
@@ -316,7 +318,8 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_key_file: Optional[Union[str, "Path"]] = None,
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
-             thread_safe: bool = False):
+             thread_safe: bool = False,
+             ssh_allow_agent: bool = False):
         """Initialize SSH or local connection.
 
         Local connection is only a wrapper around os and shutil module methods
@@ -343,6 +346,8 @@ class Connection(metaclass=_ConnectionMeta):
             make connection object thread safe so it can be safely accessed
             from  any number of threads, it is disabled by default to avoid
             performance  penalty of threading locks
+        ssh_allow_agent: bool
+            allow the use of the ssh-agent to connect. Will disable ssh_key_file.
 
         Warnings
         --------
@@ -354,7 +359,12 @@ class Connection(metaclass=_ConnectionMeta):
                                    pkey_file=ssh_key_file,
                                    server_name=server_name, quiet=quiet)
         else:
-            if ssh_key_file:
+            if ssh_allow_agent:
+                c = SSHConnection(ssh_server, ssh_username,
+                                  allow_agent=ssh_allow_agent, line_rewrite=True,
+                                  server_name=server_name, quiet=quiet,
+                                  thread_safe=thread_safe)
+            elif ssh_key_file:
                 c = SSHConnection(ssh_server, ssh_username,
                                   pkey_file=ssh_key_file, line_rewrite=True,
                                   server_name=server_name, quiet=quiet,
