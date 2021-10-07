@@ -33,7 +33,7 @@ class check_connections:
     ----------
     original_function: Callable
         function to watch for dropped connections
-    exclude_exceptions: Tuple[Exception]
+    exclude_exceptions: :const:`ssh_utilities.typeshed._EXCTYPE`
         tuple of exceptions not to catch
 
     Raises
