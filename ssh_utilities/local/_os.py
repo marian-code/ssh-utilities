@@ -43,11 +43,40 @@ class Os(OsABC):
     def scandir(self, path: "_SPATH"):
         return os.scandir(self.c._path2str(path))
 
+    def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
+              follow_symlinks: bool = True):
+        os.chmod(self.c._path2str(path), mode, dir_fd=dir_fd,
+                 follow_symlinks=follow_symlinks)
+
+    def lchmod(self, path: "_SPATH", mode: int):
+        os.lchmod(self.c._path2str(path), mode)
+
+    def symlink(self, src: "_SPATH", dst: "_SPATH",
+                target_is_directory: bool = False, *,
+                dir_fd: Optional[int] = None):
+        os.symlink(src, dst, target_is_directory=target_is_directory,
+                   dir_fd=dir_fd)
+
+    def remove(self, path: "_SPATH", *, dir_fd: int = None):
+        os.remove(path, dir_fd=dir_fd)
+
+    def unlink(self, path: "_SPATH", *, dir_fd: int = None):
+        os.unlink(path, dir_fd=dir_fd)
+
+    def rmdir(self, path: "_SPATH", *, dir_fd: int = None):
+        os.rmdir(path, dir_fd=dir_fd)
+
     def rename(self, src: "_SPATH", dst: "_SPATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):
         os.rename(self.c._path2str(src), self.c._path2str(dst),
                   src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+
+    def replace(self, src: "_SPATH", dst: "_SPATH", *,
+                src_dir_fd: Optional[int] = None,
+                dst_dir_fd: Optional[int] = None):
+        os.replace(self.c._path2str(src), self.c._path2str(dst),
+                   src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
 
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
                  parents: bool = True, quiet: bool = True):
@@ -93,6 +122,9 @@ class OsPathLocal(OsPathABC):
 
     def isdir(self, path: "_SPATH") -> bool:
         return os.path.isdir(self.c._path2str(path))
+
+    def exists(self, path: "_SPATH") -> bool:
+        return os.path.exists(self.c._path2str(path))
 
     def islink(self, path: "_SPATH") -> bool:
         return os.path.islink(self.c._path2str(path))

@@ -192,20 +192,20 @@ class Shutil(ShutilABC):
                     lprint(quiet)(f"{G}removing file:{R} {sn}@{f}")
                     if self.c.os.path.isfile(f):
                         try:
-                            self.c.sftp.remove(f)
+                            self.c.os.unlink(f)
                         except (FileNotFoundError, OSError) as e:
                             if ignore_errors:
-                                log.warning("Directory does not exist")
+                                log.warning("File does not exist")
                             else:
-                                raise FileNotFoundError(e)
+                                raise FileNotFoundError(str(e)) from e
                 if self.c.os.path.isdir(root):
                     try:
-                        self.c.sftp.rmdir(root)
+                        self.c.os.rmdir(root)
                     except (FileNotFoundError, OSError) as e:
                         if ignore_errors:
                             log.warning("Directory does not exist")
                         else:
-                            raise FileNotFoundError(e)
+                            raise FileNotFoundError(str(e)) from e
 
             if self.c.os.path.isdir(path):
                 self.c.sftp.rmdir(path)

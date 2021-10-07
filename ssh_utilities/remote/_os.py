@@ -90,8 +90,56 @@ class Os(OsABC):
     def path(self) -> "OsPathRemote":
         return self._path
 
+    @check_connections
     def scandir(self, path: "_SPATH") -> "Scandir":
         return Scandir(self.c._path2str(path), self.c)
+
+    @check_connections
+    def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
+              follow_symlinks: bool = True):
+        path = self.c._path2str(path)
+
+        if follow_symlinks:
+            path = self.c.sftp.normalize(path)
+
+        self.c.sftp.chmod(path, mode)
+
+    def lchmod(self, path: "_SPATH", mode: int):
+        self.chmod(path, mode, follow_symlinks=False)
+
+    @check_connections
+    def symlink(self, src: "_SPATH", dst: "_SPATH",
+                target_is_directory: bool = False, *,
+                dir_fd: Optional[int] = None):
+        self.c.sftp.symlink(self.c._path2str(src), self.c._path2str(dst))
+
+    @check_connections(exclude_exceptions=(FileNotFoundError, IOError,
+                                           IsADirectoryError))
+    def remove(self, path: "_SPATH", *, dir_fd: int = None):
+        path = self.c._path2str(path)
+
+        if not self.path.isfile(path):
+            raise FileNotFoundError(f"File {path} does not exist")
+        elif self.path.isdir(path):
+            raise IsADirectoryError(
+                "Path points to a directory, user os.rmdir"
+            )
+        else:
+            self.c.sftp.unlink()
+
+    unlink = remove
+
+    @check_connections(exclude_exceptions=(OSError))
+    def rmdir(self, path: "_SPATH", *, dir_fd: int = None):
+        path = self.c._path2str(path)
+
+        if not self.path.isdir(path):
+            raise FileNotFoundError(f"Directory {path} does not exist")
+        else:
+            try:
+                self.c.sftp.rmdir(path)
+            except IOError as e:
+                raise OSError(str(e)) from e
 
     @check_connections(exclude_exceptions=(OSError))
     def rename(self, src: "_SPATH", dst: "_SPATH", *,
@@ -109,6 +157,20 @@ class Os(OsABC):
                                          self.c._path2str(dst))
             except IOError as e:
                 raise OSError(str(e)) from e
+
+    @check_connections(exclude_exceptions=(OSError))
+    def replace(self, src: "_SPATH", dst: "_SPATH", *,
+                src_dir_fd: Optional[int] = None,
+                dst_dir_fd: Optional[int] = None):
+
+        if self.path.isdir(dst):
+            raise OSError(
+                f"Destination path: {dst} already exists and is a directory"
+            )
+        elif self.path.isfile(dst):
+            self.remove(dst)
+
+        self.rename(src, dst)
 
     @check_connections(exclude_exceptions=(FileExistsError, FileNotFoundError,
                                            OSError))
@@ -169,7 +231,7 @@ class Os(OsABC):
         except IOError as e:
             raise FileNotFoundError(f"Directory does not exist: {e}")
 
-    @check_connections()
+    @check_connections
     def chdir(self, path: "_SPATH"):
         self.c.sftp.chdir(self.c._path2str(path))
 
@@ -215,19 +277,14 @@ class Os(OsABC):
     def stat(self, path: "_SPATH", *, dir_fd: Optional[int] = None,
              follow_symlinks: bool = True) -> "SFTPAttributes":
 
+        path = self.c._path2str(path)
         try:
-            spath = self.c._path2str(path)
-            stat = self.c.sftp.stat(spath)
-
-            # TODO do we need this? can links be chained?
-            while True:
-                if follow_symlinks and S_ISLNK(stat.st_mode):
-                    spath = self.c.sftp.readlink(spath)
-                    stat = self.c.sftp.stat(spath)
-                else:
-                    break
+            if follow_symlinks:
+                stat = self.c.sftp.stat(self.c.sftp.normalize(path))
+            else:
+                stat = self.c.sftp.stat(path)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"exception in stat: {e}, {path}")
+            raise FileNotFoundError(f"no such file: {path}") from e
         return stat
 
     def lstat(self, path: "_SPATH", *, dir_fd=None) -> "SFTPAttributes":
@@ -249,8 +306,10 @@ class Os(OsABC):
 
                 # check if flie is link and get mode of the real target
                 if S_ISLNK(mode) and followlinks:
-                    mode = self.c.os.stat(self.path.join(remote_path,
-                                                         f.filename)).st_mode
+                    mode = self.c.os.stat(
+                        self.path.join(remote_path, f.filename),
+                        follow_symlinks=True
+                    ).st_mode
                 if mode is None:
                     raise ValueError("Got None value for object mode")
 
@@ -303,6 +362,18 @@ class OsPathRemote(OsPathABC):
         except FileNotFoundError:
             return False
 
+    @check_connections
+    def exists(self, path: "_SPATH") -> bool:
+        # have to call without decorators, otherwise FileNotFoundError
+        # does not propagate
+        unwrap = self.c.os.stat.__wrapped__
+        try:
+            unwrap(self, self.c._path2str(path))
+        except FileNotFoundError:
+            return False
+        else:
+            return True
+
     @check_connections(exclude_exceptions=IOError)
     def islink(self, path: "_SPATH") -> bool:
         # have to call without decorators, otherwise FileNotFoundError
@@ -313,20 +384,9 @@ class OsPathRemote(OsPathABC):
         except FileNotFoundError:
             return False
 
+    @check_connections
     def realpath(self, path: "_SPATH") -> str:
-
-        spath = self.c._path2str(path)
-        stat = self.c.sftp.stat(spath)
-
-        # TODO do we need this? can links be chained?
-        while True:
-            if S_ISLNK(stat.st_mode):
-                spath = self.c.sftp.readlink(spath)
-                stat = self.c.sftp.stat(spath)
-            else:
-                break
-
-        return spath
+        return self.c.sftp.normalize(self.c._path2str(path))
 
     def getsize(self, path: "_SPATH") -> int:
 
@@ -337,6 +397,7 @@ class OsPathRemote(OsPathABC):
         else:
             raise OSError(f"Could not get size of file: {path}")
 
+    @check_connections
     def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
 
         if self.c.os.name == "nt":

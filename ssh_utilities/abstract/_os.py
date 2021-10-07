@@ -166,6 +166,22 @@ class OsPathABC(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def exists(self, path: "_SPATH") -> bool:
+        """Check if path exists in filesystem.
+
+        Parameters
+        ----------
+        path: :const:`ssh_utilities.typeshed._SPATH`
+            path to check
+
+        Returns
+        -------
+        bool
+            check result
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def islink(self, path: "_SPATH") -> bool:
         """Check if path points to symbolic link.
 
@@ -184,7 +200,9 @@ class OsPathABC(ABC):
         IOError
             if dir could not be accessed
         """
+        raise NotImplementedError
 
+    @abstractmethod
     def realpath(self, path: "_SPATH") -> str:
         """Return the canonical path of the specified filename.
 
@@ -202,6 +220,7 @@ class OsPathABC(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def getsize(self, path: "_SPATH") -> int:
         """Return the size of path in bytes.
 
@@ -222,6 +241,7 @@ class OsPathABC(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
         """Join one or more path components intelligently.
 
@@ -277,6 +297,119 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
+              follow_symlinks: bool = True):
+        """Change the mode of path to the numeric mode.
+
+        Parameters
+        ----------
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            path pointing to the file/directory
+        mode : int
+            desired mode to set, check python `os` documentation to see options
+        dir_fd : Optional[int], optional
+            not used by ssh implementation, by default None
+        follow_symlinks : bool, optional
+            whether to resolve symlinks on the way, by default True
+
+        Raises
+        ------
+        FileNotFoundError
+            if the path does not exist
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def lchmod(self, path: "_SPATH", mode: int):
+        """Change the mode of path to the numeric mode.
+
+        If path is a symlink, this affects the symlink rather than the target.
+
+        Parameters
+        ----------
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            path pointing to the file/directory
+        mode : int
+            desired mode to set, check python `os` documentation to see options
+
+        Raises
+        ------
+        FileNotFoundError
+            if the path does not exist
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def symlink(self, src: "_SPATH", dst: "_SPATH",
+                target_is_directory: bool = False, *,
+                dir_fd: Optional[int] = None):
+        """Make this path a symlink pointing to the given path.
+
+        Parameters
+        ----------
+        src : :const:`ssh_utilities.typeshed._SPATH`
+            target path to which symlink will point
+        dst : :const:`ssh_utilities.typeshed._SPATH`
+            symlink path
+        target_is_directory : bool, optional
+            this parameter is ignored in ssh implementation
+        dir_fd : Optional[int], optional
+            this parameter is ignored in ssh implementation
+
+        Warnings
+        --------
+        `target_is_directory` parameter is ignored
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def remove(self, path: "_SPATH", *, dir_fd: Optional[int] = None):
+        """Remove file.
+
+        Parameters
+        ----------
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            path to remove
+        dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+
+        Raises
+        ------
+        FileNotFoundError
+            if path does not point to a file
+        IsADirectoryError
+            if path points to a directory
+        IOError
+            if some other paramiko related error happens and file could not
+            have been removed.
+        """
+        raise NotImplementedError
+
+    unlink = remove
+
+    @abstractmethod
+    def rmdir(self, path: "_SPATH", *, dir_fd: Optional[int] = None):
+        """Remove directory.
+
+        Parameters
+        ----------
+        path : :const:`ssh_utilities.typeshed._SPATH`
+            path to remove
+        dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+
+        Raises
+        ------
+        FileNotFoundError
+            if path does not point to a directory
+        OSError
+            if directory is not empty or some other ssh implementation related
+            error occured
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def rename(self, src: "_SPATH", dst: "_SPATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):
@@ -298,6 +431,36 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         OsError
             If dst exists, the operation will fail with an OSError,
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def replace(self, src: "_SPATH", dst: "_SPATH", *,
+                src_dir_fd: Optional[int] = None,
+                dst_dir_fd: Optional[int] = None):
+        """Rename the file or directory src to dst.
+
+        Parameters
+        ----------
+        src : :const:`ssh_utilities.typeshed._SPATH`
+            source file or directory
+        dst : :const:`ssh_utilities.typeshed._SPATH`
+            destination file or directory
+        src_dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+        dst_dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+
+        Raises
+        ------
+        OsError
+            If dst is a directory, the operation will fail with an OSError,
+        
+        Warnings
+        --------
+        If dst exists and is a file, it will be replaced silently
+        if the user has permission.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
