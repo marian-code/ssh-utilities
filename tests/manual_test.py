@@ -11,17 +11,17 @@ print(list(c.pathlib.Path("/").glob(pat)))
 
 """
 c = Connection("kohn", quiet=True, local=False)
-print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
+print(c.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 
 c1 = deepcopy(c)
 c2 = pickle.loads(pickle.dumps(c))
-print(c1.os.isfile("/home/rynik/hw_config_Kohn.log"))
-print(c2.os.isfile("/home/rynik/hw_config_Kohn.log"))
+print(c1.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
+print(c2.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 
 print(id(c), id(c1), id(c2))
 
 mc = MultiConnection(["kohn"], quiet=True)
-for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
+for out in mc.os.path.isfile("/home/rynik/hw_config_Kohn.log"):
     print(out)
     mc.keys()
     mc.values()
@@ -40,28 +40,28 @@ mc.clear()
 
 
 with MultiConnection(["kohn"], quiet=True) as mc:
-    for out in mc.os.isfile("/home/rynik/hw_config_Kohn.log"):
+    for out in mc.os.path.isfile("/home/rynik/hw_config_Kohn.log"):
         print(out)
 
 mcl = MultiConnection.from_dict(a, quiet=True)
 k = mcl["kohn"]
 print("id", id(MultiConnection))
-print(k.os.isfile)
-print(k.os.isfile("/home/rynik/hw_config_Kohn.log"))
-#print(mcl["fock"].os.isfile("/home/rynik/hw_config_Kohn.log"))
+print(k.os.path.isfile)
+print(k.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
+#print(mcl["fock"].os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 print("---------------")
-for o in mcl.os.isfile("/home/rynik/hw_config_Kohn.log"):
+for o in mcl.os.path.isfile("/home/rynik/hw_config_Kohn.log"):
     print(o)
 
 
 print("..............................................................")
 with Connection("kohn", quiet=True, local=False) as c:
-    print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
+    print(c.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 
     con = str(c)
 
 c = Connection.from_str(con, quiet=True)
-print(c.os.isfile("/home/rynik/hw_config_Kohn.log"))
+print(c.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 
 A = TypeVar("A")
 B = TypeVar("B")
