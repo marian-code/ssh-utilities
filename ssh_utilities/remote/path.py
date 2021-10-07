@@ -5,8 +5,8 @@ from functools import wraps
 from os import fspath
 from os.path import samestat
 from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
-from typing import TYPE_CHECKING, Any, Callable, Optional
 from sys import version_info as python_version
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from ..utils import for_all_methods
 
@@ -118,6 +118,7 @@ class _SSHAccessor:
     def replace(self, *args, **kwargs):
         return self.c.os.replace(*args, **kwargs)
 
+
 class _Template:
 
     def __init__(self, accessor: _SSHAccessor) -> None:
@@ -126,10 +127,10 @@ class _Template:
 
 @for_all_methods(_to_ssh_path, subclasses=True, exclude=DEC_EXCLUDE)
 class SSHPath(Path):
-    """Object porviding similar API to Pathlib.Path but for remote server.
+    """Object providing similar API to Pathlib.Path but for remote server.
 
     The for all methods wrapper will wrap whole pathlib library and thus will
-    always try to cas every path to SSHPath, so logic must be emplyed in
+    always try to cast every path to SSHPath, so logic must be emplyed in
     wrapper to prevent this.
 
     Parameters
@@ -141,16 +142,9 @@ class SSHPath(Path):
 
     Warnings
     --------
-    Not all methods are implemented! Some rather obscure had to be left out
-    due to the nature of ssh and laif python_version >= (3, 10):zyness of the author
-
     Some methods have changed signature from classmethod -> instancemethod
-    since old approach was not vaiable in this application. Most notably:
+    since old approach was not vaiable in this application. These are:
     home() and cwd().
-
-    Raises
-    ------
-    NotImplementedError when on some methods that have not been implemented.
     """
 
     _flavour = Any
