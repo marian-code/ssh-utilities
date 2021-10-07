@@ -110,6 +110,10 @@ class Os(OsABC):
 
         return self._osname
 
+    def walk(self, top: "_SPATH", topdown: bool = True,
+             onerror=None, followlinks: bool = False) -> os.walk:
+        return os.walk(top, topdown, onerror, followlinks)
+
 
 class OsPathLocal(OsPathABC):
     """Drop in replacement for `os.path` module."""
