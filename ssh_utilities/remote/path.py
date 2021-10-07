@@ -6,6 +6,7 @@ from os import fspath
 from os.path import samestat
 from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
 from typing import TYPE_CHECKING, Any, Callable, Optional
+from sys import version_info as python_version
 
 from ..utils import for_all_methods
 
@@ -76,12 +77,28 @@ class _SSHAccessor:
         self.c.os.makedirs(*args, **kwargs)
 
     def rmdir(self, *args, **kwargs):
-        self.c.shutil.rmtree(*args, **kwargs)
+        self.c.os.rmdir(*args, **kwargs)
 
-    # ! This will not work we have no way to emulate os.open function which
-    # ! is called in this method chain by Path._opener
-    # def open(self, *args, **kwargs):
-    #     self.c.builtins.open(*args, **kwargs)
+    def chmod(self, *args, **kwargs):
+        self.c.os.chmod(*args, **kwargs)
+
+    def lchmod(self, *args, **kwargs):
+        self.c.os.lchmod(*args, **kwargs)
+
+    def unlink(self, *args, **kwargs):
+        self.c.os.unlink(*args, **kwargs)
+
+    def symlink(self, *args, **kwargs):
+        self.c.os.symlink(*args, **kwargs)
+
+    if python_version >= (3, 10):
+        def open(self, *args, **kwargs):
+            self.c.builtins.open(*args, **kwargs)
+    else:
+        # This will not work, we have no way to emulate os.open function which
+        # is called in this method chain by Path._opener Only in version 3.10
+        # this changes from os.open --> io.open
+        pass
 
     def stat(self, *args, **kwargs):
         return self.c.os.stat(*args, **kwargs)
@@ -98,6 +115,8 @@ class _SSHAccessor:
     def rename(self, *args, **kwargs):
         return self.c.os.rename(*args, **kwargs)
 
+    def replace(self, *args, **kwargs):
+        return self.c.os.replace(*args, **kwargs)
 
 class _Template:
 
@@ -123,7 +142,7 @@ class SSHPath(Path):
     Warnings
     --------
     Not all methods are implemented! Some rather obscure had to be left out
-    due to the nature of ssh and lazyness of the author
+    due to the nature of ssh and laif python_version >= (3, 10):zyness of the author
 
     Some methods have changed signature from classmethod -> instancemethod
     since old approach was not vaiable in this application. Most notably:
@@ -135,6 +154,7 @@ class SSHPath(Path):
     """
 
     _flavour = Any
+    _accessor: _SSHAccessor
     c: "SSHConnection"
 
     def __new__(cls, connection: "SSHConnection", *args, **kwargs):
@@ -187,7 +207,7 @@ class SSHPath(Path):
 
         Warnings
         --------
-        For this to work correctly sftp channel must be open
+        This is no longer a class method!
 
         Returns
         -------
@@ -197,19 +217,6 @@ class SSHPath(Path):
         if not self.c._sftp_open:
             self.c.sftp
         return SSHPath(self.c, self.c._remote_home)
-
-    def chmod(self, mode: int):
-        """Change the mode/permissions of a file.
-
-        The permissions are unix-style and identical to those used by
-        Python’s os.chmod function.
-
-        Parameters
-        ----------
-        mode : int
-            integer number of the desired mode
-        """
-        self.c.sftp.chmod(self._2str, mode)
 
     def group(self) -> str:
         """Return file group.
@@ -235,33 +242,38 @@ class SSHPath(Path):
 
             return group
 
-    def open(self, mode: str = "r", buffering: int = -1,  # type: ignore
-             encoding: Optional[str] = "utf-8", errors: Optional[str] = None,
-             newline: Optional[str] = None) -> "SFTPFile":
-        """Opens remote file, works as pathlib.Path open function.
+    if python_version < (3, 10):
+        def open(self, mode: str = "r", buffering: int = -1,  # type: ignore
+                 encoding: Optional[str] = "utf-8", errors: Optional[str] = None,
+                 newline: Optional[str] = None) -> "SFTPFile":
+            """Opens remote file, works as pathlib.Path open function.
 
-        Can be used both as a function or a decorator.
+            Can be used both as a function or a decorator.
 
-        Parameters
-        ----------
-        filename: _SPATH
-            path to file to be opened
-        mode: str
-            select mode to open file. Same as python open modes
-        encoding: str
-            encoding type to decode file bytes stream
-        buffering: int
-            buffer size, 0 turns off buffering, 1 uses line buffering, and any
-            number greater than 1 (>1) uses that specific buffer size
+            Parameters
+            ----------
+            filename: _SPATH
+                path to file to be opened
+            mode: str
+                select mode to open file. Same as python open modes
+            encoding: str
+                encoding type to decode file bytes stream
+            errors: Optional[str]
+                define error handling when decoding raw stream
+            newline: Optional[str]
+                define how newline symbols are handled
+            buffering: int
+                buffer size, 0 turns off buffering, 1 uses line buffering, and any
+                number greater than 1 (>1) uses that specific buffer size
 
-        Raises
-        ------
-        FileNotFoundError
-            when mode is 'r' and file does not exist
-        """
-        return self.c.builtins.open(self, mode=mode, buffering=buffering,
-                                    encoding=encoding, errors=errors,
-                                    newline=newline)
+            Raises
+            ------
+            FileNotFoundError
+                when mode is 'r' and file does not exist
+            """
+            return self.c.builtins.open(self, mode=mode, buffering=buffering,
+                                        encoding=encoding, errors=errors,
+                                        newline=newline)
 
     def owner(self):
         """Return file owner.
@@ -287,63 +299,20 @@ class SSHPath(Path):
 
             return owner
 
-    def replace(self, target: "_SPATH") -> "SSHPath":  # type: ignore[override]
-        """Rename this path to the given path.
+    if python_version < (3, 9):
+        # in version bellow 3.9 there is a call to os.stat instead of
+        # _accessor.stat so we have to override
+        def samefile(self, other_path: "_SPATH"):
+            """Return whether other_path is the same or not as this file.
 
-        Parameters
-        ----------
-        target : _SPATH
-            target path
-
-        Returns
-        -------
-        SSHPath
-            New Path instance pointing to the given path.
-        """
-        self = SSHPath(self.c, fspath(target))
-        self.c.os.chdir(target)
-        return self
-
-    # TODO this method could also run through accessor,
-    # TODO need to implement replace in os
-    def resolve(self) -> "SSHPath":  # type: ignore[override]
-        """Make the path absolute.
-
-        Resolve all symlinks on the way and also normalize it.
-
-        Returns
-        -------
-        "SSHPath"
-            [description]
-        """
-        return SSHPath(self.c, self.c.sftp.normalize(self._2str))
-
-    def samefile(self, other_path: "_SPATH"):
-        """Return whether other_path is the same or not as this file
-        (as returned by os.path.samefile()).
-        """
-        st = self.stat()
-        try:
-            other_st = other_path.stat()  # type: ignore
-        except AttributeError:
-            other_st = self.c.os.stat(other_path)
-        return samestat(st, other_st)
-
-    def symlink_to(self, target: "_SPATH", target_is_directory: bool = False):
-        """Make this path a symlink pointing to the given path.
-
-        Parameters
-        ----------
-        target : _SPATH
-            target path to which symlink will point
-        target_is_directory: bool
-            this parameter is ignored
-
-        Warnings
-        --------
-        `target_is_directory` parameter is ignored
-        """
-        self.c.sftp.symlink(self._2str, fspath(target))
+            As returned by os.path.samefile())
+            """
+            st = self.stat()
+            try:
+                other_st = other_path.stat()  # type: ignore
+            except AttributeError:
+                other_st = self._accessor.stat(other_path)
+            return samestat(st, other_st)
 
     def touch(self, mode: int = 0o666, exist_ok: bool = True):
         """Create this file with the given access mode, if it doesn't exist.
@@ -372,34 +341,31 @@ class SSHPath(Path):
 
             self.chmod(mode=mode)
 
-    def unlink(self, missing_ok: bool = False):
-        """Delete file or symbolic link.
-
-        Parameters
-        ----------
-        missing_ok : bool, optional
-            If False and file does not exist raise exception, by default False
-
-        Raises
-        ------
-        FileNotFoundError
-            if missing_ok is false and file does not exist
-        IsADirectoryError
-            if trying to unlink a directory
-        """
-        if not self.exists() and not missing_ok:
-            raise FileNotFoundError("Cannot unlink file/dir does not exist")
-        elif self.is_dir():
-            raise IsADirectoryError("Path is a directory use rmdir instead")
-        elif self.is_file():
-            self.c.sftp.unlink(self._2str)
-
-    # ! NOT IMPLEMENTED
-    def link_to(self, target):
-        raise NotImplementedError
-
-    def lchmod(self, mode):
-        raise NotImplementedError
-
     def absolute(self):
-        raise NotImplementedError
+        """Return an absolute version of this path.  This function works
+        even if the path doesn't point to anything.
+
+        No normalization is done, i.e. all '.' and '..' will be kept along.
+        Use resolve() to get the canonical path to a file.
+        """
+        # XXX untested yet!
+        if self._closed:
+            self._raise_closed()
+        if self.is_absolute():
+            return self
+        # because of this we must override, pathlib uses os.getcwd
+        # method and does not go through accessor
+        obj = self._from_parts([self.cwd()._2str] + self._parts, init=False)
+        obj._init(template=self)
+        return obj
+
+    def expanduser(self):
+        """ Return a new path with expanded ~ and ~user constructs
+        (as returned by os.path.expanduser)
+        """
+        if (not (self._drv or self._root) and
+            self._parts and self._parts[0][:1] == '~'):
+            homedir = self.home()._2str
+            return self._from_parts([homedir] + self._parts[1:])
+
+        return self
