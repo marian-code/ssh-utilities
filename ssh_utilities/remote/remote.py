@@ -101,7 +101,7 @@ class SSHConnection(ConnectionABC):
         lprnt = lprint(quiet)
 
         if allow_agent:
-            msg = f"Will login with ssh-agent"
+            msg = "Will login with ssh-agent"
             lprnt(msg)
             log.info(msg)
         if pkey_file:
@@ -139,18 +139,18 @@ class SSHConnection(ConnectionABC):
 
         # paramiko connection
         if allow_agent:
-            self.pkey = None
+            self._pkey = None
             self.password = None
         elif pkey_file:
             for key in _KEYS:
                 try:
-                    self.pkey = key.from_private_key_file(
+                    self._pkey = key.from_private_key_file(
                         self._path2str(pkey_file)
                     )
                 except paramiko.SSHException:
                     log.info(f"could not parse key with {key.__name__}")
         elif password:
-            self.pkey = None
+            self._pkey = None
         else:
             raise RuntimeError("Must input password or path to pkey")
 
@@ -214,12 +214,13 @@ class SSHConnection(ConnectionABC):
 
     def __str__(self) -> str:
         return self._to_str("SSHConnection", self.server_name, self.address,
-                            self.username, self.pkey_file, self.thread_safe)
+                            self.username, self.pkey_file, self.thread_safe,
+                            self.allow_agent)
 
     def to_dict(self) -> Dict[str, Optional[Union[str, bool, int]]]:
         return self._to_dict("SSHConnection", self.server_name, self.address,
-                             self.username, self.pkey_file,
-                             self.thread_safe)
+                             self.username, self.pkey_file, self.thread_safe,
+                             self.allow_agent)
 
     @check_connections()
     def close(self, *, quiet: bool = True):
@@ -258,10 +259,10 @@ class SSHConnection(ConnectionABC):
                 if self.allow_agent:
                     # connect using ssh-agent
                     self.c.connect(self.address, username=self.username, allow_agent=True)
-                if self.pkey:
+                if self._pkey:
                     # connect with public key
                     self.c.connect(self.address, username=self.username,
-                                   pkey=self.pkey)
+                                   pkey=self._pkey)
                 else:
                     # if password was passed try to connect with it
                     self.c.connect(self.address, username=self.username,

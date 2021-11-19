@@ -96,7 +96,8 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
 
     def __init__(self, ssh_servers: Union[List[str], str],
                  local: Union[List[bool], bool] = False, quiet: bool = False,
-                 thread_safe: Union[List[bool], bool] = False) -> None:
+                 thread_safe: Union[List[bool], bool] = False,
+                 allow_agent: Union[List[bool], bool] = True) -> None:
 
         # TODO somehow adjust number of workers if connection are deleted or
         # TODO added
@@ -108,6 +109,8 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
             local = [local] * len(ssh_servers)
         if not isinstance(thread_safe, list):
             thread_safe = [thread_safe] * len(ssh_servers)
+        if not isinstance(allow_agent, list):
+            allow_agent = [allow_agent] * len(ssh_servers)
 
         self._connections = defaultdict(deque)
         for ss, l, ts in zip(ssh_servers, local, thread_safe):

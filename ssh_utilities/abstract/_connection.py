@@ -34,6 +34,11 @@ class ConnectionABC(ABC):
 
     __name__: str
     __abstractmethods__: FrozenSet[str]
+    password: Optional[str]
+    address: Optional[str]
+    username: str
+    pkey_file: Optional[Union[str, "Path"]]
+    allow_agent: Optional[bool]
 
     @abstractmethod
     def __str__(self):
@@ -135,11 +140,11 @@ class ConnectionABC(ABC):
     @staticmethod
     def _to_dict(connection_name: str, host_name: str, address: Optional[str],
                  user_name: str, ssh_key: Optional[Union[Path, str]],
-                 thread_safe: bool
+                 thread_safe: bool, allow_agent: bool
                  ) -> Dict[str, Optional[Union[str, bool, int]]]:
 
         if ssh_key is None:
-            key_path = ssh_key
+            key_path = None
         else:
             key_path = str(Path(ssh_key).resolve())
 
@@ -149,12 +154,14 @@ class ConnectionABC(ABC):
             "user_name": user_name,
             "ssh_key": key_path,
             "address": address,
-            "thread_safe": thread_safe
+            "thread_safe": thread_safe,
+            "allow_agent": allow_agent,
         }
 
     def _to_str(self, connection_name: str, host_name: str,
                 address: Optional[str], user_name: str,
-                ssh_key: Optional[Union[Path, str]], thread_safe: bool) -> str:
+                ssh_key: Optional[Union[Path, str]], thread_safe: bool,
+                allow_agent: bool) -> str:
         """Aims to ease persistance, returns string representation of instance.
 
         With this method all data needed to initialize class are saved to sting
@@ -177,6 +184,9 @@ class ConnectionABC(ABC):
             make connection object thread safe so it can be safely accessed
             from  any number of threads, it is disabled by default to avoid
             performance  penalty of threading locks
+        allow_agent: bool
+            allows use of ssh agent for connection authentication, when this is
+            `True` key for the host does not have to be available.
 
         Returns
         -------
@@ -188,7 +198,8 @@ class ConnectionABC(ABC):
         :class:`ssh_utilities.conncection.Connection`
         """
         return dumps(self._to_dict(connection_name, host_name, address,
-                                   user_name, ssh_key, thread_safe))
+                                   user_name, ssh_key, thread_safe,
+                                   allow_agent))
 
     def __del__(self):
         self.close(quiet=True)
@@ -206,7 +217,8 @@ class ConnectionABC(ABC):
         self.__init__(state["address"], state["user_name"],  # type: ignore
                       pkey_file=state["ssh_key"],
                       server_name=state["server_name"],
-                      quiet=True, thread_safe=state["thread_safe"])
+                      quiet=True, thread_safe=state["thread_safe"],
+                      allow_agent=state["allow_agent"])
 
     def __enter__(self: "CONN_TYPE") -> "CONN_TYPE":
         return self

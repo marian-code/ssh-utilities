@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 __all__ = ["Connection"]
 
-logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # guard for when readthedocs is building documentation or travis
 # is running CI build
@@ -121,21 +121,22 @@ class Connection(metaclass=_ConnectionMeta):
 
     @overload
     def __new__(cls, ssh_server: str, local: Literal[False], quiet: bool,
-                thread_safe: bool) -> SSHConnection:
+                thread_safe: bool, allow_agent: bool) -> SSHConnection:
         ...
 
     @overload
     def __new__(cls, ssh_server: str, local: Literal[True], quiet: bool,
-                thread_safe: bool) -> LocalConnection:
+                thread_safe: bool, allow_agent: bool) -> LocalConnection:
         ...
 
     @overload
     def __new__(cls, ssh_server: str, local: bool, quiet: bool,
-                thread_safe: bool) -> Union[SSHConnection, LocalConnection]:
+                thread_safe: bool, allow_agent: bool
+                ) -> Union[SSHConnection, LocalConnection]:
         ...
 
     def __new__(cls, ssh_server: str, local: bool = False, quiet: bool = False,
-                thread_safe: bool = False):
+                thread_safe: bool = False, allow_agent: bool = True):
         """Get Connection based on one of names defined in .ssh/config file.
 
         If name of local PC is passed initilize LocalConnection
@@ -152,11 +153,14 @@ class Connection(metaclass=_ConnectionMeta):
             make connection object thread safe so it can be safely accessed
             from  any number of threads, it is disabled by default to avoid
             performance  penalty of threading locks
+        allow_agent: bool
+            allows use of ssh agent for connection authentication, when this is
+            `True` key for the host does not have to be available.
 
         Raises
         ------
         KeyError
-            if server name is not in config file
+            if server name is not in config file and allow agent is false
 
         Returns
         -------
@@ -173,14 +177,36 @@ class Connection(metaclass=_ConnectionMeta):
             raise KeyError(f"couldn't find login credentials for {ssh_server}:"
                            f" {e}")
         else:
+            # get username and address
             try:
-                return cls.open(credentials["user"], credentials["hostname"],
-                                credentials["identityfile"][0],
-                                server_name=ssh_server, quiet=quiet,
-                                thread_safe=thread_safe)
+                user = credentials["user"]
+                hostname = credentials["hostname"]
             except KeyError as e:
-                raise KeyError(f"{RED}missing key in config dictionary for "
-                               f"{ssh_server}: {R}{e}")
+                raise KeyError(
+                    "Cannot find username or hostname for specified host"
+                )
+
+            # get key or use agent
+            if allow_agent:
+                log.info(f"no private key supplied for {hostname}, will try "
+                         f"to authenticate through ssh-agent")
+                pkey_file = None
+            else:
+                log.info(f"private key found for host: {hostname}")
+                try:
+                    pkey_file = credentials["identityfile"][0]
+                except (KeyError, IndexError) as e:
+                    raise KeyError(f"No private key found for specified host")
+
+            return cls.open(
+                user,
+                hostname,
+                ssh_key_file=pkey_file,
+                allow_agent=allow_agent,
+                server_name=ssh_server,
+                quiet=quiet,
+                thread_safe=thread_safe
+            )
 
     @classmethod
     def get_available_hosts(cls) -> List[str]:
@@ -212,7 +238,8 @@ class Connection(metaclass=_ConnectionMeta):
     get_connection = get
 
     @classmethod
-    def add_hosts(cls, hosts: Union["_HOSTS", List["_HOSTS"]]):
+    def add_hosts(cls, hosts: Union["_HOSTS", List["_HOSTS"]],
+                  allow_agent: Union[bool, List[bool]]):
         """Add or override availbale host read fron ssh config file.
 
         You can use supplied config parser to parse some externaf ssh config
@@ -223,6 +250,9 @@ class Connection(metaclass=_ConnectionMeta):
         hosts : Union[_HOSTS, List[_HOSTS]]
             dictionary or a list of dictionaries containing keys: `user`,
             `hostname` and `identityfile`
+        allow_agent: Union[bool, List[bool]]
+            bool or a list of bools with corresponding length to list of hosts.
+            if only one bool is passed in, it will be used for all host entries
 
         See also
         --------
@@ -230,8 +260,12 @@ class Connection(metaclass=_ConnectionMeta):
         """
         if not isinstance(hosts, list):
             hosts = [hosts]
+        if not isinstance(allow_agent, list):
+            allow_agent = [allow_agent] * len(hosts)
 
-        for h in hosts:
+        for h, a in zip(hosts, allow_agent):
+            if a:
+                h["identityfile"][0] = None
             if not isinstance(h["identityfile"], list):
                 h["identityfile"] = [h["identityfile"]]
             h["identityfile"][0] = os.path.abspath(
@@ -300,7 +334,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
              thread_safe: bool = False,
-             ssh_allow_agent: bool = False) -> LocalConnection:
+             allow_agent: bool = False) -> LocalConnection:
         ...
 
     @overload
@@ -310,7 +344,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
              thread_safe: bool = False,
-             ssh_allow_agent: bool = False) -> SSHConnection:
+             allow_agent: bool = False) -> SSHConnection:
         ...
 
     @staticmethod
@@ -319,7 +353,7 @@ class Connection(metaclass=_ConnectionMeta):
              ssh_password: Optional[str] = None,
              server_name: Optional[str] = None, quiet: bool = False,
              thread_safe: bool = False,
-             ssh_allow_agent: bool = False):
+             allow_agent: bool = False):
         """Initialize SSH or local connection.
 
         Local connection is only a wrapper around os and shutil module methods
@@ -346,7 +380,7 @@ class Connection(metaclass=_ConnectionMeta):
             make connection object thread safe so it can be safely accessed
             from  any number of threads, it is disabled by default to avoid
             performance  penalty of threading locks
-        ssh_allow_agent: bool
+        allow_agent: bool
             allow the use of the ssh-agent to connect. Will disable ssh_key_file.
 
         Warnings
@@ -355,27 +389,29 @@ class Connection(metaclass=_ConnectionMeta):
         risk!
         """
         if not ssh_server:
-            return LocalConnection(ssh_server, ssh_username,
-                                   pkey_file=ssh_key_file,
-                                   server_name=server_name, quiet=quiet)
-        else:
-            if ssh_allow_agent:
-                c = SSHConnection(ssh_server, ssh_username,
-                                  allow_agent=ssh_allow_agent, line_rewrite=True,
-                                  server_name=server_name, quiet=quiet,
-                                  thread_safe=thread_safe)
-            elif ssh_key_file:
-                c = SSHConnection(ssh_server, ssh_username,
-                                  pkey_file=ssh_key_file, line_rewrite=True,
-                                  server_name=server_name, quiet=quiet,
-                                  thread_safe=thread_safe)
-            else:
-                if not ssh_password:
-                    ssh_password = getpass.getpass(prompt="Enter password: ")
+            return LocalConnection(
+                ssh_server,
+                ssh_username,
+                pkey_file=ssh_key_file,
+                server_name=server_name,
+                quiet=quiet
+            )
+        elif allow_agent:
+            ssh_key_file = None
+            ssh_password = None
+        elif ssh_key_file:
+            ssh_password = None
+        elif not ssh_password:
+            ssh_password = getpass.getpass(prompt="Enter password: ")
 
-                c = SSHConnection(ssh_server, ssh_username,
-                                  password=ssh_password, line_rewrite=True,
-                                  server_name=server_name, quiet=quiet,
-                                  thread_safe=thread_safe)
-
-            return c
+        return SSHConnection(
+            ssh_server,
+            ssh_username,
+            allow_agent=allow_agent,
+            pkey_file=ssh_key_file,
+            password=ssh_password,
+            line_rewrite=True,
+            server_name=server_name,
+            quiet=quiet,
+            thread_safe=thread_safe
+        )

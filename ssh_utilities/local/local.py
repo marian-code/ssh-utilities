@@ -30,13 +30,15 @@ class LocalConnection(ConnectionABC):
                  password: Optional[str] = None,
                  pkey_file: Optional[Union[str, "Path"]] = None,
                  line_rewrite: bool = True, server_name: Optional[str] = None,
-                 quiet: bool = False, thread_safe: bool = False) -> None:
+                 quiet: bool = False, thread_safe: bool = False,
+                 allow_agent: Optional[bool] = False) -> None:
 
         # set login credentials
         self.password = password
         self.address = address
         self.username = username
         self.pkey_file = pkey_file
+        self.allow_agent = allow_agent
 
         self.server_name = server_name if server_name else gethostname()
         self.server_name = self.server_name.upper()
@@ -92,11 +94,11 @@ class LocalConnection(ConnectionABC):
 
     def __str__(self) -> str:
         return self._to_str("LocalConnection", self.server_name, None,
-                            self.username, None, True)
+                            self.username, None, True, False)
 
     def to_dict(self) -> Dict[str, Optional[Union[str, bool, int]]]:
         return self._to_dict("LocalConnection", self.server_name, None,
-                             self.username, None, True)
+                             self.username, None, True, False)
 
     @staticmethod
     def close(*, quiet: bool = True):

@@ -55,12 +55,12 @@ class Pesistence:
 
     def __setstate__(self, state: dict):
         """Initializes the object after load from pickle."""
-        ssh_servers, local, thread_safe = (
+        ssh_servers, local, thread_safe, allow_agent = (
             self._parse_persistence_dict(state)
         )
 
         self.__init__(ssh_servers, local, quiet=True,  # type: ignore
-                      thread_safe=thread_safe)
+                      thread_safe=thread_safe, allow_agent=allow_agent)
 
     def to_dict(self) -> Dict[int, Dict[str, Optional[Union[str, bool,
                                                             int, None]]]]:
@@ -96,12 +96,14 @@ class Pesistence:
         ssh_servers = []
         local = []
         thread_safe = []
+        allow_agent = []
         for j in d.values():
             ssh_servers.append(j.pop("server_name"))
             thread_safe.append(j.pop("thread_safe"))
             local.append(not bool(j.pop("address")))
+            allow_agent.append(j.pop("allow_agent"))
 
-        return ssh_servers, local, thread_safe
+        return ssh_servers, local, thread_safe, allow_agent
 
     @classmethod
     def from_dict(cls, json: dict, quiet: bool = False
@@ -129,12 +131,12 @@ class Pesistence:
         KeyError
             if required key is missing from string
         """
-        ssh_servers, local, thread_safe = (
+        ssh_servers, local, thread_safe, allow_agent = (
             cls._parse_persistence_dict(json)
         )
 
         return cls(ssh_servers, local, quiet=quiet,  # type: ignore
-                   thread_safe=thread_safe)
+                   thread_safe=thread_safe, allow_agent=allow_agent)
 
     @classmethod
     def from_str(cls, string: str, quiet: bool = False

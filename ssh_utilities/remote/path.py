@@ -336,8 +336,9 @@ class SSHPath(Path):
             self.chmod(mode=mode)
 
     def absolute(self):
-        """Return an absolute version of this path.  This function works
-        even if the path doesn't point to anything.
+        """Return an absolute version of this path.
+
+        This function works even if the path doesn't point to anything.
 
         No normalization is done, i.e. all '.' and '..' will be kept along.
         Use resolve() to get the canonical path to a file.
@@ -354,8 +355,9 @@ class SSHPath(Path):
         return obj
 
     def expanduser(self):
-        """ Return a new path with expanded ~ and ~user constructs
-        (as returned by os.path.expanduser)
+        """Return a new path with expanded ~ and ~user constructs.
+
+        As returned by os.path.expanduser
         """
         if (not (self._drv or self._root) and
             self._parts and self._parts[0][:1] == '~'):
