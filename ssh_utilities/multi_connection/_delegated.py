@@ -5,10 +5,11 @@ These callables defer calls from MultiConnection to individual connections.
 
 import logging
 from typing import TYPE_CHECKING, Union
+from ..abstract import OsPathABC
 
 if TYPE_CHECKING:
-    from ..abstract import (BuiltinsABC, ConnectionABC, OsABC, OsPathABC,
-                       PathlibABC, ShutilABC, SubprocessABC)
+    from ..abstract import (BuiltinsABC, ConnectionABC, OsABC,
+                            PathlibABC, ShutilABC, SubprocessABC)
     from ..local import LocalConnection
     from ..remote import SSHConnection
     from .multi_connection import MultiConnection

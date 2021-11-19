@@ -10,7 +10,8 @@ try:
 except ImportError:
     from typing_extensions import Literal  # python < 3.8
 
-from ..abstract import OsABC, OsPathABC
+from ..abstract import OsABC
+from ._os_path import OsPath
 
 if TYPE_CHECKING:
     from ..typeshed import _SPATH
@@ -34,10 +35,10 @@ class Os(OsABC):
 
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
-        self._path = OsPathLocal(connection)  # type: ignore
+        self._path = OsPath(connection)  # type: ignore
 
     @property
-    def path(self) -> "OsPathLocal":
+    def path(self) -> OsPath:
         return self._path
 
     def scandir(self, path: "_SPATH"):
@@ -113,32 +114,3 @@ class Os(OsABC):
     def walk(self, top: "_SPATH", topdown: bool = True,
              onerror=None, followlinks: bool = False) -> os.walk:
         return os.walk(top, topdown, onerror, followlinks)
-
-
-class OsPathLocal(OsPathABC):
-    """Drop in replacement for `os.path` module."""
-
-    def __init__(self, connection: "LocalConnection") -> None:
-        self.c = connection
-
-    def isfile(self, path: "_SPATH") -> bool:
-        return os.path.isfile(self.c._path2str(path))
-
-    def isdir(self, path: "_SPATH") -> bool:
-        return os.path.isdir(self.c._path2str(path))
-
-    def exists(self, path: "_SPATH") -> bool:
-        return os.path.exists(self.c._path2str(path))
-
-    def islink(self, path: "_SPATH") -> bool:
-        return os.path.islink(self.c._path2str(path))
-
-    def realpath(self, path: "_SPATH") -> str:
-        return os.path.realpath(self.c._path2str(path))
-
-    def getsize(self, path: "_SPATH") -> int:
-        return os.path.getsize(self.c._path2str(path))
-
-    def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
-        return os.path.join(self.c._path2str(path),
-                            *[self.c._path2str(p) for p in paths])

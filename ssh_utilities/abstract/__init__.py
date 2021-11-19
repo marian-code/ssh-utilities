@@ -2,7 +2,8 @@
 
 from ._builtins import BuiltinsABC
 from ._connection import ConnectionABC
-from ._os import OsABC, OsPathABC, DirEntryABC
+from ._os import OsABC, DirEntryABC
+from ._os_path import OsPathABC
 from ._pathlib import PathlibABC
 from ._shutil import ShutilABC
 from ._subprocess import SubprocessABC

@@ -2,8 +2,6 @@
 
 import logging
 import os
-from ntpath import join as njoin
-from posixpath import join as pjoin
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 from typing import TYPE_CHECKING, Iterator, List, Optional
 
@@ -12,11 +10,12 @@ try:
 except ImportError:
     from typing_extensions import Literal  # python < 3.8
 
-from ..abstract import DirEntryABC, OsABC, OsPathABC
+from ..abstract import DirEntryABC, OsABC
 from ..constants import G, R
 from ..exceptions import CalledProcessError, UnknownOsError
 from ..utils import lprint
 from ._connection_wrapper import check_connections
+from ._os_path import OsPath
 
 if TYPE_CHECKING:
     from paramiko.sftp_attr import SFTPAttributes
@@ -29,7 +28,6 @@ __all__ = ["Os"]
 log = logging.getLogger(__name__)
 
 
-# TODO get the follow_symlinks arguments working
 class DirEntryRemote(DirEntryABC):
 
     name: str
@@ -84,10 +82,10 @@ class Os(OsABC):
 
     def __init__(self, connection: "SSHConnection") -> None:
         self.c = connection
-        self._path = OsPathRemote(connection)
+        self._path = OsPath(connection)
 
     @property
-    def path(self) -> "OsPathRemote":
+    def path(self) -> OsPath:
         return self._path
 
     @check_connections
@@ -333,79 +331,6 @@ class Os(OsABC):
         for sub_folder in sub_folders:
             for x in self.walk(sub_folder, topdown, onerror, followlinks):
                 yield x
-
-
-# alternative to os.path module
-class OsPathRemote(OsPathABC):
-    """Drop in replacement for `os.path` module."""
-
-    def __init__(self, connection: "SSHConnection") -> None:
-        self.c = connection
-
-    @check_connections(exclude_exceptions=IOError)
-    def isfile(self, path: "_SPATH") -> bool:
-        # have to call without decorators, otherwise FileNotFoundError
-        # does not propagate
-        unwrap = self.c.os.stat.__wrapped__
-        try:
-            return S_ISREG(unwrap(self, self.c._path2str(path)).st_mode)
-        except FileNotFoundError:
-            return False
-
-    @check_connections(exclude_exceptions=IOError)
-    def isdir(self, path: "_SPATH") -> bool:
-        # have to call without decorators, otherwise FileNotFoundError
-        # does not propagate
-        unwrap = self.c.os.stat.__wrapped__
-        try:
-            return S_ISDIR(unwrap(self, self.c._path2str(path)).st_mode)
-        except FileNotFoundError:
-            return False
-
-    @check_connections
-    def exists(self, path: "_SPATH") -> bool:
-        # have to call without decorators, otherwise FileNotFoundError
-        # does not propagate
-        unwrap = self.c.os.stat.__wrapped__
-        try:
-            unwrap(self, self.c._path2str(path))
-        except FileNotFoundError:
-            return False
-        else:
-            return True
-
-    @check_connections(exclude_exceptions=IOError)
-    def islink(self, path: "_SPATH") -> bool:
-        # have to call without decorators, otherwise FileNotFoundError
-        # does not propagate
-        unwrap = self.c.os.stat.__wrapped__
-        try:
-            return S_ISLNK(unwrap(self, self.c._path2str(path)).st_mode)
-        except FileNotFoundError:
-            return False
-
-    @check_connections
-    def realpath(self, path: "_SPATH") -> str:
-        return self.c.sftp.normalize(self.c._path2str(path))
-
-    def getsize(self, path: "_SPATH") -> int:
-
-        size = self.c.os.stat(path).st_size
-
-        if size:
-            return size
-        else:
-            raise OSError(f"Could not get size of file: {path}")
-
-    @check_connections
-    def join(self, path: "_SPATH", *paths: "_SPATH") -> str:
-
-        if self.c.os.name == "nt":
-            return njoin(self.c._path2str(path),
-                         *[self.c._path2str(p) for p in paths])
-        else:
-            return pjoin(self.c._path2str(path),
-                         *[self.c._path2str(p) for p in paths])
 
 
 class Scandir:
