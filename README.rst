@@ -368,3 +368,4 @@ TODO
 - show which methods are implemented
 - SSHPath root and anchor attributes incorectlly return '.' instead of '/' 
 - in some situation threadsafe object can cause deadlocks notable cases are: upload_tree/download_tree
+- create expiring connecton that will self close after some time

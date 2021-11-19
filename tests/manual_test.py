@@ -2,14 +2,27 @@ from ssh_utilities import Connection
 from ssh_utilities.multi_connection import MultiConnection
 from copy import deepcopy
 import pickle
+from ssh_utilities.utils import config_parser
+from pprint import pprint
 
+print(config_parser("/home/rynik/.ssh/config").lookup("*"))
+Connection.available_hosts["wigner"]["identityfile"] = None
+pprint(Connection.available_hosts)
+#Connection("*")
+
+c = Connection("wigner")
+print(c.os.listdir("/home/rynik"))
+print(str(c))
+c1 = Connection.from_str(str(c))
+print(c1.os.listdir("/home/rynik"))
+
+"""
 c = Connection("kohn", quiet=True, local=False)
 
 pat = "home/rynik/Raid/dizertacka/train_Si/ge_DPMD/train/gen?/train[0-9]/ge_all_*.pb"
 
 print(list(c.pathlib.Path("/").glob(pat)))
 
-"""
 c = Connection("kohn", quiet=True, local=False)
 print(c.os.path.isfile("/home/rynik/hw_config_Kohn.log"))
 
@@ -38,8 +51,12 @@ for p in mc1.pathlib.Path("/home/rynik"):
 a = mc.to_dict()
 mc.clear()
 
-
 with MultiConnection(["kohn"], quiet=True) as mc:
+    print(type(mc))
+    print(type(mc.os))
+    print(type(mc.os.path))
+    print(type(mc.os.scandir))
+    print(type(mc.os.path.isfile))
     for out in mc.os.path.isfile("/home/rynik/hw_config_Kohn.log"):
         print(out)
 

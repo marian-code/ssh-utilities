@@ -63,7 +63,9 @@ class delegated:
 
     def _call(self, c: "_CONN", *args, **kwargs):
         """Make method calls for each of the connections."""
+        #print(c, args, kwargs)
         method = getattr(getattr(c, self._inner_class), self._method_name)
+        #print(method, self._property)
         if self._property:
             return method
         else:
@@ -111,6 +113,10 @@ def Inner(abc_parent: "ABCs", multi_connection: "MultiConnection"):  # NOSONAR
             inner_class = abc_parent.__name__.replace("ABC", "").lower()
             attr = getattr(abc_parent, name)
             new_method = delegated(name, abc_parent, inner_class)
+            #print(name, inner_class, isinstance(attr, property))
+            # * special treatment for os.path subclass
+            #if name == "path" and inner_class == "os":
+            #    new_method = Inner(OsPathABC, multi_connection)
             if isinstance(attr, property):
                 new_method.is_property()
                 new_method = property(new_method.__call__,
