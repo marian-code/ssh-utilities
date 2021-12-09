@@ -10,7 +10,7 @@ from ..abstract import ShutilABC
 from ..utils import context_timeit, deprecation_warning, file_filter
 
 if TYPE_CHECKING:
-    from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _SPATH
+    from ..typeshed import _CALLBACK, _DIRECTION, _GLOBPAT, _PATH
     from .local import LocalConnection
 
 __all__ = ["Shutil"]
@@ -50,19 +50,19 @@ class Shutil(ShutilABC):
         shutil.copyfile(self.c._path2str(src), self.c._path2str(dst),
                         follow_symlinks=follow_symlinks)
 
-    def copy(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+    def copy(self, src: "_PATH", dst: "_PATH", *, direction: "_DIRECTION",
              follow_symlinks: bool = True, callback: "_CALLBACK" = None,
              quiet: bool = True):
         shutil.copy(self.c._path2str(src), self.c._path2str(dst),
                     follow_symlinks=follow_symlinks)
 
-    def copy2(self, src: "_SPATH", dst: "_SPATH", *, direction: "_DIRECTION",
+    def copy2(self, src: "_PATH", dst: "_PATH", *, direction: "_DIRECTION",
               follow_symlinks: bool = True, callback: "_CALLBACK" = None,
               quiet: bool = True):
         shutil.copy2(self.c._path2str(src), self.c._path2str(dst),
                      follow_symlinks=follow_symlinks)
 
-    def download_tree(self, remote_path: "_SPATH", local_path: "_SPATH",
+    def download_tree(self, remote_path: "_PATH", local_path: "_PATH",
                       include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                       remove_after: bool = True, quiet: bool = False):
 
@@ -80,7 +80,7 @@ class Shutil(ShutilABC):
         else:
             shutil.copytree(remote_path, local_path, copy_function=_cpy)
 
-    def upload_tree(self, local_path: "_SPATH", remote_path: "_SPATH",
+    def upload_tree(self, local_path: "_PATH", remote_path: "_PATH",
                     include: "_GLOBPAT" = None, exclude: "_GLOBPAT" = None,
                     remove_after: bool = True, quiet: bool = False):
 
@@ -88,7 +88,6 @@ class Shutil(ShutilABC):
                            exclude=exclude, remove_after=remove_after,
                            quiet=quiet)
 
-    @staticmethod
-    def rmtree(path: "_SPATH", ignore_errors: bool = False,
+    def rmtree(self, path: "_PATH", ignore_errors: bool = False,
                quiet: bool = True):
-        shutil.rmtree(path, ignore_errors=ignore_errors)
+        shutil.rmtree(self.c._path2str(path), ignore_errors=ignore_errors)

@@ -6,7 +6,7 @@ from typing import IO, TYPE_CHECKING, Optional
 from ..abstract import BuiltinsABC
 
 if TYPE_CHECKING:
-    from ..typeshed import _SPATH
+    from ..typeshed import _PATH
     from .local import LocalConnection
 
 __all__ = ["Builtins"]
@@ -28,13 +28,13 @@ class Builtins(BuiltinsABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
-    @staticmethod
-    def open(filename: "_SPATH", mode: str = "r", buffering: int = -1,
+    def open(self, filename: "_PATH", mode: str = "r", buffering: int = -1,
              encoding: Optional[str] = None, errors: Optional[str] = None,
              newline: Optional[str] = None
              ) -> IO:
         encoding = encoding if encoding else "utf-8"
         errors = errors if errors else "strict"
+        filename = self.c._path2str(filename)
 
         return open(filename, mode, encoding=encoding, errors=errors,
                     buffering=buffering, newline=newline)

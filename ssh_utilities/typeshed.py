@@ -30,7 +30,11 @@ _ENV = Optional[Union[Mapping[bytes, _TXT], Mapping[str, _TXT]]]
 #: srting glob pattern
 _GLOBPAT = Optional[str]
 #: accepted path types by ssh_utilities - str, Path or SSHPath
+#: for remote connection
 _SPATH = Union[str, "Path", "SSHPath"]
+#: accepted path types by ssh_utilities - str, Path or SSHPath
+#: for local connection
+_PATH = Union[str, "Path", "SSHPath"]
 #: alias for file send direction - put or get
 _DIRECTION = Literal["get", "put"]
 #: copy callback function - callable that accepts two floats first reperesents
@@ -43,5 +47,5 @@ _EXCTYPE = Union[Type[Exception], Tuple[Type[Exception], ...]]
 #: callble that accept one argument which is of exception type
 _ONERROR = Optional[Callable[[Exception], Any]]
 
-__all__ = ["_FILE", "_CMD", "_ENV", "_GLOBPAT", "_SPATH", "_DIRECTION",
-           "_CALLBACK", "_WALK", "_EXCTYPE", "_ONERROR"]
+__all__ = ["_FILE", "_CMD", "_ENV", "_GLOBPAT", "_SPATH", "_PATH",
+           "_DIRECTION", "_CALLBACK", "_WALK", "_EXCTYPE", "_ONERROR"]

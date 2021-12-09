@@ -2,7 +2,6 @@
 
 import logging
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 try:
@@ -14,7 +13,7 @@ from ..abstract import OsABC
 from ._os_path import OsPath
 
 if TYPE_CHECKING:
-    from ..typeshed import _SPATH
+    from ..typeshed import _PATH
     from .local import LocalConnection
 
 __all__ = ["Os"]
@@ -41,65 +40,63 @@ class Os(OsABC):
     def path(self) -> OsPath:
         return self._path
 
-    def scandir(self, path: "_SPATH"):
+    def scandir(self, path: "_PATH"):
         return os.scandir(self.c._path2str(path))
 
-    def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
+    def chmod(self, path: "_PATH", mode: int, *, dir_fd: Optional[int] = None,
               follow_symlinks: bool = True):
         os.chmod(self.c._path2str(path), mode, dir_fd=dir_fd,
                  follow_symlinks=follow_symlinks)
 
-    def lchmod(self, path: "_SPATH", mode: int):
+    def lchmod(self, path: "_PATH", mode: int):
         os.lchmod(self.c._path2str(path), mode)
 
-    def symlink(self, src: "_SPATH", dst: "_SPATH",
+    def symlink(self, src: "_PATH", dst: "_PATH",
                 target_is_directory: bool = False, *,
                 dir_fd: Optional[int] = None):
         os.symlink(src, dst, target_is_directory=target_is_directory,
                    dir_fd=dir_fd)
 
-    def remove(self, path: "_SPATH", *, dir_fd: int = None):
+    def remove(self, path: "_PATH", *, dir_fd: int = None):
         os.remove(path, dir_fd=dir_fd)
 
-    def unlink(self, path: "_SPATH", *, dir_fd: int = None):
+    def unlink(self, path: "_PATH", *, dir_fd: int = None):
         os.unlink(path, dir_fd=dir_fd)
 
-    def rmdir(self, path: "_SPATH", *, dir_fd: int = None):
+    def rmdir(self, path: "_PATH", *, dir_fd: int = None):
         os.rmdir(path, dir_fd=dir_fd)
 
-    def rename(self, src: "_SPATH", dst: "_SPATH", *,
+    def rename(self, src: "_PATH", dst: "_PATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):
         os.rename(self.c._path2str(src), self.c._path2str(dst),
                   src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
 
-    def replace(self, src: "_SPATH", dst: "_SPATH", *,
+    def replace(self, src: "_PATH", dst: "_PATH", *,
                 src_dir_fd: Optional[int] = None,
                 dst_dir_fd: Optional[int] = None):
         os.replace(self.c._path2str(src), self.c._path2str(dst),
                    src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
 
-    def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
+    def makedirs(self, path: "_PATH", mode: int = 511, exist_ok: bool = True,
                  parents: bool = True, quiet: bool = True):
-        Path(self.c._path2str(path)).mkdir(mode=mode, parents=parents,
-                                           exist_ok=exist_ok)
+        os.makedirs(self.c._path2str(path), mode=mode, exist_ok=exist_ok)
 
-    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
+    def mkdir(self, path: "_PATH", mode: int = 511, quiet: bool = True):
         self.makedirs(path, mode, exist_ok=False, parents=False, quiet=quiet)
 
-    @staticmethod
-    def listdir(path: "_SPATH") -> List[str]:
-        return os.listdir(path)
+    def listdir(self, path: "_PATH") -> List[str]:
+        return os.listdir(self.c._path2str(path))
 
-    def chdir(self, path: "_SPATH"):
+    def chdir(self, path: "_PATH"):
         os.chdir(self.c._path2str(path))
 
-    def stat(self, path: "_SPATH", *, dir_fd=None,
+    def stat(self, path: "_PATH", *, dir_fd=None,
              follow_symlinks: bool = True) -> os.stat_result:
         return os.stat(self.c._path2str(path), dir_fd=dir_fd,
                        follow_symlinks=follow_symlinks)
 
-    def lstat(self, path: "_SPATH", *, dir_fd=None) -> os.stat_result:
+    def lstat(self, path: "_PATH", *, dir_fd=None) -> os.stat_result:
         return os.lstat(self.c._path2str(path), dir_fd=dir_fd)
 
     @property
@@ -111,6 +108,16 @@ class Os(OsABC):
 
         return self._osname
 
-    def walk(self, top: "_SPATH", topdown: bool = True,
+    def walk(self, top: "_PATH", topdown: bool = True,
              onerror=None, followlinks: bool = False) -> os.walk:
         return os.walk(top, topdown, onerror, followlinks)
+
+    @staticmethod
+    def supports_fd():
+        return os.supports_fd()
+
+    @staticmethod
+    def supports_dir_fd():
+        return os.supports_dir_fd()
+
+    

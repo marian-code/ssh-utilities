@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ..abstract import PathlibABC
 
 if TYPE_CHECKING:
-    from ..typeshed import _SPATH
+    from ..typeshed import _PATH
     from .local import LocalConnection
 
 __all__ = ["Pathlib"]
@@ -27,5 +27,5 @@ class Pathlib(PathlibABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
-    def Path(self, path: "_SPATH") -> Path:
+    def Path(self, path: "_PATH") -> Path:
         return Path(self.c._path2str(path))

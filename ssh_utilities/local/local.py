@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from ..abstract import ConnectionABC
 from ..constants import G, Y
+from ..remote.path import SSHPath
 from ..utils import lprint
 from . import Builtins, Os, Pathlib, Shutil, Subprocess
 
@@ -16,7 +17,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ..abstract import (_BUILTINS_LOCAL, _OS_LOCAL, _PATHLIB_LOCAL,
-                       _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
+                            _SHUTIL_LOCAL, _SUBPROCESS_LOCAL)
+    from ..typeshed import _PATH
 
 __all__ = ["LocalConnection"]
 
@@ -108,3 +110,11 @@ class LocalConnection(ConnectionABC):
     @staticmethod
     def ssh_log(log_file="paramiko.log", level="WARN"):
         lprint()(f"{Y}Local sessions are not logged!")
+
+    def _path2str(self, path: Optional["_PATH"]) -> str:
+        if isinstance(path, SSHPath):
+            raise TypeError(
+                "LocalConnection does not accept 'SSHPath' as input"
+            )
+        else:
+            return super()._path2str()

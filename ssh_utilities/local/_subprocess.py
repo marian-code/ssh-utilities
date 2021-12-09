@@ -9,7 +9,7 @@ from ..constants import C, R
 from ..utils import lprint
 
 if TYPE_CHECKING:
-    from ..typeshed import _CMD, _ENV, _FILE, _SPATH
+    from ..typeshed import _CMD, _ENV, _FILE, _PATH
     from .local import LocalConnection
 
 __all__ = ["Subprocess"]
@@ -31,13 +31,12 @@ class Subprocess(SubprocessABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
-    @staticmethod
-    def run(args: "_CMD", *, suppress_out: bool,  # NOSONAR
-            quiet: bool = True, bufsize: int = -1, executable: "_SPATH" = None,
+    def run(self, args: "_CMD", *, suppress_out: bool,  # NOSONAR
+            quiet: bool = True, bufsize: int = -1, executable: "_PATH" = None,
             input: Optional[str] = None, stdin: "_FILE" = None,
             stdout: "_FILE" = None, stderr: "_FILE" = None,
             capture_output: bool = False, shell: bool = False,
-            cwd: "_SPATH" = None, timeout: Optional[float] = None,
+            cwd: "_PATH" = None, timeout: Optional[float] = None,
             check: bool = False, encoding: Optional[str] = None,
             errors: Optional[str] = None, text: Optional[bool] = None,
             env: "_ENV" = None, universal_newlines: bool = False
@@ -49,10 +48,10 @@ class Subprocess(SubprocessABC):
 
         out = subprocess.run(  # type: ignore
             args, bufsize=bufsize,
-            executable=executable,  # type: ignore
+            executable=self.c._path2str(executable),  # type: ignore
             input=input, stdin=stdin, stdout=stdout, stderr=stderr,
-            shell=shell, cwd=cwd, timeout=timeout, check=check,
-            encoding=encoding,  # type: ignore
+            shell=shell, cwd=self.c._path2str(cwd), timeout=timeout,
+            check=check, encoding=encoding,  # type: ignore
             errors=errors, text=text, universal_newlines=universal_newlines
         )
 

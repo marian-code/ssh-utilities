@@ -4,6 +4,8 @@ import errno
 import logging
 import os
 import shutil
+import stat
+import sys
 from typing import (IO, TYPE_CHECKING, Any, Callable, List, NoReturn, Optional,
                     Sequence, Set, Union)
 
@@ -154,12 +156,86 @@ class Shutil(ShutilABC):
 
     copy2 = copy
 
-    def copytree(self, src: "_SPATH", dst: "_SPATH", symlinks: bool = False,
+    # TODO
+    @check_connections(exclude_exceptions=shutil.Error)
+    def copytree(self, src: "_SPATH", dst: "_SPATH",
+                 direction: "_DIRECTION", symlinks: bool = False,
                  ignore: Optional[Callable[["_SPATH"], bool]] = None,
                  copy_function: Callable[["_SPATH", "_SPATH", bool], NoReturn] = "copy2",
                  ignore_dangling_symlinks: bool = False,
                  dirs_exist_ok: bool = False):
-        raise NotImplementedError
+
+        sys.audit("ssh_utilities.shutil.copytree", src, dst)
+        with self.c.os.scandir(src) as itr:
+            entries = list(itr)
+        return self._copytree(
+            entries=entries, src=src, dst=dst, direction=direction,
+            symlinks=symlinks, ignore=ignore, copy_function=copy_function,
+            ignore_dangling_symlinks=ignore_dangling_symlinks,
+            dirs_exist_ok=dirs_exist_ok)
+        
+    def _copytree(self, entries, src, dst, direction, symlinks, ignore,
+                  copy_function, ignore_dangling_symlinks,
+                  dirs_exist_ok=False):
+
+        if ignore is not None:
+            ignored_names = ignore(self.c._path2str(src), [x.name for x in entries])
+        else:
+            ignored_names = set()
+
+        self.c.os.makedirs(dst, exist_ok=dirs_exist_ok)
+        errors = []
+        use_srcentry = copy_function is self.copy2 or copy_function is self.copy
+
+        for srcentry in entries:
+            if srcentry.name in ignored_names:
+                continue
+            srcname = self.c.os.path.join(src, srcentry.name)
+            dstname = self.c.os.path.join(dst, srcentry.name)
+            srcobj = srcentry if use_srcentry else srcname
+            try:
+                is_symlink = srcentry.is_symlink()
+                if is_symlink and self.c.os.name == 'nt':
+                    # Special check for directory junctions, which appear as
+                    # symlinks but we want to recurse.
+                    lstat = srcentry.stat(follow_symlinks=False)
+                    if lstat.st_reparse_tag == stat.IO_REPARSE_TAG_MOUNT_POINT:
+                        is_symlink = False
+                if is_symlink:
+                    # TODO 
+                    linkto = os.readlink(srcname)
+                    if symlinks:
+                        # We can't just leave it to `copy_function` because legacy
+                        # code with a custom `copy_function` may rely on copytree
+                        # doing the right thing.
+                        self.c.os.symlink(linkto, dstname)
+                    else:
+                        # ignore dangling symlink if the flag is on
+                        if not os.path.exists(linkto) and ignore_dangling_symlinks:
+                            continue
+                        # otherwise let the copy occur. copy2 will raise an error
+                        if srcentry.is_dir():
+                            self.copytree(srcobj, dstname, direction, symlinks,
+                                          ignore, copy_function,
+                                          dirs_exist_ok=dirs_exist_ok)
+                        else:
+                            copy_function(srcobj, dstname)
+                elif srcentry.is_dir():
+                    self.copytree(srcobj, dstname, direction, symlinks, ignore,
+                                  copy_function, dirs_exist_ok=dirs_exist_ok)
+                else:
+                    # Will raise a SpecialFileError for unsupported file types
+                    copy_function(srcobj, dstname)
+            # catch the Error from the recursive copytree so that we can
+            # continue with other files
+            except shutil.Error as err:
+                errors.extend(err.args[0])
+            except OSError as why:
+                errors.append((srcname, dstname, str(why)))
+
+        if errors:
+            raise shutil.Error(errors)
+        return dst
 
     @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def rmtree(self, path: "_SPATH", ignore_errors: bool = False,
