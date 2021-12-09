@@ -117,4 +117,4 @@ class LocalConnection(ConnectionABC):
                 "LocalConnection does not accept 'SSHPath' as input"
             )
         else:
-            return super()._path2str()
+            return super()._path2str(path)
