@@ -18,7 +18,8 @@ Instantiating connection
 
 ``Connection`` factory supports dict-like indexing by values that are in
 your **~/.ssh/config** file. It can be made thread safe by passing
-``thread_safe=True`` argument to the constructor. Your ``~/.ssh.config`` file
+``thread_safe=True`` argument to the constructor. Connection can also be
+authenticated with ssh-agent. Your ``~/.ssh.config`` file
 is parsed upon module import and the ``Connection`` factory is indexable by
 values in this file.
 
@@ -34,15 +35,25 @@ More hosts can be simply added.
 
     >>> from ssh_utilities import Connection
     >>> Connection.add_hosts({"user": <some_user>, "hostname": <my_ssh_server>,
-                              "identityfile": <path_to_my_identity_file>})
+                              "identityfile": <path_to_my_identity_file>},
+                             allow_agent=True)
 
-There is also a specific get method which is safer and with better typing
-support than dict-like indexing
+Adding a host that will be authenticated by ssh-agent
 
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> Connection.add_hosts({"user": <some_user>, "hostname": <my_ssh_server>,
+                              "identityfile": None},
+                             allow_agent=True)
+
+Class can also be normally instantiated which is safer and with better typing
+support than dict-like indexing.
+
+.. code-block:: python
+
+    >>> from ssh_utilities import Connection
+    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>, <allow_agent>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -50,7 +61,7 @@ Class can be also used as a context manager.
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
+    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>, <allow_agent>) as conn:
     >>>     conn.something(...)
 
 Connection can also be initialized from appropriately formated string.
@@ -69,7 +80,7 @@ customization is required, use open method, this also allows use of passwords
 
     >>> from ssh_utilities import Connection
     >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>, <server_name>,
-                               <thread_safe>)
+                               <thread_safe>, <allow_agent>)
     >>>
 
 Using connection - subprocess

@@ -108,10 +108,15 @@ class Os(OsABC):
         return ScandirIterator(self.c._path2str(path), self.c)
 
     @fd_error
-    @check_connections
+    @check_connections(exclude_exceptions=FileNotFoundError)
     def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
               follow_symlinks: bool = True):
         path = self.c._path2str(path)
+
+        if not self.path.exists(path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
 
         if follow_symlinks:
             path = self.c.sftp.normalize(path)
@@ -249,10 +254,15 @@ class Os(OsABC):
                 raise OSError(f"Couldn't make dir {path}, probably permission "
                               f"error: {e}") from e
 
-    @check_connections(exclude_exceptions=NotADirectoryError)
+    @check_connections(exclude_exceptions=(NotADirectoryError,
+                                           FileNotFoundError))
     def listdir(self, path: "_SPATH") -> List[str]:
         path = self.c._path2str(path)
-        if not self.path.isdir(path):
+        if not self.path.exists(path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
+        elif not self.path.isdir(path):
             raise NotADirectoryError(
                 errno.ENOTDIR, os.strerror(errno.ENOTDIR)
             )
@@ -319,7 +329,7 @@ class Os(OsABC):
              follow_symlinks: bool = True) -> "SFTPAttributes":
 
         path = self.c._path2str(path)
-    
+
         if follow_symlinks:
             stat = self.c.sftp.stat(self.c.sftp.normalize(path))
         else:
@@ -385,7 +395,7 @@ class Os(OsABC):
         raise NotImplementedError
 
 
-class ScandirIterator:
+class ScandirIterator(Iterator[DirEntryRemote]):
     """Reads directory contents and yields as DirEntry objects.
 
     These objects have subset of methods similar to `Path` object.

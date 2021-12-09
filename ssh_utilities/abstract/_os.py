@@ -218,6 +218,10 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         dir_fd : Optional[int], optional
             file descriptor, not used in ssh implementation, by default None
 
+        Warnings
+        --------
+        `dir_fd` parameter is not implemented
+        
         Raises
         ------
         FileNotFoundError
@@ -242,6 +246,10 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
             path to remove
         dir_fd : Optional[int], optional
             file descriptor, not used in ssh implementation, by default None
+
+        Warnings
+        --------
+        `dir_fd` parameter is not implemented
 
         Raises
         ------
@@ -270,10 +278,22 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         dst_dir_fd : Optional[int], optional
             file descriptor, not used in ssh implementation, by default None
 
+        Warnings
+        --------
+        `src_dir_fd` parameter is not implemented
+        `dst_dir_fd` parameter is not implemented
+
         Raises
         ------
-        OsError
-            If dst exists, the operation will fail with an OSError,
+        FileNotFoundError
+            raised on win if destination path exists
+        IsADirectoryError
+            raised on posix if `src` is file and `dst` is directory
+        NotADirectoryError
+            raised on posix in `src` is dir and `dst` is file
+        IOError
+            if some other paramiko related error happens and file could not
+            have been removed.
         """
         raise NotImplementedError
 
@@ -294,15 +314,24 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         dst_dir_fd : Optional[int], optional
             file descriptor, not used in ssh implementation, by default None
 
-        Raises
-        ------
-        OsError
-            If dst is a directory, the operation will fail with an OSError,
-
         Warnings
         --------
+        `src_dir_fd` parameter is not implemented
+        `dst_dir_fd` parameter is not implemented
         If dst exists and is a file, it will be replaced silently
         if the user has permission.
+
+        Raises
+        ------
+        FileNotFoundError
+            raised on win if destination path exists
+        IsADirectoryError
+            raised on posix if `src` is file and `dst` is directory
+        NotADirectoryError
+            raised on posix in `src` is dir and `dst` is file
+        IOError
+            if some other paramiko related error happens and file could not
+            have been removed.  
         """
         raise NotImplementedError
 
@@ -376,11 +405,32 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         ------
         FileNotFoundError
             if directory does not exist
+        NotADirectoryError
+            if path is not a directory
         """
         raise NotImplementedError
 
     @abstractmethod
     def chdir(self, path: "_SPATH"):
+        """Changes working directory.
+
+        Parameters
+        ----------
+        path : _SPATH
+            directory to change to
+
+        Warnings
+        --------
+        This is not guaranted to work on all servers. You should avoud this
+        method or check if you are in the correct directory.
+
+        Raises
+        ------
+        FileNotFoundError
+            if directory does not exist
+        NotADirectoryError
+            if path is not a directory
+        """
         raise NotImplementedError
 
     @abstractmethod

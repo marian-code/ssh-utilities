@@ -83,12 +83,8 @@ Design goals and features
 - try to be as platform agnostic as possible
 - accept both stings and Path objects in all methods that require some path as
   an input
-- strong emphasis on usage of ssh key based authentication
-
-.. warning:: 
-
-   from version v0.8.x to 0.9.x there is a change in the API some methods have
-   been moved from `os`_ submodule to `os.path`_ submodule
+- strong emphasis on usage of ssh key based authentication whether through
+  key files or ssh-agent
 
 List of inner classes and implemented methods
 ---------------------------------------------
@@ -151,6 +147,10 @@ summarizes the API. Based on table you can do for instance:
 |               | walk            | |yes|           | |yes|            | |yes|           |
 |               +-----------------+-----------------+------------------+-----------------+
 |               | path            | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
+|               | supports_fd     | |yes|           | |yes|            | |no|            |
+|               +-----------------+-----------------+------------------+-----------------+
+|               | supports_dir_fd | |yes|           | |yes|            | |no|            |
 +---------------+-----------------+-----------------+------------------+-----------------+
 | `os.path`_    | realpath        | |yes|           | |yes|            | |no|            |
 |               +-----------------+-----------------+------------------+-----------------+
@@ -221,6 +221,12 @@ Simple Usage
 for more detailed usage examples please refer to
 `documnetation <https://ssh-utilities.readthedocs.io/en/latest/>`_
 
+There are 3 authentication options:
+
+* ssh key file
+* ssh-agent
+* password
+
 ``Connection`` factory supports dict-like indexing by values that are in
 your **~/.ssh/config** file.
 
@@ -237,7 +243,7 @@ support than dict-like indexing. Connection can be made thread safe by passing
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>)
+    >>> Connection(<server_name>, <local>, <quiet>, <thread_safe>, <allow_agent>)
     >>> <ssh_utilities.ssh_utils.SSHConnection at 0x7efedff4fb38>
 
 Class can be also used as a context manager.
@@ -245,7 +251,7 @@ Class can be also used as a context manager.
 .. code-block:: python
 
     >>> from ssh_utilities import Connection
-    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>) as conn:
+    >>> with Connection(<server_name>, <local>, <quiet>, <thread_safe>, <allow_agent>) as conn:
     >>>     conn.something(...)
 
 Connection can also be initialized from appropriately formated string.
@@ -264,7 +270,7 @@ customization is required, use open method, this also allows use of passwords
 
     >>> from ssh_utilities import Connection
     >>> conn = Connection.open(<ssh_username>, <ssh_server>, <ssh_key_file>,
-                               <server_name>, <thread_safe>):
+                               <server_name>, <thread_safe>, <allow_agent>):
 
 Module API also exposes powerfull SSHPath object with identical API as
 ``pathlib.Path`` only this one works for remote files. It must be always tied to
@@ -369,3 +375,4 @@ TODO
 - SSHPath root and anchor attributes incorectlly return '.' instead of '/' 
 - in some situation threadsafe object can cause deadlocks notable cases are: upload_tree/download_tree
 - create expiring connecton that will self close after some time
+- add ssh-agent docs
