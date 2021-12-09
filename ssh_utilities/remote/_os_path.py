@@ -1,6 +1,8 @@
 """Remote connection os.path methods."""
 
+import errno
 import logging
+import os
 from ntpath import join as njoin
 from posixpath import join as pjoin
 from stat import S_ISDIR, S_ISLNK, S_ISREG
@@ -79,7 +81,9 @@ class OsPath(OsPathABC):
         if size:
             return size
         else:
-            raise OSError(f"Could not get size of file: {path}")
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
 
     @check_connections
     def join(self, path: "_SPATH", *paths: "_SPATH") -> str:

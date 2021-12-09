@@ -1,5 +1,6 @@
 """Module collecting shutil-like remote methods."""
 
+import errno
 import logging
 import os
 import shutil
@@ -119,8 +120,11 @@ class Shutil(ShutilABC):
                   f"\n-->           local:{R} {dst}")
 
             if os.path.isdir(dst_str):
-                raise IsADirectoryError("dst argument must be full path "
-                                        "not a directory")
+                raise IsADirectoryError(
+                    errno.EISDIR,
+                    "dst argument must be full path not a directory",
+                    dst_str
+                )
 
             if follow_symlinks:
                 src_str = self.c.os.path.realpath(src_str)
@@ -129,16 +133,20 @@ class Shutil(ShutilABC):
             try:
                 self.c.sftp.get(src_str, dst_str, callback)
             except IOError as e:
-                raise FileNotFoundError(f"File you are trying to get "
-                                        f"does not exist: {e}")
+                raise FileNotFoundError(
+                    errno.ENOENT, str(e), src_str
+                )
 
         elif direction == "put":
             lprnt(f"{G}Copying from local:{R} {src}\n"
                   f"{LG} -->       remote: {self.c.server_name}@{dst}")
 
             if self.c.os.path.isdir(dst_str):
-                raise IsADirectoryError("dst argument must be full path "
-                                        "not a directory")
+                raise IsADirectoryError(
+                    errno.EISDIR,
+                    "dst argument must be full path not a directory",
+                    dst_str,
+                )
 
             if follow_symlinks:
                 src_str = os.path.realpath(src_str)
@@ -193,24 +201,29 @@ class Shutil(ShutilABC):
                     if self.c.os.path.isfile(f):
                         try:
                             self.c.os.unlink(f)
-                        except (FileNotFoundError, OSError) as e:
+                        except OSError as e:  # catches also FileNotFoundError
                             if ignore_errors:
                                 log.warning("File does not exist")
                             else:
-                                raise FileNotFoundError(str(e)) from e
+                                raise FileNotFoundError(
+                                    errno.ENOENT, str(e), f
+                                ) from e
                 if self.c.os.path.isdir(root):
                     try:
                         self.c.os.rmdir(root)
-                    except (FileNotFoundError, OSError) as e:
+                    except OSError as e:  # catches also FileNotFoundError
                         if ignore_errors:
                             log.warning("Directory does not exist")
                         else:
-                            raise FileNotFoundError(str(e)) from e
+                            raise FileNotFoundError(
+                                    errno.ENOENT, str(e), root
+                                ) from e
 
             if self.c.os.path.isdir(path):
                 self.c.sftp.rmdir(path)
 
     # TODO collect errors and raise at the end
+    # TODO should raise shutil error
     @check_connections(exclude_exceptions=(FileNotFoundError, OSError))
     def download_tree(
         self, remote_path: "_SPATH", local_path: "_SPATH",
@@ -223,8 +236,9 @@ class Shutil(ShutilABC):
         src = self.c._path2str(remote_path)
 
         if not self.c.os.path.isdir(remote_path):
-            raise FileNotFoundError(f"{remote_path} you are trying to download"
-                                    f"from does not exist")
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), remote_path
+            )
 
         lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
         ignore_files = file_filter(include, exclude)
@@ -306,7 +320,7 @@ class Shutil(ShutilABC):
                     raise IOError(
                         f"The file {cf['src']} could not be copied to "
                         f"{cf['dst']}. This is probably due to permission "
-                        f"error: {e}")
+                        f"error: {e}") from e
 
         lprnt("")
 
@@ -325,8 +339,9 @@ class Shutil(ShutilABC):
         dst = self.c._path2str(remote_path)
 
         if not os.path.isdir(local_path):
-            raise FileNotFoundError(f"{local_path} you are trying to upload "
-                                    f"does not exist")
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), local_path
+            )
 
         lprnt = lprint(quiet=True if quiet in (True, "stats") else False)
         ignore_files = file_filter(include, exclude)

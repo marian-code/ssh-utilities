@@ -4,7 +4,8 @@ import logging
 import os
 import socket
 import sys
-from io import BytesIO, StringIO, TextIOBase
+from collections.abc import Sequence
+from io import BytesIO, StringIO
 from pathlib import Path
 from subprocess import DEVNULL, PIPE, STDOUT
 from typing import TYPE_CHECKING, Optional, TextIO, Union
@@ -144,9 +145,14 @@ class Subprocess(SubprocessABC):
                 f"write"
             )
 
+        # convert general sequence to list
+        if isinstance(args, Sequence):
+            args = list(args)
+
         if isinstance(args, list):
-            if isinstance(args[0], Path):
-                args[0] = self.c._path2str(args[0])
+            for i, a in enumerate(args):
+                if isinstance(a, Path):
+                    args[i] = self.c._path2str(a)
 
             command = " ".join(args)
         elif isinstance(args, Path):
@@ -154,7 +160,10 @@ class Subprocess(SubprocessABC):
         elif isinstance(args, str):
             command = args
         else:
-            raise TypeError("process arguments are of wrong type")
+            raise TypeError(
+                "process arguments are of wrong type. "
+                "Must be str, Path, Sequence of one them"
+            )
 
         commands = command.split(" && ")
         if len(commands) == 1:

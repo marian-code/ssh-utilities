@@ -1,8 +1,9 @@
 """Implements Path-like object for remote hosts."""
 
+import errno
 import logging
+import os
 from functools import wraps
-from os import fspath
 from os.path import samestat
 from pathlib import Path, PurePosixPath, PureWindowsPath  # type: ignore
 from sys import version_info as python_version
@@ -175,7 +176,7 @@ class SSHPath(Path):
 
     @property
     def _2str(self):
-        return fspath(self)
+        return os.fspath(self)
 
     def cwd(self) -> "SSHPath":  # type: ignore
         """Returns current working directory.
@@ -319,7 +320,7 @@ class SSHPath(Path):
         mode : int
             integer number of the desired mode
         exist_ok: bool
-            do not raise an exception when fiel already exists
+            do not raise an exception when file already exists
 
         Raises
         ------
@@ -327,8 +328,9 @@ class SSHPath(Path):
             when file or directory with same name already exists
         """
         if self.exists() and not exist_ok:
-            raise FileExistsError(f"{self} is a file or dir, "
-                                  f"cannot create new file")
+            raise FileExistsError(
+                errno.ENOENT, os.strerror(errno.ENOENT), self._2str
+            )
         else:
             with self.c.builtins.open(self, "w") as f:
                 f.write("")

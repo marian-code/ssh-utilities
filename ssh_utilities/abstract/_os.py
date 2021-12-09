@@ -308,7 +308,7 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
 
     @abstractmethod
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
-                 parents: bool = True, quiet: bool = True):
+                 quiet: bool = True):
         """Recursively create directory.
 
         If it already exists, show warning and return.
@@ -322,9 +322,6 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         exist_ok: bool
             if true and directory exists, exception is silently passed when dir
             already exists
-        parents: bool
-            if true any missing parent dirs are automatically created, else
-            exception is raised on missing parent
         quiet: bool
             if True informative messages are suppresssed
 
@@ -332,8 +329,6 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         ------
         OSError
             if directory could not be created
-        FileNotFoundError
-            when parent directory is missing and parents=False
         FileExistsError
             when directory already exists and exist_ok=False
         """
@@ -360,8 +355,6 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
             if directory could not be created
         FileNotFoundError
             when parent directory is missing and parents=False
-        FileExistsError
-            when directory already exists and exist_ok=False
         """
         raise NotImplementedError
 
@@ -506,5 +499,27 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         -------
         :const:`ssh_utilities.typeshed._WALK`
             iterator of 3 tuples containing current dir, subdirs and files
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def supports_fd():
+        """Check file descriptor support.
+
+        Raises
+        ------
+        NotImplementedError
+            if passing file descriptor is unsupported
+        """
+        raise NotImplementedError
+
+    @staticmethod
+    def supports_dir_fd():
+        """Check file descriptor support.
+
+        Raises
+        ------
+        NotImplementedError
+            if passing file descriptor is unsupported
         """
         raise NotImplementedError

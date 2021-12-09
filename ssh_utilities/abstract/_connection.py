@@ -1,24 +1,26 @@
 """Template module for all connections classes."""
+import errno
 import logging
+import os
 from abc import ABC, abstractmethod
 from json import dumps
 from os import fspath
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, Union, TypeVar
+from typing import TYPE_CHECKING, Dict, FrozenSet, Optional, TypeVar, Union
 
 # import stale to prevent circullar import
 from ssh_utilities import connection
 
 if TYPE_CHECKING:
+    from ..local import LocalConnection
+    from ..multi_connection import MultiConnection
+    from ..remote import SSHConnection
     from ..typeshed import _SPATH
     from ._builtins import BuiltinsABC
     from ._os import OsABC
     from ._pathlib import PathlibABC
     from ._shutil import ShutilABC
     from ._subprocess import SubprocessABC
-    from ..remote import SSHConnection
-    from ..local import LocalConnection
-    from ..multi_connection import MultiConnection
 
     CONN_TYPE = TypeVar("CONN_TYPE", LocalConnection, SSHConnection, MultiConnection)
 
@@ -118,7 +120,7 @@ class ConnectionABC(ABC):
 
         Raises
         ------
-        FileNotFoundError
+        ValueError
             if path is not instance of str, Path or SSHPath
         """
         if isinstance(path, Path):  # (Path, SSHPath)):
@@ -126,7 +128,9 @@ class ConnectionABC(ABC):
         elif isinstance(path, str):
             p = path
         else:
-            raise FileNotFoundError(f"{path} is not a valid path")
+            raise ValueError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
 
         if p.endswith("/") and len(p) > 1:
             return p[:-1]

@@ -1,7 +1,9 @@
 """Remote connection os methods."""
 
+import errno
 import logging
 import os
+from functools import wraps
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 from typing import TYPE_CHECKING, Iterator, List, Optional
 
@@ -26,6 +28,19 @@ if TYPE_CHECKING:
 __all__ = ["Os"]
 
 log = logging.getLogger(__name__)
+
+
+def fd_error(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        for keyword, value in kwargs.items():
+            if "dir_fd" in keyword and value is not None:
+                raise NotImplementedError(
+                    "dir_fd is not supported through ssh"
+                )
+        return func(self, *args, **kwargs)
+    return wrapper
+
 
 
 class DirEntryRemote(DirEntryABC):
@@ -89,9 +104,10 @@ class Os(OsABC):
         return self._path
 
     @check_connections
-    def scandir(self, path: "_SPATH") -> "Scandir":
-        return Scandir(self.c._path2str(path), self.c)
+    def scandir(self, path: "_SPATH") -> Iterator[DirEntryRemote]:
+        return ScandirIterator(self.c._path2str(path), self.c)
 
+    @fd_error
     @check_connections
     def chmod(self, path: "_SPATH", mode: int, *, dir_fd: Optional[int] = None,
               follow_symlinks: bool = True):
@@ -105,133 +121,159 @@ class Os(OsABC):
     def lchmod(self, path: "_SPATH", mode: int):
         self.chmod(path, mode, follow_symlinks=False)
 
+    @fd_error
     @check_connections
     def symlink(self, src: "_SPATH", dst: "_SPATH",
                 target_is_directory: bool = False, *,
                 dir_fd: Optional[int] = None):
         self.c.sftp.symlink(self.c._path2str(src), self.c._path2str(dst))
 
+    @fd_error
     @check_connections(exclude_exceptions=(FileNotFoundError, IOError,
                                            IsADirectoryError))
     def remove(self, path: "_SPATH", *, dir_fd: int = None):
         path = self.c._path2str(path)
 
-        if not self.path.isfile(path):
-            raise FileNotFoundError(f"File {path} does not exist")
+        if not self.path.exists(path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
         elif self.path.isdir(path):
             raise IsADirectoryError(
-                "Path points to a directory, user os.rmdir"
+                errno.EISDIR, os.strerror(errno.EISDIR), path
             )
         else:
             self.c.sftp.unlink()
 
     unlink = remove
 
-    @check_connections(exclude_exceptions=(OSError))
+    @fd_error
+    @check_connections(exclude_exceptions=OSError)
     def rmdir(self, path: "_SPATH", *, dir_fd: int = None):
         path = self.c._path2str(path)
 
-        if not self.path.isdir(path):
-            raise FileNotFoundError(f"Directory {path} does not exist")
+        if not self.path.exists(path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
+        elif any(self.scandir(path)):
+            raise OSError(
+                errno.ENOTEMPTY, os.strerror(errno.ENOTEMPTY), path
+            )
         else:
-            try:
-                self.c.sftp.rmdir(path)
-            except IOError as e:
-                raise OSError(str(e)) from e
+            self.c.sftp.rmdir(path)
 
-    @check_connections(exclude_exceptions=(OSError))
+    @fd_error
+    @check_connections(exclude_exceptions=(OSError, FileExistsError,
+                                           NotADirectoryError, IOError))
     def rename(self, src: "_SPATH", dst: "_SPATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):
-        if self.name == "nt":
-            try:
-                self.c.sftp.rename(self.c._path2str(src),
-                                   self.c._path2str(dst))
-            except IOError as e:
-                raise OSError(str(e)) from e
-        else:
-            try:
-                self.c.sftp.posix_rename(self.c._path2str(src),
-                                         self.c._path2str(dst))
-            except IOError as e:
-                raise OSError(str(e)) from e
+        src = self.c._path2str(src)
+        dst = self.c._path2str(dst)
 
-    @check_connections(exclude_exceptions=(OSError))
+        if self.name == "nt":
+            if self.path.exists(dst):
+                raise FileExistsError(
+                    errno.EEXIST, os.strerror(errno.EEXIST), dst
+                )
+            self.c.sftp.rename(src, dst)
+        else:
+            if self.path.isfile(src) and self.path.isdir(dst):
+                raise IsADirectoryError(
+                    errno.EISDIR, os.strerror(errno.ENOENT), dst
+                )
+            elif self.path.isdir(src) and self.path.isfile(dst):
+                raise NotADirectoryError(
+                    errno.ENOTDIR, os.strerror(errno.ENOTDIR), dst
+                )
+
+            self.c.sftp.posix_rename(src, dst)
+
+    @fd_error
+    @check_connections(exclude_exceptions=IsADirectoryError)
     def replace(self, src: "_SPATH", dst: "_SPATH", *,
                 src_dir_fd: Optional[int] = None,
                 dst_dir_fd: Optional[int] = None):
 
         if self.path.isdir(dst):
-            raise OSError(
-                f"Destination path: {dst} already exists and is a directory"
+            raise IsADirectoryError(
+                errno.EISDIR, os.strerror(errno.ENOENT), dst
             )
         elif self.path.isfile(dst):
             self.remove(dst)
 
         self.rename(src, dst)
 
-    @check_connections(exclude_exceptions=(FileExistsError, FileNotFoundError,
-                                           OSError))
+    @check_connections(exclude_exceptions=(FileExistsError, OSError))
     def makedirs(self, path: "_SPATH", mode: int = 511, exist_ok: bool = True,
-                 parents: bool = True, quiet: bool = True):
+                 quiet: bool = True):
 
         path = self.c._path2str(path)
 
         if self.path.isdir(path) and not exist_ok:
-            raise FileExistsError(f"Directory already exists: "
-                                  f"{self.c.server_name}@{path}")
+            raise FileExistsError(
+                errno.EEXIST, os.strerror(errno.EEXIST), path
+            )
         elif self.path.isdir(path) and exist_ok:
             return
 
         lprint(quiet)(f"{G}Creating directory:{R} "
                       f"{self.c.server_name}@{path}")
 
-        if not parents:
-            try:
-                self.c.sftp.mkdir(path, mode)
-            except Exception as e:
-                raise FileNotFoundError(f"Error in creating directory: "
-                                        f"{self.c.server_name}@{path}, "
-                                        f"probably parent does not exist."
-                                        f"\n{e}")
-
         to_make = []
         actual = path
 
         while True:
             # TODO this is not platform agnostic!
-            actual = os.path.dirname(actual)
             if not self.path.isdir(actual):
                 to_make.append(actual)
+                actual = os.path.dirname(actual)
             else:
                 break
 
         for tm in reversed(to_make):
-            try:
-                self.c.sftp.mkdir(tm, mode)
-            except OSError as e:
-                raise OSError(f"Couldn't make dir {tm},\n probably "
-                              f"permission error: {e}")
+            self.mkdir(tm, mode)
+
+    @check_connections(exclude_exceptions=(FileExistsError, OSError))
+    def mkdir(self, path: "_SPATH", mode: int = 511):
 
         try:
             self.c.sftp.mkdir(path, mode)
         except OSError as e:
-            raise OSError(f"Couldn't make dir {path}, probably permission "
-                          f"error: {e}\nAlso check path formating")
+            if self.path.isdir(path):
+                raise FileExistsError(
+                    errno.EEXIST, os.strerror(errno.EEXIST), path
+                )
+            else:
+                raise OSError(f"Couldn't make dir {path}, probably permission "
+                              f"error: {e}") from e
 
-    def mkdir(self, path: "_SPATH", mode: int = 511, quiet: bool = True):
-        self.makedirs(path, mode, exist_ok=False, parents=False, quiet=quiet)
-
-    @check_connections(exclude_exceptions=FileNotFoundError)
+    @check_connections(exclude_exceptions=NotADirectoryError)
     def listdir(self, path: "_SPATH") -> List[str]:
-        try:
-            return self.c.sftp.listdir(self.c._path2str(path))
-        except IOError as e:
-            raise FileNotFoundError(f"Directory does not exist: {e}")
+        path = self.c._path2str(path)
+        if not self.path.isdir(path):
+            raise NotADirectoryError(
+                errno.ENOTDIR, os.strerror(errno.ENOTDIR)
+            )
 
-    @check_connections
+        return self.c.sftp.listdir(self.c._path2str(path))
+
+    @check_connections(exclude_exceptions=(FileNotFoundError, IOError,
+                                           NotADirectoryError))
     def chdir(self, path: "_SPATH"):
-        self.c.sftp.chdir(self.c._path2str(path))
+        path = self.c._path2str(path)
+
+        if not self.path.exists(path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
+        elif not self.path.isdir(path):
+            raise NotADirectoryError(
+                errno.ENOTDIR, os.strerror(errno.ENOTDIR), path
+            )
+
+        self.c.sftp.chdir(path)
 
     @property
     def name(self) -> Literal["nt", "posix"]:
@@ -271,21 +313,23 @@ class Os(OsABC):
 
         return self._osname
 
+    @fd_error
     @check_connections(exclude_exceptions=FileNotFoundError)
     def stat(self, path: "_SPATH", *, dir_fd: Optional[int] = None,
              follow_symlinks: bool = True) -> "SFTPAttributes":
 
         path = self.c._path2str(path)
-        try:
-            if follow_symlinks:
-                stat = self.c.sftp.stat(self.c.sftp.normalize(path))
-            else:
-                stat = self.c.sftp.stat(path)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"no such file: {path}") from e
+    
+        if follow_symlinks:
+            stat = self.c.sftp.stat(self.c.sftp.normalize(path))
+        else:
+            stat = self.c.sftp.stat(path)
+
         return stat
 
-    def lstat(self, path: "_SPATH", *, dir_fd=None) -> "SFTPAttributes":
+    @fd_error
+    def lstat(self, path: "_SPATH", *, dir_fd: Optional[int] = None,
+              ) -> "SFTPAttributes":
         return self.stat(path, dir_fd=dir_fd, follow_symlinks=False)
 
     @check_connections()
@@ -332,8 +376,16 @@ class Os(OsABC):
             for x in self.walk(sub_folder, topdown, onerror, followlinks):
                 yield x
 
+    @staticmethod
+    def supports_fd():
+        raise NotImplementedError
 
-class Scandir:
+    @staticmethod
+    def supports_dir_fd():
+        raise NotImplementedError
+
+
+class ScandirIterator:
     """Reads directory contents and yields as DirEntry objects.
 
     These objects have subset of methods similar to `Path` object.

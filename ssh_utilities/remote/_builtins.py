@@ -1,6 +1,8 @@
 """Python builtins remote version."""
 
+import errno
 import logging
+import os
 from types import MethodType
 from typing import TYPE_CHECKING, Optional
 
@@ -45,8 +47,9 @@ class Builtins(BuiltinsABC):
         str_errors = errors if errors else "strict"
 
         if not self.c.os.path.isfile(path) and "r" in mode:
-            raise FileNotFoundError(f"Cannot open {path} for reading, "
-                                    f"it does not exist.")
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), path
+            )
 
         def read_decode(self, size=None):
             data = self.paramiko_read(size=size)
