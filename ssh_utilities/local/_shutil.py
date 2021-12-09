@@ -43,28 +43,7 @@ class Shutil(ShutilABC):
         else:
             shutil.copyfileobj(fsrc, fdst)
 
-    @deprecation_warning("copyfile", "With for-loop you can archieve the same effect")
-    @staticmethod
-    def copy_files(files: List[str], remote_path: "_SPATH",
-                   local_path: "_SPATH", *, direction: "_DIRECTION",
-                   follow_symlinks: bool = True, quiet: bool = False):
-
-        with context_timeit(quiet):
-            for f in files:
-                file_remote = Path(remote_path) / f
-                file_local = Path(local_path) / f
-
-                if direction == "get":
-                    shutil.copy2(file_remote, file_local,
-                                 follow_symlinks=follow_symlinks)
-                elif direction == "put":
-                    shutil.copy2(file_local, file_remote,
-                                 follow_symlinks=follow_symlinks)
-                else:
-                    raise ValueError(f"{direction} is not valid direction. "
-                                     f"Choose 'put' or 'get'")
-
-    def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
+    def copyfile(self, src: "_PATH", dst: "_PATH", *,
                  direction: "_DIRECTION", follow_symlinks: bool = True,
                  callback: "_CALLBACK" = None, quiet: bool = True):
 

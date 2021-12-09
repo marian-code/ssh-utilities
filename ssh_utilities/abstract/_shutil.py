@@ -70,29 +70,6 @@ class ShutilABC(ABC):
         length : int, optional
             [description], by default -1
         """
-        raise NotImplementedError        
-
-    @abstractmethod
-    def copy_files(self, files: List[str], remote_path: "_SPATH",
-                   local_path: "_SPATH", *, direction: "_DIRECTION",
-                   follow_symlinks: bool = True, quiet: bool = False):
-        """Send files in the chosen direction local <-> remote.
-
-        Parameters
-        ----------
-        files: List[str]
-            list of files to upload/download
-        remote_path: :const:`ssh_utilities.typeshed._SPATH`
-            path to remote directory with files
-        local_path: :const:`ssh_utilities.typeshed._SPATH`
-            path to local directory with files
-        direction: str
-            get for download and put for upload
-        follow_symlinks: bool
-            resolve symlinks when looking for file, by default True
-        quiet: bool
-            if True informative messages are suppresssed
-        """
         raise NotImplementedError
 
     @abstractmethod

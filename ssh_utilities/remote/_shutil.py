@@ -76,29 +76,6 @@ class Shutil(ShutilABC):
                 if len(data) == 0:
                     break
 
-    @deprecation_warning("copyfile",
-                         "With for-loop you can archieve the same effect")
-    @check_connections(exclude_exceptions=ValueError)
-    def copy_files(self, files: List[str], remote_path: "_SPATH",
-                   local_path: "_SPATH", *, direction: "_DIRECTION",
-                   follow_symlinks: bool = True, quiet: bool = False):
-
-        with context_timeit(quiet):
-            for f in files:
-                if direction == "get":
-                    src = self.c.os.path.join(self.c._path2str(remote_path), f)
-                    dst = self.c.os.path.join(self.c._path2str(local_path), f)
-                elif direction == "put":
-                    dst = self.c.os.path.join(self.c._path2str(remote_path), f)
-                    src = self.c.os.path.join(self.c._path2str(local_path), f)
-                else:
-                    raise ValueError(f"{direction} is not valid direction. "
-                                     f"Choose 'put' or 'get'")
-
-                self.copyfile(src, dst, direction=direction,
-                              follow_symlinks=follow_symlinks, callback=None,
-                              quiet=quiet)
-
     @check_connections(exclude_exceptions=(FileNotFoundError, ValueError,
                                            IsADirectoryError))
     def copyfile(self, src: "_SPATH", dst: "_SPATH", *,
