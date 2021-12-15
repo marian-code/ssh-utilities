@@ -32,6 +32,9 @@ if TYPE_CHECKING:
     _HOSTS = TypedDict("_HOSTS", {"user": str, "hostname": str,
                                   "identityfile": Union[str, List[str]]})
 
+    from .abstract import (BuiltinsABC, OsABC, PathlibABC, ShutilABC,
+                           SubprocessABC)
+
 __all__ = ["Connection"]
 
 log = logging.getLogger(__name__)
@@ -119,6 +122,18 @@ class Connection(metaclass=_ConnectionMeta):
                                <server_name>, <thread_safe>):
     """
 
+    # these atrributes and methods are here to help
+    # typing parsers and autosuggestions in code editors
+    builtins: "BuiltinsABC"
+    os: "OsABC"
+    shutil: "ShutilABC"
+    subprocess: "SubprocessABC"
+    pathlib: "PathlibABC"
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    # __new__ type suggestions are not honoured
     @overload
     def __new__(cls, ssh_server: str, local: Literal[False], quiet: bool,
                 thread_safe: bool, allow_agent: bool) -> SSHConnection:
