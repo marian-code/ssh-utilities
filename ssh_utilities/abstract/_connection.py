@@ -50,11 +50,6 @@ class ConnectionABC(ABC):
     def close(self, *, quiet: bool = True):
         raise NotImplementedError
 
-    @abstractmethod
-    def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
-                level: str = "WARN"):
-        raise NotImplementedError
-
     @property  # type: ignore
     @abstractmethod
     def builtins(self) -> "BuiltinsABC":

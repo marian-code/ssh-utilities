@@ -234,23 +234,6 @@ class SSHConnection(ConnectionABC):
         lprint(quiet)(f"{G}Closing ssh connection to:{R} {self.server_name}")
         self.c.close()
 
-    @staticmethod
-    def ssh_log(log_file: Union[Path, str] = Path("paramiko.log"),
-                level: str = "WARN"):
-        """Initialize paramiko logging functionality.
-
-        Parameters
-        ----------
-        log_file: str
-            location of the log file (default: paramiko.log)
-        level: str
-            logging level represented by string
-        """
-        if os.path.isfile(log_file):
-            os.remove(log_file)
-        lprint()(f"{Y}Logging ssh session to file:{R} {log_file}\n")
-        paramiko.util.log_to_file(log_file, level=level)
-
     # * additional methods needed by remote ssh class, not in ABC definition
     def _get_ssh(self, authentication_attempts: int = 0):
 

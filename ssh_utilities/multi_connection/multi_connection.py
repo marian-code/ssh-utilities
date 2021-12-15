@@ -199,7 +199,3 @@ class MultiConnection(DictInterface, Pesistence, ConnectionABC):
     # TODO to be implemented
     def __pow__(self, power: SupportsFloat):
         ...
-
-    def ssh_log(self, log_file: Union[Path, str] = Path("paramiko.log"),
-                level: str = "WARN"):
-        ...

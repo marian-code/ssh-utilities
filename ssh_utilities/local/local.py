@@ -107,10 +107,6 @@ class LocalConnection(ConnectionABC):
         """Close emulated local connection."""
         lprint(quiet)(f"{G}Closing local connection")
 
-    @staticmethod
-    def ssh_log(log_file="paramiko.log", level="WARN"):
-        lprint()(f"{Y}Local sessions are not logged!")
-
     def _path2str(self, path: Optional["_PATH"]) -> str:
         if isinstance(path, SSHPath):
             raise TypeError(
