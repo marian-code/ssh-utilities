@@ -187,7 +187,7 @@ class Connection(metaclass=_ConnectionMeta):
                             quiet=quiet)
 
         try:
-            credentials = cls.available_hosts[ssh_server]
+            credentials: dict = cls.available_hosts[ssh_server]
         except KeyError as e:
             raise KeyError(f"couldn't find login credentials for {ssh_server}:"
                            f" {e}")
@@ -205,7 +205,10 @@ class Connection(metaclass=_ConnectionMeta):
             if allow_agent:
                 log.info(f"no private key supplied for {hostname}, will try "
                          f"to authenticate through ssh-agent")
-                pkey_file = None
+                try:
+                    pkey_file = credentials["identityfile"][0]
+                except (KeyError, IndexError) as e:
+                    pkey_file = None
             else:
                 log.info(f"private key found for host: {hostname}")
                 try:
@@ -411,12 +414,7 @@ class Connection(metaclass=_ConnectionMeta):
                 server_name=server_name,
                 quiet=quiet
             )
-        elif allow_agent:
-            ssh_key_file = None
-            ssh_password = None
-        elif ssh_key_file:
-            ssh_password = None
-        elif not ssh_password:
+        elif not any((allow_agent, ssh_key_file, ssh_password)):
             ssh_password = getpass.getpass(prompt="Enter password: ")
 
         return SSHConnection(

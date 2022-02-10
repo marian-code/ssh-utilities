@@ -183,18 +183,17 @@ class check_connections:
             except self.exclude_exceptions as e:
                 # if exception is one of the excluded, re-raise it
                 raise e from None
-            except NoValidConnectionsError as e:
+            except (NoValidConnectionsError, SSHException) as e:
                 error = e
                 log.exception(f"Caught paramiko error in {n}: {e}")
-            except SSHException as e:
-                error = e
-                log.exception(f"Caught paramiko error in {n}: {e}")
-            except AttributeError as e:
-                error = e
-                log.exception(f"Caught attribute error in {n}: {e}")
-            except OSError as e:
-                error = e
-                log.exception(f"Caught OS error in {n}: {e}")
+                """
+                except AttributeError as e:
+                    error = e
+                    log.exception(f"Caught attribute error in {n}: {e}")
+                except OSError as e:
+                    error = e
+                    log.exception(f"Caught OS error in {n}: {e}")
+                """
             except SFTPError as e:
                 # garbage packets,
                 # see: https://github.com/paramiko/paramiko/issues/395
@@ -213,114 +212,3 @@ class check_connections:
                         time.sleep(60)
 
         return connect_wrapper
-
-
-"""
-def check_connections(original_function: Optional[Callable] = None, *,
-                      exclude_exceptions: "_EXCTYPE" = ()):
-
-    def _decorate(function):
-
-        @wraps(function)
-        def connect_wrapper(self: "_CLASS", *args, **kwargs):
-
-            orig_self = self
-            # we have to deal with branching inner classes where attribute 'c'
-            # is instance of SSHConnection not paramiko SSHClient
-            # as of now we have 2 inner levels so we must iterate until we get
-            # to the base
-            while True:
-                print(type(self), type(self.c))
-                if not isinstance(self.c, SSHClient):
-                    self = self.c
-                else:
-                    instance = self
-                    break
-
-            def negotiate() -> bool:
-                try:
-                    instance.close(quiet=True)
-                except Exception as e:
-                    log.exception(f"Couldn't close connection: {e}")
-
-                try:
-                    instance._get_ssh()
-                except ConnectionError:
-                    success = False
-                else:
-                    success = True
-
-                log.debug(f"success 1: {success}")
-                if not success:
-                    return False
-
-                if instance._sftp_open:
-                    log.debug(f"success 2: {success}")
-                    try:
-                        instance.sftp
-                    except SFTPOpenError:
-                        success = False
-                        log.debug(f"success 3: {success}")
-
-                    else:
-                        log.debug(f"success 4: {success}")
-
-                        success = True
-                else:
-                    success = False
-
-                log.exception(f"Relevant variables:\n"
-                              f"success:    {success}\n"
-                              f"password:   {instance.password}\n"
-                              f"address:    {instance.address}\n"
-                              f"username:   {instance.username}\n"
-                              f"ssh class:  {type(instance.c)}\n"
-                              f"sftp class: {type(instance.sftp)}")
-                if instance._sftp_open:
-                    log.exception(f"remote home: {instance.remote_home}")
-
-                return success
-
-            n = function.__name__
-            error = None
-            try:
-                return function(orig_self, *args, **kwargs)
-            except exclude_exceptions as e:
-                # if exception is one of the excluded, re-raise it
-                raise e from None
-            except NoValidConnectionsError as e:
-                error = e
-                log.exception(f"Caught paramiko error in {n}: {e}")
-            except SSHException as e:
-                error = e
-                log.exception(f"Caught paramiko error in {n}: {e}")
-            except AttributeError as e:
-                error = e
-                log.exception(f"Caught attribute error in {n}: {e}")
-            except OSError as e:
-                error = e
-                log.exception(f"Caught OS error in {n}: {e}")
-            except SFTPError as e:
-                # garbage packets,
-                # see: https://github.com/paramiko/paramiko/issues/395
-                log.exception(f"Caught paramiko error in {n}: {e}")
-            finally:
-                while error:
-
-                    log.warning("Connection is down, trying to reconnect")
-                    if negotiate():
-                        log.info("Connection restablished, continuing ..")
-                        connect_wrapper(orig_self, *args, **kwargs)
-                        break
-                    else:
-                        log.warning("Unsuccessful, wait 60 seconds "
-                                       "before next try")
-                        time.sleep(60)
-
-        return connect_wrapper
-
-    if original_function:
-        return _decorate(original_function)
-
-    return _decorate
-"""

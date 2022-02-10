@@ -79,6 +79,7 @@ class SSHConnection(ConnectionABC):
 
     _remote_home: str = ""
     __lock: Union[ContextManager[None], RLock]
+    __AUTH_ATTEMPTS: int = 3
 
     def __init__(self, address: str, username: str,
                  password: Optional[str] = None,
@@ -137,22 +138,14 @@ class SSHConnection(ConnectionABC):
         self.pkey_file = pkey_file
         self.allow_agent = allow_agent
 
-        # paramiko connection
-        if allow_agent:
-            self._pkey = None
-            self.password = None
-        elif pkey_file:
-            for key in _KEYS:
-                try:
-                    self._pkey = key.from_private_key_file(
-                        self._path2str(pkey_file)
-                    )
-                except paramiko.SSHException:
-                    log.info(f"could not parse key with {key.__name__}")
-        elif password:
-            self._pkey = None
-        else:
-            raise RuntimeError("Must input password or path to pkey")
+        if not allow_agent and not pkey_file and not password:
+            raise RuntimeError(
+                "Must allow ssh-agent input password or path to private key"
+            )
+
+
+        if pkey_file:
+            self._load_pkey()
 
         self._c = paramiko.client.SSHClient()
         self._c.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
@@ -235,35 +228,55 @@ class SSHConnection(ConnectionABC):
         self.c.close()
 
     # * additional methods needed by remote ssh class, not in ABC definition
-    def _get_ssh(self, authentication_attempts: int = 0):
+    def _get_ssh(self):
 
-        with self.__lock:
+        def _connect(method: str, **kwargs):
+
+            log.info(f"trying to authenticate with {method}")
+            for _ in range(self.__AUTH_ATTEMPTS):
+                with self.__lock:
+                    try:
+                        self.c.connect(self.address, username=self.username, **kwargs)
+                    except (paramiko.ssh_exception.AuthenticationException,
+                            paramiko.ssh_exception.NoValidConnectionsError) as e:
+                        log.warning(
+                            f"Error in authentication {e}. Trying again ..."
+                        )
+                    else:
+                        log.info(f"successfully authenticated with: {method}")
+                        return True
+
+            log.warning(
+                f"authentication with {method} failed, reverting to backup methods"
+            )
+            return False
+
+        # we will try each method maximum three times
+        # authenticatiom method preference is based on security and convenience
+        if self.allow_agent and _connect("ssh-agent", allow_agent=True):
+            return
+
+        if self.pkey_file and _connect("private-key", pkey=self._pkey):
+            return
+
+        if self.password and _connect("password", password=self.password, look_for_keys=False):
+            return
+
+        # if none of the authentication methods was sucessfull, raise error
+        raise ConnectionError(
+            f"Connection to {self.address} could not be established"
+        )
+
+
+    def _load_pkey(self):
+
+        for key in _KEYS:
             try:
-                if self.allow_agent:
-                    # connect using ssh-agent
-                    self.c.connect(self.address, username=self.username, allow_agent=True)
-                if self._pkey:
-                    # connect with public key
-                    self.c.connect(self.address, username=self.username,
-                                   pkey=self._pkey)
-                else:
-                    # if password was passed try to connect with it
-                    self.c.connect(self.address, username=self.username,
-                                   password=self.password, look_for_keys=False)
-
-            except (paramiko.ssh_exception.AuthenticationException,
-                    paramiko.ssh_exception.NoValidConnectionsError) as e:
-                log.warning(f"Error in authentication {e}. Trying again ...")
-
-                # max three attempts to connect at once
-                authentication_attempts += 1
-                if authentication_attempts >= 3:
-                    raise ConnectionError(f"Connection to {self.address} "
-                                          f"could not be established")
-                else:
-                    self._get_ssh(
-                        authentication_attempts=authentication_attempts
-                    )
+                self._pkey = key.from_private_key_file(
+                    self._path2str(self.pkey_file)
+                )
+            except paramiko.SSHException:
+                log.info(f"could not parse key with {key.__name__}")        
 
     @property  # type: ignore
     @check_connections()
