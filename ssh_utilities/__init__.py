@@ -12,9 +12,6 @@ complex process running.
 
 from warnings import warn
 
-warn("The old API is deprecated, please refer to the docs for changes: "
-     "https://ssh-utilities.readthedocs.io/en/latest/", DeprecationWarning)
-
 import logging
 
 from .connection import Connection
