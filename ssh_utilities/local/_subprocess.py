@@ -31,7 +31,7 @@ class Subprocess(SubprocessABC):
     def __init__(self, connection: "LocalConnection") -> None:
         self.c = connection
 
-    def run(self, args: "_CMD", *, suppress_out: bool,  # NOSONAR
+    def run(self, args: "_CMD", suppress_out: bool = True,  # NOSONAR
             quiet: bool = True, bufsize: int = -1, executable: "_PATH" = None,
             input: Optional[str] = None, stdin: "_FILE" = None,
             stdout: "_FILE" = None, stderr: "_FILE" = None,
@@ -52,7 +52,8 @@ class Subprocess(SubprocessABC):
             input=input, stdin=stdin, stdout=stdout, stderr=stderr,
             shell=shell, cwd=self.c._path2str(cwd), timeout=timeout,
             check=check, encoding=encoding,  # type: ignore
-            errors=errors, text=text, universal_newlines=universal_newlines
+            errors=errors, text=text, env=env,
+            universal_newlines=universal_newlines
         )
 
         if capture_output and not suppress_out:

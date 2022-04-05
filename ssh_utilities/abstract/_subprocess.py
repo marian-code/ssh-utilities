@@ -25,7 +25,7 @@ class SubprocessABC(ABC, Generic[_Subprocess1]):
     __abstractmethods__: FrozenSet[str]
 
     @abstractmethod
-    def run(self, args: "_CMD", *, suppress_out: bool,  # NOSONAR
+    def run(self, args: "_CMD", suppress_out: bool = True,  # NOSONAR
             quiet: bool = True, bufsize: int = -1, executable: "_SPATH" = None,
             input: Optional[str] = None, stdin: "_FILE" = None,
             stdout: "_FILE" = None, stderr: "_FILE" = None,

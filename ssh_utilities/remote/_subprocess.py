@@ -39,7 +39,7 @@ class Subprocess(SubprocessABC):
 
     # TODO WORKS weird on AIX only first/last line of output
     @check_connections(exclude_exceptions=(TypeError, CalledProcessError))
-    def run(self, args: "_CMD", *, suppress_out: bool,  # NOSONAR
+    def run(self, args: "_CMD", suppress_out: bool = True,  # NOSONAR
             quiet: bool = True, bufsize: int = -1, executable: "_SPATH" = None,
             input: Optional[str] = None, stdin: "_FILE" = None,
             stdout: "_FILE" = None, stderr: "_FILE" = None,
