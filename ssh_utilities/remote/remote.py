@@ -225,7 +225,13 @@ class SSHConnection(ConnectionABC):
             whether to print other function messages
         """
         lprint(quiet)(f"{G}Closing ssh connection to:{R} {self.server_name}")
-        self.c.close()
+        try:
+            self.c.close()
+        except AttributeError as e:
+            # this catches the cases when error occures in object initialization
+            # and the underlying self._c attribute does not yet exist
+            log.debug(e)
+
 
     # * additional methods needed by remote ssh class, not in ABC definition
     def _get_ssh(self):

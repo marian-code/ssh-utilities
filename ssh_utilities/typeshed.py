@@ -28,7 +28,7 @@ _CMD = Union[_TXT, Sequence["AnyPath"]]
 #: mapping of environment varibles names
 _ENV = Optional[Union[Mapping[bytes, _TXT], Mapping[str, _TXT]]]
 #: srting glob pattern
-_GLOBPAT = Optional[str]
+_GLOBPAT = Optional[Union[str, List[str]]]
 #: accepted path types by ssh_utilities - str, Path or SSHPath
 #: for remote connection
 _SPATH = Union[str, "Path", "SSHPath"]

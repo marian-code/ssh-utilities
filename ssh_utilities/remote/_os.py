@@ -148,7 +148,7 @@ class Os(OsABC):
                 errno.EISDIR, os.strerror(errno.EISDIR), path
             )
         else:
-            self.c.sftp.unlink()
+            self.c.sftp.unlink(path)
 
     unlink = remove
 
