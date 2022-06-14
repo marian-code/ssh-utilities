@@ -158,7 +158,7 @@ class Shutil(ShutilABC):
 
     # TODO
     @check_connections(exclude_exceptions=shutil.Error)
-    def copytree(self, src: "_SPATH", dst: "_SPATH",
+    def _copytree(self, src: "_SPATH", dst: "_SPATH",
                  direction: "_DIRECTION", symlinks: bool = False,
                  ignore: Optional[Callable[["_SPATH"], bool]] = None,
                  copy_function: Callable[["_SPATH", "_SPATH", bool], NoReturn] = "copy2",
@@ -174,7 +174,7 @@ class Shutil(ShutilABC):
             ignore_dangling_symlinks=ignore_dangling_symlinks,
             dirs_exist_ok=dirs_exist_ok)
         
-    def _copytree(self, entries, src, dst, direction, symlinks, ignore,
+    def __copytree(self, entries, src, dst, direction, symlinks, ignore,
                   copy_function, ignore_dangling_symlinks,
                   dirs_exist_ok=False):
 
