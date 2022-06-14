@@ -72,7 +72,7 @@ class OsPath(OsPathABC):
 
     @check_connections
     def realpath(self, path: "_SPATH") -> str:
-        return self.c.sftp.normalize(self.c._path2str(path))
+        return self.c.os.readlink(path)
 
     def getsize(self, path: "_SPATH") -> int:
 

@@ -262,6 +262,19 @@ class OsABC(ABC, Generic[_Os1, _Os2, _Os3, _Os4, _Os5, _Os6]):
         raise NotImplementedError
 
     @abstractmethod
+    def readlink(self, path: "_SPATH", *, dir_fd: Optional[int] = None):
+        """Return a string representing the path to which the symbolic link points.
+
+        Parameters
+        ----------
+        path : _SPATH
+            symbolic link path
+        dir_fd : Optional[int], optional
+            file descriptor, not used in ssh implementation, by default None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def rename(self, src: "_SPATH", dst: "_SPATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):

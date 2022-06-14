@@ -101,7 +101,8 @@ class OsPathABC(ABC):
     def realpath(self, path: "_SPATH") -> str:
         """Return the canonical path of the specified filename.
 
-        Eliminates any symbolic links encountered in the path.
+        Eliminates any symbolic links encountered in the path. In SSH implementation
+        this is identical to `os.readlink`
 
         Parameters
         ----------
@@ -112,6 +113,10 @@ class OsPathABC(ABC):
         -------
         str
             string representation of the resolved path
+
+        See Also
+        --------
+        :meth:`ssh_utilities.abstract.OsABC.readlink`
         """
         raise NotImplementedError
 

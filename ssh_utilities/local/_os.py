@@ -66,6 +66,9 @@ class Os(OsABC):
     def rmdir(self, path: "_PATH", *, dir_fd: int = None):
         os.rmdir(path, dir_fd=dir_fd)
 
+    def readlink(self, path: "_PATH", *, dir_fd: Optional[int] = None):
+        return os.readlink(self.c._path2str(path), dir_fd=dir_fd)
+
     def rename(self, src: "_PATH", dst: "_PATH", *,
                src_dir_fd: Optional[int] = None,
                dst_dir_fd: Optional[int] = None):

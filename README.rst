@@ -376,3 +376,10 @@ TODO
 - in some situation threadsafe object can cause deadlocks notable cases are: upload_tree/download_tree
 - create expiring connecton that will self close after some time
 - add ssh-agent docs
+- _PosixFlavour in pathlib.py uses os.getcwd (python 3.7) we need to get around this and possibly write our own flavour
+
+Known Issues
+------------
+
+- ``SSHConnection.pathlib.path.resolve()`` can throw ``RuntimeError: Symlink loop`` in some cases
+- threadsafe connection might in some instances cause a deadlock

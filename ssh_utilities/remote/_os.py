@@ -168,6 +168,9 @@ class Os(OsABC):
         else:
             self.c.sftp.rmdir(path)
 
+    def readlink(self, path: "_SPATH", *, dir_fd: Optional[int] = None):
+        return self.c.sftp.normalize(self.c._path2str(path))
+
     @fd_error
     @check_connections(exclude_exceptions=(OSError, FileExistsError,
                                            NotADirectoryError, IOError))

@@ -119,6 +119,9 @@ class _SSHAccessor:
     def replace(self, *args, **kwargs):
         return self.c.os.replace(*args, **kwargs)
 
+    def readlink(self, *args, **kwargs):
+        return self.c.os.readlink(*args, **kwargs)
+
 
 class _Template:
 
