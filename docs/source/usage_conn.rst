@@ -247,7 +247,8 @@ submodule:
 
     >>> # all sub-modules are named same as python modules they replace, except
     >>> # for the capital startinf letter
-    >>> from ssh_utilities import Os, Connection
+    >>> from ssh_utilities import Connection
+    >>> from ssh_utilities.remote import Os
     >>>
     >>> c = Connection("some-host")
     >>>

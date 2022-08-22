@@ -26,7 +26,7 @@ connection
 
 .. code-block:: python
 
-    >>> from ssh_utilities import Connection
+    >>> from ssh_utilities import Connection, SSHPath
     >>> conn = Connection(<server_name>)
     >>> sshpath = SSHPath(conn, <some_path>)
 

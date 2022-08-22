@@ -202,7 +202,9 @@ module replacement classes, utility functions and constants:
 
     from ssh_utilities import SSHConnection, Connection, LocalConnection, MultiConnection
     from ssh_utilities import SSHPath
-    from ssh_utilities import Builtins, Os, Pathlib, Shutil, Subprocess
+    from ssh_utilities.remote import Builtins, Os, Pathlib, Shutil, Subprocess
+    # or
+    from ssh_utilities.local import Builtins, Os, Pathlib, Shutil, Subprocess
     from ssh_utilities import config_parser
     from ssh_utilities import PIPE, STDOUT, DEVNULL, GET, PUT
 
