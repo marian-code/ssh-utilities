@@ -281,6 +281,7 @@ class SSHConnection(ConnectionABC):
                 self._pkey = key.from_private_key_file(
                     self._path2str(self.pkey_file)
                 )
+                break
             except paramiko.SSHException:
                 log.info(f"could not parse key with {key.__name__}")        
 
