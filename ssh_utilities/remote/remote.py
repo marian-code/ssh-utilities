@@ -119,7 +119,7 @@ class SSHConnection(ConnectionABC):
         lprnt(msg)
         log.info(msg.replace(C, "").replace(R, ""))
 
-        msg = (f"{RED}When running an executale on server always make "
+        msg = (f"{RED}When running an executable on server always make "
                f"sure that full path is specified!!!\n")
 
         lprnt(msg)
